@@ -63,6 +63,23 @@ function parseInteger(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function buildShopImages(images: string[]) {
+  return images.map((imageUrl, index) => ({
+    imageUrl,
+    sortOrder: index,
+  }));
+}
+
+function buildShopCourses(courses: Shop['courses']) {
+  return courses.map((course, index) => ({
+    name: course.name.trim(),
+    durationMinutes: parseInteger(course.duration),
+    price: parseInteger(course.price),
+    description: course.description?.trim() || null,
+    sortOrder: index,
+  }));
+}
+
 function buildShopPayload(input: Shop) {
   return {
     name: input.name.trim(),
@@ -244,15 +261,6 @@ export async function getAdminShopById(id: string) {
   return shop ? mapShop(shop) : null;
 }
 
-export async function getAdminShopOwnerId(id: string) {
-  const shop = await prisma.shop.findUnique({
-    where: { id },
-    select: { ownerId: true },
-  });
-
-  return shop?.ownerId ?? null;
-}
-
 export async function getQnaShopOwnerId(id: string) {
   const qna = await prisma.qnA.findUnique({
     where: { id },
@@ -280,19 +288,10 @@ export async function createAdminShop(input: Shop) {
     data: {
       ...buildShopPayload(input),
       images: {
-        create: input.images.map((imageUrl, index) => ({
-          imageUrl,
-          sortOrder: index,
-        })),
+        create: buildShopImages(input.images),
       },
       courses: {
-        create: input.courses.map((course, index) => ({
-          name: course.name.trim(),
-          durationMinutes: parseInteger(course.duration),
-          price: parseInteger(course.price),
-          description: course.description?.trim() || null,
-          sortOrder: index,
-        })),
+        create: buildShopCourses(input.courses),
       },
     },
     include: shopInclude,
@@ -309,20 +308,11 @@ export async function updateAdminShop(id: string, input: Shop) {
         ...buildShopPayload(input),
         images: {
           deleteMany: {},
-          create: input.images.map((imageUrl, index) => ({
-            imageUrl,
-            sortOrder: index,
-          })),
+          create: buildShopImages(input.images),
         },
         courses: {
           deleteMany: {},
-          create: input.courses.map((course, index) => ({
-            name: course.name.trim(),
-            durationMinutes: parseInteger(course.duration),
-            price: parseInteger(course.price),
-            description: course.description?.trim() || null,
-            sortOrder: index,
-          })),
+          create: buildShopCourses(input.courses),
         },
       },
       include: shopInclude,

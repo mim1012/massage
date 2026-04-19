@@ -6,9 +6,11 @@ import {
   createNotice,
   createQna,
   deleteNotice,
+  getAdminShopById,
   getAdminDashboardData,
   getBoardSummary,
   getNoticeById,
+  getQnaShopOwnerId,
   listAdminShops,
   listNotices,
   listQna,
@@ -20,6 +22,17 @@ import { sleep } from './helpers/reset-store';
 
 function uniqueSuffix() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+async function withMutedConsoleError<T>(callback: () => Promise<T>) {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+
+  try {
+    return await callback();
+  } finally {
+    console.error = originalConsoleError;
+  }
 }
 
 async function getAdminUser() {
@@ -38,6 +51,15 @@ async function getSeedShop() {
 
   assert.ok(shop, 'expected seeded shop');
   return shop;
+}
+
+async function getSeedOwner() {
+  const owner = await prisma.user.findUnique({
+    where: { email: 'owner@massage.local' },
+  });
+
+  assert.ok(owner, 'expected seeded owner user');
+  return owner;
 }
 
 async function createTempShop(partial: Partial<Shop> = {}) {
@@ -166,7 +188,10 @@ test('notice lifecycle trims content and keeps pinned notices ahead of regular n
   assert.equal(await deleteNotice(regularNotice.id), true);
   assert.equal(await deleteNotice(pinnedNotice.id), true);
   assert.equal(await getNoticeById(pinnedNotice.id), null);
-  assert.equal(await deleteNotice('missing-notice'), false);
+  assert.equal(
+    await withMutedConsoleError(async () => deleteNotice('missing-notice')),
+    false,
+  );
 });
 
 test('Q&A creation and answering trim input and promote the newest matching entry', async () => {
@@ -187,5 +212,32 @@ test('Q&A creation and answering trim input and promote the newest matching entr
 
   assert.equal(answered?.answer, 'Yes, weekends are available.');
   assert.equal(answered?.isAnswered, true);
-  assert.equal(await answerQna('missing-qna', 'No', admin.id), null);
+  assert.equal(
+    await withMutedConsoleError(async () => answerQna('missing-qna', 'No', admin.id)),
+    null,
+  );
+});
+
+test('store ownership lookups resolve shop and Q&A ownership for authorization checks', async () => {
+  const [owner, shop] = await Promise.all([getSeedOwner(), getSeedShop()]);
+
+  const adminShop = await getAdminShopById(shop.id);
+  assert.equal(adminShop?.ownerId, owner.id);
+
+  const createdQna = await createQna({
+    shopId: shop.id,
+    question: 'Owner access check?',
+    authorName: 'Verifier',
+  });
+
+  const qnaOwner = await getQnaShopOwnerId(createdQna.id);
+  assert.deepEqual(qnaOwner, {
+    exists: true,
+    ownerId: owner.id,
+  });
+
+  assert.deepEqual(await getQnaShopOwnerId('missing-qna-id'), {
+    exists: false,
+    ownerId: null,
+  });
 });
