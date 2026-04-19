@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { beforeEach, test } from 'node:test';
+import { test } from 'node:test';
+import { prisma } from '@/lib/db/prisma';
 import {
   answerQna,
   createNotice,
@@ -14,60 +15,126 @@ import {
   updateNotice,
   updatePremiumOrder,
 } from '@/lib/server/communityStore';
-import { resetMockStore, sleep } from './helpers/reset-store';
+import type { Shop } from '@/lib/types';
+import { sleep } from './helpers/reset-store';
 
-beforeEach(() => {
-  resetMockStore();
-});
+function uniqueSuffix() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
 
-test('getBoardSummary and getAdminDashboardData reflect seeded counts', async () => {
-  const summary = await getBoardSummary();
-  assert.equal(typeof summary.notices, 'number');
-  assert.equal(typeof summary.qna, 'number');
-  assert.equal(typeof summary.reviews, 'number');
-  assert.ok(summary.notices >= 0);
-  assert.ok(summary.qna >= 0);
-  assert.ok(summary.reviews >= 0);
+async function getAdminUser() {
+  const admin = await prisma.user.findUnique({
+    where: { email: 'admin@massage.local' },
+  });
+
+  assert.ok(admin, 'expected seeded admin user');
+  return admin;
+}
+
+async function getSeedShop() {
+  const shop = await prisma.shop.findUnique({
+    where: { slug: 'healing-spa-seoul' },
+  });
+
+  assert.ok(shop, 'expected seeded shop');
+  return shop;
+}
+
+async function createTempShop(partial: Partial<Shop> = {}) {
+  const suffix = uniqueSuffix();
+  return prisma.shop.create({
+    data: {
+      name: partial.name ?? `Test Shop ${suffix}`,
+      slug: partial.slug ?? `test-shop-${suffix}`,
+      region: partial.region ?? 'seoul',
+      regionLabel: partial.regionLabel ?? 'Seoul',
+      subRegion: partial.subRegion ?? 'gangnam',
+      subRegionLabel: partial.subRegionLabel ?? 'Gangnam',
+      theme: partial.theme ?? 'swedish',
+      themeLabel: partial.themeLabel ?? 'Swedish',
+      tagline: partial.tagline ?? 'Test tagline',
+      description: partial.description ?? 'Test description',
+      address: partial.address ?? '123 Test Road',
+      phone: partial.phone ?? '010-0000-0000',
+      hours: partial.hours ?? '10:00 - 22:00',
+      isVisible: partial.isVisible ?? true,
+      isPremium: partial.isPremium ?? false,
+      premiumOrder: partial.premiumOrder ?? null,
+      thumbnailUrl: partial.thumbnailUrl ?? '/images/test-thumb.jpg',
+      bannerUrl: partial.bannerUrl ?? '/images/test-banner.jpg',
+      rating: partial.rating ?? 4.5,
+      tags: partial.tags ?? ['test'],
+    },
+  });
+}
+
+test('getBoardSummary and getAdminDashboardData reflect database counts', async () => {
+  const [noticeCount, qnaCount, reviewCount, shopCount, premiumCount, unansweredCount] = await Promise.all([
+    prisma.notice.count(),
+    prisma.qnA.count(),
+    prisma.review.count(),
+    prisma.shop.count(),
+    prisma.shop.count({ where: { isPremium: true } }),
+    prisma.qnA.count({ where: { status: 'OPEN' } }),
+  ]);
+
+  assert.deepEqual(await getBoardSummary(), {
+    notices: noticeCount,
+    qna: qnaCount,
+    reviews: reviewCount,
+  });
 
   const dashboard = await getAdminDashboardData();
-  assert.ok(dashboard.summary.length >= 4);
-  assert.ok(dashboard.summary.every((item) => typeof item.value === 'number'));
-  assert.ok(Array.isArray(dashboard.pendingQna));
-  assert.ok(Array.isArray(dashboard.recentReviews));
+  const summaryValues = dashboard.summary.map((item) => item.value).sort((a, b) => a - b);
+  const expectedValues = [shopCount, premiumCount, unansweredCount, noticeCount].sort((a, b) => a - b);
+  assert.deepEqual(summaryValues, expectedValues);
+  assert.ok(dashboard.pendingQna.length <= 4);
+  assert.ok(dashboard.recentReviews.length <= 4);
 });
 
-test('updatePremiumOrder reorders premium shops and demotes omitted entries', async () => {
-  const premiumBoard = await updatePremiumOrder(['shop-003', 'shop-001']);
+test('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t) => {
+  const tempShopA = await createTempShop({ isPremium: true, premiumOrder: 10 });
+  const tempShopB = await createTempShop({ isPremium: false });
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({
+      where: { id: { in: [tempShopA.id, tempShopB.id] } },
+    });
+  });
+
+  const premiumBoard = await updatePremiumOrder([tempShopB.id, tempShopA.id]);
 
   assert.deepEqual(
     premiumBoard.premiumShops.map((shop) => [shop.id, shop.premiumOrder]),
     [
-      ['shop-003', 1],
-      ['shop-001', 2],
+      [tempShopB.id, 1],
+      [tempShopA.id, 2],
     ],
   );
-  assert.deepEqual(premiumBoard.availableShops.map((shop) => shop.id), ['shop-002']);
+
+  const shops = await listAdminShops();
+  const premiumShops = shops.filter((shop) => shop.isPremium);
   assert.deepEqual(
-    (await listAdminShops()).map((shop) => [shop.id, shop.isPremium, shop.premiumOrder]),
+    premiumShops.slice(0, 2).map((shop) => [shop.id, shop.premiumOrder]),
     [
-      ['shop-003', true, 1],
-      ['shop-001', true, 2],
-      ['shop-002', false, undefined],
+      [tempShopB.id, 1],
+      [tempShopA.id, 2],
     ],
   );
 });
 
 test('notice lifecycle trims content and keeps pinned notices ahead of regular notices', async () => {
+  const admin = await getAdminUser();
+
   const regularNotice = await createNotice({
     title: '  Regular update  ',
     content: '  Fresh content  ',
     isPinned: false,
-    createdBy: 'test-admin',
+    createdBy: admin.id,
   });
 
   assert.equal(regularNotice.title, 'Regular update');
   assert.equal(regularNotice.content, 'Fresh content');
-  assert.equal((await listNotices())[0]?.id, 'notice-001');
 
   await sleep(5);
 
@@ -75,7 +142,7 @@ test('notice lifecycle trims content and keeps pinned notices ahead of regular n
     title: '  Pinned update  ',
     content: '  Important content  ',
     isPinned: true,
-    createdBy: 'test-admin',
+    createdBy: admin.id,
   });
 
   assert.equal((await listNotices())[0]?.id, pinnedNotice.id);
@@ -96,25 +163,29 @@ test('notice lifecycle trims content and keeps pinned notices ahead of regular n
     createdAt: pinnedNotice.createdAt,
   });
 
+  assert.equal(await deleteNotice(regularNotice.id), true);
   assert.equal(await deleteNotice(pinnedNotice.id), true);
   assert.equal(await getNoticeById(pinnedNotice.id), null);
   assert.equal(await deleteNotice('missing-notice'), false);
 });
 
 test('Q&A creation and answering trim input and promote the newest matching entry', async () => {
+  const admin = await getAdminUser();
+  const shop = await getSeedShop();
+
   const created = await createQna({
-    shopId: 'shop-001',
+    shopId: shop.id,
     question: '  Is weekend booking available?  ',
     authorName: '  Test User  ',
   });
 
   assert.equal(created.question, 'Is weekend booking available?');
   assert.equal(created.authorName, 'Test User');
-  assert.equal((await listQna('shop-001'))[0]?.id, created.id);
+  assert.equal((await listQna(shop.id))[0]?.id, created.id);
 
-  const answered = await answerQna(created.id, '  Yes, weekends are available.  ');
+  const answered = await answerQna(created.id, '  Yes, weekends are available.  ', admin.id);
 
   assert.equal(answered?.answer, 'Yes, weekends are available.');
   assert.equal(answered?.isAnswered, true);
-  assert.equal(await answerQna('missing-qna', 'No'), null);
+  assert.equal(await answerQna('missing-qna', 'No', admin.id), null);
 });
