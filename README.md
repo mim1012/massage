@@ -4,21 +4,20 @@ Massage Directory is a Next.js App Router project for browsing massage shops, ha
 
 ## Current implementation snapshot
 
-This repository is in a **hybrid migration state**:
+This repository is now in a **Prisma-first migration state**.
 
 - **Prisma + PostgreSQL backed**
   - public shop list/detail APIs
   - auth register/login/logout/me flows
   - owner approval read/update flows
   - shop visibility / premium flag persistence
-- **Still in-memory / seed-backed**
-  - admin dashboard summary
   - notices
   - Q&A
   - review board
-  - some admin shop editing flows
+  - admin dashboard summary
+  - admin shop edit/create flows
 
-The main “backend integration” work now is finishing the migration from the in-memory `communityStore` layer to Prisma-backed storage everywhere.
+The current backend work is focused on hardening authorization, persistence coverage, and operational verification around that Prisma-backed path.
 
 ## Tech stack
 
@@ -59,9 +58,9 @@ docs/
 - `src/lib/server/auth-store.ts`
   - Prisma-backed registration, login, session lookup, owner approval handling
 - `src/lib/server/communityStore.ts`
-  - transitional in-memory store for notices, Q&A, reviews, dashboard data
-- `src/lib/server/sample-data.ts`
-  - seed-like sample data used by the in-memory community store
+  - Prisma-backed notices, Q&A, reviews, dashboard data, and admin shop editing flows
+- `src/lib/server/admin-shop-access.ts`
+  - owner/admin normalization helper for admin shop write routes
 
 ## Getting started
 
@@ -106,6 +105,9 @@ The Prisma seed currently provisions:
 - `npm run dev`
 - `npm run build`
 - `npm run start`
+- `npm run test`
+- `npm run typecheck`
+- `npm run verify`
 - `npm run lint`
 - `npm run prisma:validate`
 
@@ -114,21 +116,32 @@ The Prisma seed currently provisions:
 Useful local verification commands:
 
 ```bash
-npx tsc --noEmit
+npm run typecheck
+npm test
 npm run lint
 npm run prisma:validate
 npm run build
+npm run verify
 ```
+
+## Throughput note
+
+For roughly **1,000 visits per day**, the current Next.js + Prisma + PostgreSQL shape is comfortably within the expected operating range for a normal single-instance deployment, assuming a healthy Postgres database and a standard app server process.
+
+Recent hardening added:
+
+- Prisma-backed community/admin persistence
+- owner/admin authorization guards on mutation paths
+- dependency-free regression tests and a repeatable `verify` script
+- schema indexes for the common list/count/order query patterns
 
 ## Known gaps
 
-- No dedicated automated test suite is configured yet
-- Community/admin board data still uses the in-memory `communityStore`
+- Browser-driven admin/owner session flows are not covered by a full end-to-end UI suite yet
 - `src/lib/mockData.ts` is legacy data and should not be treated as the current runtime source of truth
 - `SESSION_SECRET` still has a development fallback and should be required in production
 
 ## Documentation
 
 - Backend integration plan: [docs/backend-integration-plan.md](docs/backend-integration-plan.md)
-- 백엔드 연동 계획서: [docs/backend-integration-plan.ko.md](docs/backend-integration-plan.ko.md)
-
+- Korean backend integration plan: [docs/backend-integration-plan.ko.md](docs/backend-integration-plan.ko.md)

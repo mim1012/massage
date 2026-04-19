@@ -42,6 +42,8 @@ model User {
   createdNotices Notice[]      @relation("NoticeCreatedBy")
   auditLogs     AuditLog[]     @relation("AuditActor")
 
+  @@index([role, createdAt(sort: Desc)])
+  @@index([status, role])
   @@map("users")
 }
 
@@ -89,6 +91,9 @@ model Shop {
   reviews        Review[]
   qna            QnA[]
 
+  @@index([isVisible, isPremium, premiumOrder, createdAt(sort: Desc)])
+  @@index([ownerId])
+  @@index([region, subRegion, theme])
   @@map("shops")
 }
 
@@ -99,6 +104,7 @@ model ShopImage {
   sortOrder Int      @default(0) @map("sort_order")
   shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
+  @@index([shopId, sortOrder])
   @@map("shop_images")
 }
 
@@ -112,6 +118,7 @@ model ShopCourse {
   sortOrder       Int      @default(0) @map("sort_order")
   shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
+  @@index([shopId, sortOrder])
   @@map("shop_courses")
 }
 
@@ -126,6 +133,7 @@ model Review {
   shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([shopId, createdAt(sort: Desc)])
   @@map("reviews")
 }
 
@@ -143,6 +151,8 @@ model QnA {
   shop       Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
   user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([status, createdAt(sort: Desc)])
+  @@index([shopId, createdAt(sort: Desc)])
   @@map("qna")
 }
 
@@ -156,6 +166,7 @@ model Notice {
   updatedAt DateTime @updatedAt @map("updated_at")
   creator   User     @relation("NoticeCreatedBy", fields: [createdBy], references: [id], onDelete: Cascade)
 
+  @@index([isPinned, createdAt(sort: Desc)])
   @@map("notices")
 }
 
@@ -169,5 +180,7 @@ model AuditLog {
   createdAt   DateTime @default(now()) @map("created_at")
   actor       User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
 
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId, createdAt(sort: Desc)])
   @@map("audit_logs")
 }
