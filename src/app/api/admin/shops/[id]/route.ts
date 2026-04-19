@@ -1,5 +1,6 @@
 import { assertOwnershipOrAdmin, requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
+import { normalizeShopInputForSave } from '@/lib/server/admin-shop-access';
 import { getAdminShopById, updateAdminShop } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 
@@ -42,16 +43,7 @@ export async function PATCH(
 
     assertOwnershipOrAdmin(user, existingShop.ownerId);
 
-    const shopInput =
-      user.role === 'OWNER'
-        ? {
-            ...body.shop,
-            ownerId: existingShop.ownerId,
-            isPremium: existingShop.isPremium,
-            premiumOrder: existingShop.premiumOrder,
-            isVisible: existingShop.isVisible,
-          }
-        : body.shop;
+    const shopInput = normalizeShopInputForSave(user, body.shop, existingShop);
 
     const shop = await updateAdminShop(id, shopInput);
     if (!shop) {

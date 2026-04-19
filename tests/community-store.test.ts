@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { prisma } from '@/lib/db/prisma';
 import {
   answerQna,
+  createAdminShop,
   createNotice,
   createQna,
   deleteNotice,
@@ -15,6 +16,7 @@ import {
   listNotices,
   listQna,
   updateNotice,
+  updateAdminShop,
   updatePremiumOrder,
 } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
@@ -22,6 +24,10 @@ import { sleep } from './helpers/reset-store';
 
 function uniqueSuffix() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function dbTest(name: Parameters<typeof test>[0], fn: Parameters<typeof test>[1]) {
+  return test(name, { concurrency: false }, fn);
 }
 
 async function withMutedConsoleError<T>(callback: () => Promise<T>) {
@@ -90,7 +96,44 @@ async function createTempShop(partial: Partial<Shop> = {}) {
   });
 }
 
-test('getBoardSummary and getAdminDashboardData reflect database counts', async () => {
+function buildShopInput(overrides: Partial<Shop> = {}): Shop {
+  const suffix = uniqueSuffix();
+  return {
+    id: `shop-${suffix}`,
+    name: `Managed Shop ${suffix}`,
+    slug: `managed-shop-${suffix}`,
+    region: 'seoul',
+    regionLabel: 'Seoul',
+    subRegion: 'gangnam',
+    subRegionLabel: 'Gangnam',
+    theme: 'swedish',
+    themeLabel: 'Swedish',
+    isPremium: false,
+    premiumOrder: undefined,
+    thumbnailUrl: '/images/a.jpg',
+    bannerUrl: '/images/b.jpg',
+    images: ['/images/a.jpg', '/images/b.jpg'],
+    tagline: 'Initial tagline',
+    description: 'Initial description',
+    address: '123 Test Road',
+    phone: '010-0000-0000',
+    hours: '10:00 - 22:00',
+    rating: 4.5,
+    reviewCount: 0,
+    courses: [
+      { name: 'Basic', duration: '60 min', price: '70000', description: 'Starter' },
+      { name: 'Premium', duration: '90 min', price: '100000', description: 'Advanced' },
+    ],
+    tags: ['test'],
+    isVisible: true,
+    ownerId: 'owner-source',
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+    ...overrides,
+  };
+}
+
+dbTest('getBoardSummary and getAdminDashboardData reflect database counts', async () => {
   const [noticeCount, qnaCount, reviewCount, shopCount, premiumCount, unansweredCount] = await Promise.all([
     prisma.notice.count(),
     prisma.qnA.count(),
@@ -114,7 +157,7 @@ test('getBoardSummary and getAdminDashboardData reflect database counts', async 
   assert.ok(dashboard.recentReviews.length <= 4);
 });
 
-test('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t) => {
+dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t) => {
   const tempShopA = await createTempShop({ isPremium: true, premiumOrder: 10 });
   const tempShopB = await createTempShop({ isPremium: false });
 
@@ -145,7 +188,7 @@ test('updatePremiumOrder reorders premium shops and demotes omitted entries', as
   );
 });
 
-test('notice lifecycle trims content and keeps pinned notices ahead of regular notices', async () => {
+dbTest('notice lifecycle trims content and keeps pinned notices ahead of regular notices', async () => {
   const admin = await getAdminUser();
 
   const regularNotice = await createNotice({
@@ -194,7 +237,7 @@ test('notice lifecycle trims content and keeps pinned notices ahead of regular n
   );
 });
 
-test('Q&A creation and answering trim input and promote the newest matching entry', async () => {
+dbTest('Q&A creation and answering trim input and promote the newest matching entry', async () => {
   const admin = await getAdminUser();
   const shop = await getSeedShop();
 
@@ -218,7 +261,7 @@ test('Q&A creation and answering trim input and promote the newest matching entr
   );
 });
 
-test('store ownership lookups resolve shop and Q&A ownership for authorization checks', async () => {
+dbTest('store ownership lookups resolve shop and Q&A ownership for authorization checks', async () => {
   const [owner, shop] = await Promise.all([getSeedOwner(), getSeedShop()]);
 
   const adminShop = await getAdminShopById(shop.id);
@@ -240,4 +283,41 @@ test('store ownership lookups resolve shop and Q&A ownership for authorization c
     exists: false,
     ownerId: null,
   });
+});
+
+dbTest('createAdminShop and updateAdminShop persist and replace nested shop data', async (t) => {
+  const owner = await getSeedOwner();
+  const shopInput = buildShopInput({ ownerId: owner.id });
+  const createdShop = await createAdminShop(shopInput);
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({ where: { id: createdShop.id } });
+  });
+
+  assert.equal(createdShop.name, shopInput.name);
+  assert.deepEqual(createdShop.images, shopInput.images);
+  assert.deepEqual(
+    createdShop.courses.map((course) => [course.name, course.duration, course.price]),
+    shopInput.courses.map((course) => [course.name, course.duration, course.price]),
+  );
+
+  const updatedShop = await updateAdminShop(
+    createdShop.id,
+    buildShopInput({
+      ...createdShop,
+      id: createdShop.id,
+      slug: createdShop.slug,
+      ownerId: createdShop.ownerId,
+      name: `${createdShop.name} Updated`,
+      images: ['/images/c.jpg'],
+      courses: [{ name: 'Express', duration: '30 min', price: '40000', description: 'Quick' }],
+    }),
+  );
+
+  assert.ok(updatedShop);
+  assert.equal(updatedShop?.name, `${createdShop.name} Updated`);
+  assert.deepEqual(updatedShop?.images, ['/images/c.jpg']);
+  assert.deepEqual(updatedShop?.courses, [
+    { name: 'Express', duration: '30 min', price: '40000', description: 'Quick' },
+  ]);
 });

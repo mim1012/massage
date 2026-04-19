@@ -36,6 +36,7 @@ const result = spawnSync(
   process.execPath,
   [
     '--disable-warning=ExperimentalWarning',
+    '--disable-warning=DeprecationWarning',
     '--experimental-transform-types',
     '--import',
     pathToFileURL(path.join(projectRoot, 'scripts', 'register-alias.mjs')).href,

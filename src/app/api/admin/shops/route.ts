@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
+import { normalizeShopInputForSave } from '@/lib/server/admin-shop-access';
 import { createAdminShop, listAdminShops } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 
@@ -24,16 +25,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
-    const shopInput =
-      user.role === 'OWNER'
-        ? {
-            ...body.shop,
-            ownerId: user.id,
-            isPremium: false,
-            premiumOrder: undefined,
-            isVisible: false,
-          }
-        : body.shop;
+    const shopInput = normalizeShopInputForSave(user, body.shop);
 
     return Response.json({ shop: await createAdminShop(shopInput) }, { status: 201 });
   } catch (error) {

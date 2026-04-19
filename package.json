@@ -8,6 +8,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "node scripts/run-tests.mjs",
+    "typecheck": "next build --webpack",
+    "verify": "npm run lint && npm test && npm run typecheck && npx prisma validate",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate"
