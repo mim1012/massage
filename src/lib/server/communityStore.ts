@@ -244,6 +244,37 @@ export async function getAdminShopById(id: string) {
   return shop ? mapShop(shop) : null;
 }
 
+export async function getAdminShopOwnerId(id: string) {
+  const shop = await prisma.shop.findUnique({
+    where: { id },
+    select: { ownerId: true },
+  });
+
+  return shop?.ownerId ?? null;
+}
+
+export async function getQnaShopOwnerId(id: string) {
+  const qna = await prisma.qnA.findUnique({
+    where: { id },
+    select: {
+      shop: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
+
+  if (!qna) {
+    return { exists: false, ownerId: null };
+  }
+
+  return {
+    exists: true,
+    ownerId: qna.shop?.ownerId ?? null,
+  };
+}
+
 export async function createAdminShop(input: Shop) {
   const shop = await prisma.shop.create({
     data: {

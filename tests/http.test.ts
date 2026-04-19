@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AuthError } from '@/lib/auth/guards';
+import { assertOwnershipOrAdmin, AuthError } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 
 test('errorResponse preserves AuthError status and message', async () => {
@@ -29,4 +29,21 @@ test('errorResponse falls back for generic and non-error values', async () => {
 
   assert.equal(unknownValue.status, 500);
   assert.deepEqual(await unknownValue.json(), { error: 'Unexpected server error.' });
+});
+
+test('assertOwnershipOrAdmin allows admin and matching owner, but blocks other owners', () => {
+  assert.doesNotThrow(() => {
+    assertOwnershipOrAdmin({ id: 'admin-1', role: 'ADMIN' }, 'owner-1');
+  });
+
+  assert.doesNotThrow(() => {
+    assertOwnershipOrAdmin({ id: 'owner-1', role: 'OWNER' }, 'owner-1');
+  });
+
+  assert.throws(
+    () => {
+      assertOwnershipOrAdmin({ id: 'owner-2', role: 'OWNER' }, 'owner-1');
+    },
+    (error: unknown) => error instanceof AuthError && error.status === 403,
+  );
 });

@@ -14,13 +14,28 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN', 'OWNER');
     const body = (await request.json()) as { shop?: Shop };
     if (!body.shop) {
       return Response.json({ error: 'shop is required.' }, { status: 400 });
     }
 
-    return Response.json({ shop: await createAdminShop(body.shop) }, { status: 201 });
+    if (user.role === 'OWNER' && body.shop.ownerId && body.shop.ownerId !== user.id) {
+      return Response.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
+    const shopInput =
+      user.role === 'OWNER'
+        ? {
+            ...body.shop,
+            ownerId: user.id,
+            isPremium: false,
+            premiumOrder: undefined,
+            isVisible: false,
+          }
+        : body.shop;
+
+    return Response.json({ shop: await createAdminShop(shopInput) }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

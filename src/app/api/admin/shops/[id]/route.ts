@@ -1,4 +1,4 @@
-import { requireRole } from '@/lib/auth/guards';
+import { assertOwnershipOrAdmin, requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { getAdminShopById, updateAdminShop } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
@@ -8,12 +8,14 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
     const shop = await getAdminShopById(id);
     if (!shop) {
       return Response.json({ error: 'Shop not found.' }, { status: 404 });
     }
+
+    assertOwnershipOrAdmin(user, shop.ownerId);
 
     return Response.json({ shop });
   } catch (error) {
@@ -26,14 +28,32 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
     const body = (await request.json()) as { shop?: Shop };
     if (!body.shop) {
       return Response.json({ error: 'shop is required.' }, { status: 400 });
     }
 
-    const shop = await updateAdminShop(id, body.shop);
+    const existingShop = await getAdminShopById(id);
+    if (!existingShop) {
+      return Response.json({ error: 'Shop not found.' }, { status: 404 });
+    }
+
+    assertOwnershipOrAdmin(user, existingShop.ownerId);
+
+    const shopInput =
+      user.role === 'OWNER'
+        ? {
+            ...body.shop,
+            ownerId: existingShop.ownerId,
+            isPremium: existingShop.isPremium,
+            premiumOrder: existingShop.premiumOrder,
+            isVisible: existingShop.isVisible,
+          }
+        : body.shop;
+
+    const shop = await updateAdminShop(id, shopInput);
     if (!shop) {
       return Response.json({ error: 'Shop not found.' }, { status: 404 });
     }

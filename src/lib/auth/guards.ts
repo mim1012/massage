@@ -1,4 +1,4 @@
-import { type UserRole } from '@/lib/types';
+import { type User, type UserRole } from '@/lib/types';
 import { getSessionCookie } from '@/lib/auth/session';
 import { getUserBySessionToken } from '@/lib/server/auth-store';
 
@@ -32,4 +32,17 @@ export async function requireRole(...roles: UserRole[]) {
   }
 
   return user;
+}
+
+export function assertOwnershipOrAdmin(
+  user: Pick<User, 'id' | 'role'>,
+  resourceOwnerId: string | null | undefined,
+) {
+  if (user.role === 'ADMIN') {
+    return;
+  }
+
+  if (user.role !== 'OWNER' || !resourceOwnerId || resourceOwnerId !== user.id) {
+    throw new AuthError('Forbidden.', 403);
+  }
 }
