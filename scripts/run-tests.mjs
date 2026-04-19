@@ -35,6 +35,7 @@ if (testFiles.length === 0) {
 const result = spawnSync(
   process.execPath,
   [
+    '--disable-warning=ExperimentalWarning',
     '--experimental-transform-types',
     '--import',
     pathToFileURL(path.join(projectRoot, 'scripts', 'register-alias.mjs')).href,
