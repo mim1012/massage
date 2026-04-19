@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Star, MapPin, Phone, Crown } from 'lucide-react';
-import { Shop } from '@/lib/types';
+import { Star, MapPin, Crown } from 'lucide-react';
+import type { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
 

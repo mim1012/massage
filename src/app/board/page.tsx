@@ -1,93 +1,123 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Pin, Calendar, ChevronRight, Star } from 'lucide-react';
-import { MOCK_NOTICES, MOCK_QNA, MOCK_REVIEWS } from '@/lib/mockData';
+import { Star } from 'lucide-react';
+import { getBoardSummary, listNotices, listQna, listReviews } from '@/lib/server/communityStore';
 import { formatDate } from '@/lib/utils';
 
-export const metadata: Metadata = { title: '게시판', description: '공지사항, Q&A, 업소 후기' };
+export const metadata: Metadata = {
+  title: 'Board',
+  description: 'Notices, Q&A, and reviews.',
+};
 
 export default function BoardPage() {
-  return (
-    <div className="max-w-[1000px] mx-auto px-3 py-4">
-      <h1 className="text-lg font-black text-gray-800 mb-4">📋 고객센터 &amp; 게시판</h1>
+  const summary = getBoardSummary();
+  const notices = listNotices();
+  const qnaEntries = listQna().slice(0, 3);
+  const reviews = listReviews(3);
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+  return (
+    <div className="mx-auto max-w-[1000px] px-3 py-4">
+      <h1 className="mb-4 text-lg font-black text-gray-800">게시판</h1>
+
+      <div className="mb-4 grid grid-cols-3 gap-2">
         {[
-          { href: '/board/notice', label: '공지사항', count: MOCK_NOTICES.length, emoji: '📢' },
-          { href: '/board/qna', label: 'Q&A', count: MOCK_QNA.length, emoji: '💬' },
-          { href: '/board/review', label: '업소 후기', count: MOCK_REVIEWS.length, emoji: '⭐' },
-        ].map(tab => (
-          <Link key={tab.href} href={tab.href}
-            className="bg-white border border-gray-200 rounded p-3 text-center hover:border-red-300 hover:bg-red-50/50 transition-all">
-            <div className="text-2xl mb-1">{tab.emoji}</div>
-            <p className="text-sm font-bold text-gray-800">{tab.label}</p>
-            <p className="text-xs text-gray-400">{tab.count}개</p>
+          { href: '/board/notice', label: '공지사항', count: summary.notices, emoji: '📢' },
+          { href: '/board/qna', label: 'Q&A', count: summary.qna, emoji: '💬' },
+          { href: '/board/review', label: '업소 후기', count: summary.reviews, emoji: '⭐' },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded border border-gray-200 bg-white p-3 text-center transition-all hover:border-red-300 hover:bg-red-50/50"
+          >
+            <div className="mb-1 text-2xl">{item.emoji}</div>
+            <p className="text-sm font-bold text-gray-800">{item.label}</p>
+            <p className="text-xs text-gray-400">{item.count}건</p>
           </Link>
         ))}
       </div>
 
-      {/* 공지사항 */}
-      <div className="bg-white border border-gray-200 rounded p-4 mb-3">
-        <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+      <div className="mb-3 rounded border border-gray-200 bg-white p-4">
+        <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">📢 공지사항</h2>
-          <Link href="/board/notice" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
+          <Link href="/board/notice" className="text-xs text-red-600 hover:underline">
+            전체 »
+          </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_NOTICES.map(notice => (
-            <Link key={notice.id} href={`/board/notice/${notice.id}`}
-              className="flex items-center justify-between py-2 hover:bg-gray-50 px-1 -mx-1 rounded transition-all">
-              <div className="flex items-center gap-2 min-w-0">
-                {notice.isPinned && <span className="text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded shrink-0">공지</span>}
-                <span className="text-sm text-gray-700 truncate">{notice.title}</span>
+          {notices.map((notice) => (
+            <Link
+              key={notice.id}
+              href={`/board/notice/${notice.id}`}
+              className="mx-[-4px] flex items-center justify-between rounded px-1 py-2 transition-all hover:bg-gray-50"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                {notice.isPinned && (
+                  <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                    공지
+                  </span>
+                )}
+                <span className="truncate text-sm text-gray-700">{notice.title}</span>
               </div>
-              <span className="text-[11px] text-gray-400 shrink-0 ml-2">{formatDate(notice.createdAt)}</span>
+              <span className="ml-2 shrink-0 text-[11px] text-gray-400">{formatDate(notice.createdAt)}</span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* Q&A */}
-      <div className="bg-white border border-gray-200 rounded p-4 mb-3">
-        <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+      <div className="mb-3 rounded border border-gray-200 bg-white p-4">
+        <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">💬 Q&amp;A</h2>
-          <Link href="/board/qna" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
+          <Link href="/board/qna" className="text-xs text-red-600 hover:underline">
+            전체 »
+          </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_QNA.slice(0, 3).map(qna => (
-            <div key={qna.id} className="py-2.5">
-              <div className="flex items-start gap-2 mb-1">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${qna.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                  {qna.isAnswered ? '완료' : '대기'}
+          {qnaEntries.map((entry) => (
+            <div key={entry.id} className="py-2.5">
+              <div className="mb-1 flex items-start gap-2">
+                <span
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    entry.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {entry.isAnswered ? '완료' : '대기'}
                 </span>
-                <p className="text-sm text-gray-700">Q. {qna.question}</p>
+                <p className="text-sm text-gray-700">Q. {entry.question}</p>
               </div>
-              {qna.answer && <p className="text-xs text-gray-500 pl-10 border-l-2 border-red-200 ml-3">A. {qna.answer}</p>}
+              {entry.answer && (
+                <p className="ml-3 border-l-2 border-red-200 pl-10 text-xs text-gray-500">A. {entry.answer}</p>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* 후기 */}
-      <div className="bg-white border border-gray-200 rounded p-4">
-        <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+      <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">⭐ 최근 후기</h2>
-          <Link href="/board/review" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
+          <Link href="/board/review" className="text-xs text-red-600 hover:underline">
+            전체 »
+          </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_REVIEWS.slice(0, 3).map(review => (
+          {reviews.map((review) => (
             <div key={review.id} className="py-2.5">
-              <div className="flex items-center justify-between mb-1">
+              <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-gray-800">{review.authorName}</span>
+                  <span className="text-sm font-semibold text-gray-800">{review.authorName}</span>
                   <span className="text-xs text-red-500">{review.shopName}</span>
                 </div>
                 <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map(i => (
-                    <Star key={i} className={`w-3 h-3 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                  {[1, 2, 3, 4, 5].map((score) => (
+                    <Star
+                      key={score}
+                      className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                    />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
+              <p className="line-clamp-2 text-sm text-gray-600">{review.content}</p>
             </div>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { Settings, Save, Globe, Type, AlertCircle } from 'lucide-react';
+import { Settings, Save, Globe, Type } from 'lucide-react';
 
 export const metadata: Metadata = { title: '사이트 설정 | 관리자' };
 

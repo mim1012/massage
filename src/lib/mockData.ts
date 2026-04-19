@@ -1,7 +1,7 @@
 import { Shop, Review, Notice, QnA, User } from './types';
 
 // ===== 모의 사용자 데이터 =====
-export let MOCK_USERS: User[] = [
+export const MOCK_USERS: User[] = [
   {
     id: 'admin',
     email: 'admin@healing.com',

@@ -1,106 +1,130 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Store, Bell, MessageCircle, Settings,
-  LogOut, Crown, BarChart2, Users, Eye, Menu, X, ChevronRight, UserCheck
+  BarChart2,
+  Bell,
+  Crown,
+  Eye,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Settings,
+  Store,
+  UserCheck,
+  Users,
 } from 'lucide-react';
-import { UserRole } from '@/lib/types';
-import { MOCK_USERS } from '@/lib/mockData';
+
+const navItems = [
+  { href: '/admin', label: '대시보드', icon: LayoutDashboard },
+  { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck },
+  { href: '/admin/shops', label: '업소 관리', icon: Store },
+  { href: '/admin/premium', label: '프리미엄 배너', icon: Crown },
+  { href: '/admin/notice', label: '공지 관리', icon: Bell },
+  { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle },
+  { href: '/admin/stats', label: '통계', icon: BarChart2 },
+  { href: '/admin/users', label: '회원 관리', icon: Users },
+  { href: '/admin/settings', label: '사이트 설정', icon: Settings },
+];
+
+type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const pathname = usePathname();
 
-  // Test toggle using useState to switch between ADMIN and OWNER easily
-  const [testRole, setTestRole] = useState<UserRole>('ADMIN');
-  const currentUser = testRole === 'ADMIN' ? MOCK_USERS[0] : MOCK_USERS[1]; 
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!response.ok) {
+          setCurrentUser(null);
+          return;
+        }
 
-  const ALL_NAV_ITEMS = [
-    { href: '/admin', label: '대시보드', icon: LayoutDashboard, roles: ['ADMIN'] },
-    { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck, roles: ['ADMIN'] },
-    { href: '/admin/shops', label: '업소 관리', icon: Store, roles: ['ADMIN', 'OWNER'] },
-    { href: '/admin/premium', label: '프리미엄 배너', icon: Crown, roles: ['ADMIN'] },
-    { href: '/admin/notice', label: '공지 관리', icon: Bell, roles: ['ADMIN'] },
-    { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle, roles: ['ADMIN', 'OWNER'] },
-    { href: '/admin/stats', label: '통계', icon: BarChart2, roles: ['ADMIN'] },
-    { href: '/admin/users', label: '회원 관리', icon: Users, roles: ['ADMIN'] },
-    { href: '/admin/settings', label: '사이트 설정', icon: Settings, roles: ['ADMIN'] },
-  ];
+        const result = (await response.json()) as { user: SessionUser };
+        setCurrentUser(result.user);
+      } catch {
+        setCurrentUser(null);
+      }
+    };
 
-  const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => item.roles.includes(currentUser.role));
+    void loadCurrentUser();
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* 모바일 오버레이 */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* 사이드바 */}
       <aside
-        className={`fixed top-0 left-0 h-full w-[200px] bg-white border-r border-gray-200 z-50 flex flex-col transition-transform duration-200 ${
+        className={`fixed left-0 top-0 z-50 flex h-full w-[200px] flex-col border-r border-gray-200 bg-white transition-transform duration-200 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-red-600 flex items-center justify-center">
-            <span className="text-white font-black text-xs">힐</span>
+        <div className="flex items-center gap-2 border-b border-gray-200 p-4">
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-red-600">
+            <span className="text-xs font-black text-white">M</span>
           </div>
-          <span className="font-bold text-gray-800 text-sm">힐링 관리자</span>
+          <span className="text-sm font-bold text-gray-800">마사지 관리자</span>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
-          {NAV_ITEMS.map(item => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href));
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-2 px-3 py-2 rounded text-sm mb-1 transition-colors ${
-                  isActive ? 'bg-red-50 text-red-600 font-bold' : 'text-gray-600 hover:bg-gray-100'
+                className={`mb-1 flex items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
+                  isActive ? 'bg-red-50 font-bold text-red-600' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-3 border-t border-gray-200 space-y-1">
-          <button 
-            onClick={() => setTestRole(prev => prev === 'ADMIN' ? 'OWNER' : 'ADMIN')}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded mb-2 transition-colors">
-            <UserCheck className="w-4 h-4" /> [테스트용] {testRole === 'ADMIN' ? 'OWNER 접속' : 'ADMIN 접속'}
-          </button>
-          <Link href="/" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
-            <Eye className="w-4 h-4" /> 사이트 보기
+        <div className="space-y-1 border-t border-gray-200 p-3">
+          <Link href="/" className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">
+            <Eye className="h-4 w-4" />
+            사이트 보기
           </Link>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded">
-            <LogOut className="w-4 h-4" /> 로그아웃
+          <button className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600">
+            <LogOut className="h-4 w-4" />
+            로그아웃
           </button>
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 영역 */}
-      <div className="flex-1 md:ml-[200px] flex flex-col min-h-screen min-w-0">
-        <header className="bg-white border-b border-gray-200 h-14 px-4 flex items-center gap-3 sticky top-0 z-30">
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-600">
-            <Menu className="w-5 h-5" />
+      <div className="ml-0 flex min-h-screen min-w-0 flex-1 flex-col md:ml-[200px]">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-200 bg-white px-4">
+          <button onClick={() => setSidebarOpen(true)} className="text-gray-600 md:hidden">
+            <Menu className="h-5 w-5" />
           </button>
-          <div className="text-sm font-bold text-gray-800">{currentUser.role === 'ADMIN' ? '어드민 모드' : '내 업소 관리 모드'}</div>
-          <div className="ml-auto text-xs text-gray-500">{currentUser.name} ({currentUser.email})</div>
+          <div className="text-sm font-bold text-gray-800">관리자 모드</div>
+          <div className="ml-auto text-xs text-gray-500">
+            {currentUser ? `${currentUser.name} (${currentUser.email})` : '로그인 정보 없음'}
+          </div>
         </header>
-        <main className="flex-1 p-4">
-          {children}
-        </main>
+        <main className="flex-1 p-4">{children}</main>
       </div>
     </div>
   );

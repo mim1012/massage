@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Menu, X, User, ChevronDown } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/types';
 import clsx from 'clsx';

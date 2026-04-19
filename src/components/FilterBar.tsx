@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Tag, ChevronRight } from 'lucide-react';
-import { REGIONS, THEMES, RegionCode, ThemeCode } from '@/lib/types';
+import { MapPin, Tag } from 'lucide-react';
+import { REGIONS, THEMES } from '@/lib/types';
 import clsx from 'clsx';
 
 interface FilterBarProps {

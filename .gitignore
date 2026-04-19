@@ -35,6 +35,11 @@ yarn-error.log*
 
 # vercel
 .vercel
+.vercel-local
+
+# local tool state
+.omx/
+.npm-cache/
 
 # typescript
 *.tsbuildinfo

@@ -1,0 +1,26 @@
+import { requireRole } from '@/lib/auth/guards';
+import { errorResponse } from '@/lib/auth/http';
+import { getPremiumBoardData, updatePremiumOrder } from '@/lib/server/communityStore';
+
+export async function GET() {
+  try {
+    await requireRole('ADMIN');
+    return Response.json(getPremiumBoardData());
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    await requireRole('ADMIN');
+    const body = (await request.json()) as { orderedIds?: string[] };
+    if (!Array.isArray(body.orderedIds)) {
+      return Response.json({ error: 'orderedIds must be an array.' }, { status: 400 });
+    }
+
+    return Response.json(updatePremiumOrder(body.orderedIds));
+  } catch (error) {
+    return errorResponse(error);
+  }
+}

@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  OWNER
+  USER
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum QnaStatus {
+  OPEN
+  ANSWERED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  name          String
+  role          UserRole
+  status        UserStatus     @default(APPROVED)
+  phone         String?
+  managedShopId String?        @map("managed_shop_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  ownerProfile  OwnerProfile?
+  shops         Shop[]         @relation("UserOwnedShops")
+  reviews       Review[]
+  qna           QnA[]
+  createdNotices Notice[]      @relation("NoticeCreatedBy")
+  auditLogs     AuditLog[]     @relation("AuditActor")
+
+  @@map("users")
+}
+
+model OwnerProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
+  businessName   String    @map("business_name")
+  businessNumber String    @map("business_number")
+  approvalMemo   String?   @map("approval_memo")
+  approvedAt     DateTime? @map("approved_at")
+  approvedBy     String?   @map("approved_by")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("owner_profiles")
+}
+
+model Shop {
+  id             String      @id @default(cuid())
+  ownerId        String?     @map("owner_id")
+  name           String
+  slug           String      @unique
+  region         String
+  subRegion      String?     @map("sub_region")
+  theme          String
+  tagline        String
+  description    String
+  address        String
+  phone          String
+  hours          String
+  isVisible      Boolean     @default(true) @map("is_visible")
+  isPremium      Boolean     @default(false) @map("is_premium")
+  premiumOrder   Int?        @map("premium_order")
+  thumbnailUrl   String?     @map("thumbnail_url")
+  bannerUrl      String?     @map("banner_url")
+  regionLabel    String      @map("region_label")
+  subRegionLabel String?     @map("sub_region_label")
+  themeLabel     String      @map("theme_label")
+  rating         Float       @default(0)
+  tags           String[]
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  owner          User?       @relation("UserOwnedShops", fields: [ownerId], references: [id], onDelete: SetNull)
+  images         ShopImage[]
+  courses        ShopCourse[]
+  reviews        Review[]
+  qna            QnA[]
+
+  @@map("shops")
+}
+
+model ShopImage {
+  id        String   @id @default(cuid())
+  shopId    String   @map("shop_id")
+  imageUrl  String   @map("image_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_images")
+}
+
+model ShopCourse {
+  id              String   @id @default(cuid())
+  shopId          String   @map("shop_id")
+  name            String
+  durationMinutes Int      @map("duration_minutes")
+  price           Int
+  description     String?
+  sortOrder       Int      @default(0) @map("sort_order")
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_courses")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  shopId     String   @map("shop_id")
+  userId     String   @map("user_id")
+  authorName String   @map("author_name")
+  rating     Int
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model QnA {
+  id         String     @id @default(cuid())
+  shopId     String?    @map("shop_id")
+  userId     String?    @map("user_id")
+  authorName String     @map("author_name")
+  question   String
+  answer     String?
+  answeredBy String?    @map("answered_by")
+  answeredAt DateTime?  @map("answered_at")
+  status     QnaStatus  @default(OPEN)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  shop       Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("qna")
+}
+
+model Notice {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  creator   User     @relation("NoticeCreatedBy", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("notices")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String   @map("actor_user_id")
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  actor       User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}

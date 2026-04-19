@@ -1,154 +1,398 @@
 'use client';
 
-import { useState, use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
-import { MOCK_SHOPS, MOCK_USERS } from '@/lib/mockData';
-import { REGIONS, THEMES, DISTRICTS } from '@/lib/types';
 import Link from 'next/link';
+import { use, useEffect, useState } from 'react';
+import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { DISTRICTS, REGIONS, THEMES, type Course, type Shop, type User } from '@/lib/types';
+
+const DEFAULT_ADMIN: User = {
+  id: 'admin',
+  email: 'admin@massage.local',
+  name: 'Admin',
+  role: 'ADMIN',
+};
+
+function createInitialShop(currentUser: User): Shop {
+  const defaultRegion = REGIONS.find((region) => region.code === 'seoul') ?? REGIONS[0];
+  const defaultTheme = THEMES.find((theme) => theme.code === 'swedish') ?? THEMES[0];
+  const baselineTime = new Date().toISOString();
+
+  return {
+    id: `shop-${Date.now()}`,
+    name: '',
+    slug: '',
+    region: defaultRegion.code,
+    regionLabel: defaultRegion.label,
+    subRegion: '',
+    subRegionLabel: '',
+    theme: defaultTheme.code,
+    themeLabel: defaultTheme.label,
+    isPremium: false,
+    premiumOrder: undefined,
+    thumbnailUrl: '',
+    bannerUrl: '',
+    images: [],
+    tagline: '',
+    description: '',
+    address: '',
+    phone: '',
+    hours: '',
+    rating: 0,
+    reviewCount: 0,
+    courses: [],
+    tags: [],
+    isVisible: currentUser.role === 'ADMIN',
+    ownerId: currentUser.id,
+    createdAt: baselineTime,
+    updatedAt: baselineTime,
+  };
+}
 
 export default function ShopEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  
-  // 테스트용 권한 연동 (실무에선 Context/Session 사용)
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const isNew = id === 'new';
+  const [currentUser, setCurrentUser] = useState<User>(DEFAULT_ADMIN);
+  const [form, setForm] = useState<Shop | null>(isNew ? createInitialShop(DEFAULT_ADMIN) : null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [tagsStr, setTagsStr] = useState('');
 
   useEffect(() => {
-    const isOwner = document.body.innerText.includes('내 업소 관리 모드');
-    setCurrentUser(isOwner ? MOCK_USERS[1] : MOCK_USERS[0]);
-  }, []);
+    const load = async () => {
+      const [meResponse, shopResponse] = await Promise.all([
+        fetch('/api/auth/me', { cache: 'no-store' }),
+        isNew ? Promise.resolve(null) : fetch(`/api/admin/shops/${id}`, { cache: 'no-store' }),
+      ]);
 
-  const isNew = id === 'new';
-  const targetShop = MOCK_SHOPS.find(s => s.id === id);
+      const meResult = (await meResponse.json()) as { user?: User | null };
+      const nextUser = meResult.user ?? DEFAULT_ADMIN;
+      setCurrentUser(nextUser);
 
-  const initialData = isNew ? {
-    id: `shop-${Date.now()}`, slug: '', name: '', description: '', tagline: '', address: '', phone: '',
-    hours: '', region: 'seoul', regionLabel: '서울', subRegion: '', subRegionLabel: '', theme: 'swedish', themeLabel: '스웨디시',
-    rating: 0, reviewCount: 0, isPremium: false, isVisible: currentUser.role === 'ADMIN', courses: [], images: [], tags: [], ownerId: currentUser.id
-  } : targetShop;
+      if (isNew) {
+        const initialShop = createInitialShop(nextUser);
+        setForm(initialShop);
+        setCourses(initialShop.courses);
+        setTagsStr(initialShop.tags.join(', '));
+        return;
+      }
 
-  const [form, setForm] = useState(initialData!);
-  const [courses, setCourses] = useState(initialData?.courses || []);
-  const [tagsStr, setTagsStr] = useState(initialData?.tags?.join(', ') || '');
+      if (!shopResponse) {
+        return;
+      }
 
-  if (!form) return <div className="p-10 text-center text-gray-500">업소를 찾을 수 없습니다.</div>;
+      const shopResult = (await shopResponse.json()) as { shop?: Shop };
+      if (shopResponse.ok && shopResult.shop) {
+        setForm(shopResult.shop);
+        setCourses(shopResult.shop.courses);
+        setTagsStr(shopResult.shop.tags.join(', '));
+      }
+    };
 
-  if (!isNew && currentUser.role === 'OWNER' && targetShop?.ownerId !== currentUser.id) {
-    return <div className="p-10 text-center text-red-500 font-bold">권한이 없습니다. 본인 소유의 업소만 수정 가능합니다.</div>;
+    void load();
+  }, [id, isNew]);
+
+  if (!form) {
+    return <div className="p-10 text-center text-gray-500">Loading shop...</div>;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    router.push('/admin/shops');
+  if (!isNew && currentUser.role === 'OWNER' && form.ownerId !== currentUser.id) {
+    return (
+      <div className="p-10 text-center font-bold text-red-500">
+        You can only edit shops that belong to your owner account.
+      </div>
+    );
+  }
+
+  const inputClassName =
+    'w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none';
+  const labelClassName = 'mb-1 block text-xs font-bold text-gray-700';
+  const currentDistricts = DISTRICTS[form.region] ?? [];
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const nextShop: Shop = {
+      ...form,
+      courses,
+      tags: tagsStr
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const response = await fetch(isNew ? '/api/admin/shops' : `/api/admin/shops/${id}`, {
+      method: isNew ? 'POST' : 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shop: nextShop }),
+    });
+
+    if (response.ok) {
+      router.push('/admin/shops');
+    }
   };
 
-  const ipt = "w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500";
-  const lbl = "block text-xs font-bold text-gray-700 mb-1";
+  const handleRegionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextRegion = REGIONS.find((region) => region.code === event.target.value);
+    if (!nextRegion) {
+      return;
+    }
 
-  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const rcode = e.target.value;
-    const rlabel = REGIONS.find(r=>r.code===rcode)?.label!;
-    setForm({...form, region: rcode, regionLabel: rlabel, subRegion: '', subRegionLabel: ''});
+    setForm({
+      ...form,
+      region: nextRegion.code,
+      regionLabel: nextRegion.label,
+      subRegion: '',
+      subRegionLabel: '',
+    });
   };
 
-  const currentDistricts = DISTRICTS[form.region] || [];
+  const handleDistrictChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextDistrict = currentDistricts.find((district) => district.code === event.target.value);
+    setForm({
+      ...form,
+      subRegion: event.target.value,
+      subRegionLabel: nextDistrict?.label ?? '',
+    });
+  };
+
+  const handleThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextTheme = THEMES.find((theme) => theme.code === event.target.value);
+    if (!nextTheme) {
+      return;
+    }
+
+    setForm({
+      ...form,
+      theme: nextTheme.code,
+      themeLabel: nextTheme.label,
+    });
+  };
+
+  const updateCourse = (index: number, field: keyof Course, value: string) => {
+    setCourses((current) => {
+      const nextCourses = [...current];
+      nextCourses[index] = { ...nextCourses[index], [field]: value };
+      return nextCourses;
+    });
+  };
 
   return (
     <div className="max-w-[800px] space-y-4 pb-10">
-      <div className="flex items-center gap-2 mb-2">
-        <Link href="/admin/shops" className="p-1 hover:bg-gray-200 rounded text-gray-600"><ArrowLeft className="w-5 h-5"/></Link>
-        <h1 className="text-xl font-black text-gray-800">{isNew ? '업소 등록' : '업소 수정'}</h1>
+      <div className="mb-2 flex items-center gap-2">
+        <Link href="/admin/shops" className="rounded p-1 text-gray-600 hover:bg-gray-200">
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <h1 className="text-xl font-black text-gray-800">{isNew ? 'Create shop' : 'Edit shop'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* 기본 정보 */}
-        <div className="bg-white border border-gray-200 rounded p-4">
-          <h2 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-100">기본 정보</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="rounded border border-gray-200 bg-white p-4">
+          <h2 className="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-800">
+            Basic info
+          </h2>
+
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={lbl}>업소명 *</label>
-              <input type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={ipt}/>
+              <label className={labelClassName}>Shop name</label>
+              <input
+                type="text"
+                required
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                className={inputClassName}
+              />
             </div>
             <div>
-              <label className={lbl}>슬러그 (URL 영문) *</label>
-              <input type="text" required value={form.slug} onChange={e => setForm({...form, slug: e.target.value})} className={ipt}/>
+              <label className={labelClassName}>Slug</label>
+              <input
+                type="text"
+                required
+                value={form.slug}
+                onChange={(event) => setForm({ ...form, slug: event.target.value })}
+                className={inputClassName}
+              />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className={lbl}>지역</label>
-              <select value={form.region} onChange={handleRegionChange} className={ipt}>
-                {REGIONS.filter(r=>r.code!=='all').map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
+              <label className={labelClassName}>Region</label>
+              <select value={form.region} onChange={handleRegionChange} className={inputClassName}>
+                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                  <option key={region.code} value={region.code}>
+                    {region.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className={lbl}>상세 지역구</label>
-              <select 
-                value={form.subRegion || ''} 
-                onChange={e => setForm({...form, subRegion: e.target.value, subRegionLabel: currentDistricts.find(d=>d.code===e.target.value)?.label!})} 
-                className={ipt}
+              <label className={labelClassName}>District</label>
+              <select
+                value={form.subRegion ?? ''}
+                onChange={handleDistrictChange}
+                className={inputClassName}
                 disabled={currentDistricts.length === 0}
               >
-                <option value="">선택 (없음)</option>
-                {currentDistricts.filter(d=>d.code!=='all').map(d => <option key={d.code} value={d.code}>{d.label}</option>)}
+                <option value="">Select</option>
+                {currentDistricts
+                  .filter((district) => district.code !== 'all')
+                  .map((district) => (
+                    <option key={district.code} value={district.code}>
+                      {district.label}
+                    </option>
+                  ))}
               </select>
             </div>
             <div>
-              <label className={lbl}>테마</label>
-              <select value={form.theme} onChange={e => setForm({...form, theme: e.target.value, themeLabel: THEMES.find(t=>t.code===e.target.value)?.label!})} className={ipt}>
-                {THEMES.filter(t=>t.code!=='all').map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+              <label className={labelClassName}>Theme</label>
+              <select value={form.theme} onChange={handleThemeChange} className={inputClassName}>
+                {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                  <option key={theme.code} value={theme.code}>
+                    {theme.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
+
           <div className="mb-3">
-            <label className={lbl}>메인 캐치프레이즈 (목록 노출)</label>
-            <input type="text" value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})} className={ipt}/>
+            <label className={labelClassName}>Tagline</label>
+            <input
+              type="text"
+              value={form.tagline}
+              onChange={(event) => setForm({ ...form, tagline: event.target.value })}
+              className={inputClassName}
+            />
           </div>
+
           <div className="mb-3">
-            <label className={lbl}>상세 설명</label>
-            <textarea rows={4} value={form.description} onChange={e => setForm({...form, description: e.target.value})} className={`${ipt} resize-none`}/>
+            <label className={labelClassName}>Description</label>
+            <textarea
+              rows={4}
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              className={`${inputClassName} resize-none`}
+            />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label className={lbl}>연락처</label><input type="text" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className={ipt}/></div>
-            <div><label className={lbl}>영업시간</label><input type="text" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} className={ipt}/></div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelClassName}>Phone</label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                className={inputClassName}
+              />
+            </div>
+            <div>
+              <label className={labelClassName}>Hours</label>
+              <input
+                type="text"
+                value={form.hours}
+                onChange={(event) => setForm({ ...form, hours: event.target.value })}
+                className={inputClassName}
+              />
+            </div>
           </div>
+
           <div className="mt-3">
-            <label className={lbl}>주소</label>
-            <input type="text" value={form.address} onChange={e => setForm({...form, address: e.target.value})} className={ipt}/>
+            <label className={labelClassName}>Address</label>
+            <input
+              type="text"
+              value={form.address}
+              onChange={(event) => setForm({ ...form, address: event.target.value })}
+              className={inputClassName}
+            />
           </div>
+
           <div className="mt-3">
-            <label className={lbl}>태그 (쉼표로 구분)</label>
-            <input type="text" value={tagsStr} onChange={e => setTagsStr(e.target.value)} placeholder="예: 무료주차, 수면가능" className={ipt}/>
+            <label className={labelClassName}>Tags</label>
+            <input
+              type="text"
+              value={tagsStr}
+              onChange={(event) => setTagsStr(event.target.value)}
+              placeholder="spa, parking, late-night"
+              className={inputClassName}
+            />
           </div>
         </div>
 
-        {/* 코스 정보 */}
-        <div className="bg-white border border-gray-200 rounded p-4">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-800">코스/요금표</h2>
-            <button type="button" onClick={() => setCourses([...courses, { name: '', price: '', duration: '', description: '' }])}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-700 flex items-center gap-1">
-              <Plus className="w-3 h-3"/> 추가
+        <div className="rounded border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
+            <h2 className="text-sm font-bold text-gray-800">Courses</h2>
+            <button
+              type="button"
+              onClick={() =>
+                setCourses((current) => [
+                  ...current,
+                  { name: '', price: '', duration: '', description: '' },
+                ])
+              }
+              className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+            >
+              <Plus className="h-3 w-3" />
+              Add
             </button>
           </div>
+
           <div className="space-y-2 text-sm">
-            {courses.map((course, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <input type="text" placeholder="코스명" value={course.name} onChange={e => { const n=[...courses]; n[idx].name=e.target.value; setCourses(n); }} className={`${ipt} w-1/3`} />
-                <input type="text" placeholder="시간" value={course.duration} onChange={e => { const n=[...courses]; n[idx].duration=e.target.value; setCourses(n); }} className={`${ipt} w-1/4`} />
-                <input type="text" placeholder="요금" value={course.price} onChange={e => { const n=[...courses]; n[idx].price=e.target.value; setCourses(n); }} className={`${ipt} flex-1`} />
-                <button type="button" onClick={() => setCourses(courses.filter((_, i) => i !== idx))} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+            {courses.map((course, index) => (
+              <div key={`${course.name}-${index}`} className="flex items-start gap-2">
+                <input
+                  type="text"
+                  placeholder="Course"
+                  value={course.name}
+                  onChange={(event) => updateCourse(index, 'name', event.target.value)}
+                  className={`${inputClassName} w-1/3`}
+                />
+                <input
+                  type="text"
+                  placeholder="Duration"
+                  value={course.duration}
+                  onChange={(event) => updateCourse(index, 'duration', event.target.value)}
+                  className={`${inputClassName} w-1/4`}
+                />
+                <input
+                  type="text"
+                  placeholder="Price"
+                  value={course.price}
+                  onChange={(event) => updateCourse(index, 'price', event.target.value)}
+                  className={`${inputClassName} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCourses((current) => current.filter((_, courseIndex) => courseIndex !== index))
+                  }
+                  className="rounded p-2 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ))}
-            {courses.length === 0 && <p className="text-xs text-gray-400">등록된 코스가 없습니다.</p>}
+
+            {courses.length === 0 ? (
+              <p className="text-xs text-gray-400">No courses registered yet.</p>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end">
-          <Link href="/admin/shops" className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50">취소</Link>
-          <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 flex items-center gap-1">
-            <Save className="w-4 h-4"/> 저장
+        <div className="flex justify-end gap-2">
+          <Link
+            href="/admin/shops"
+            className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+          >
+            <Save className="h-4 w-4" />
+            Save
           </button>
         </div>
       </form>

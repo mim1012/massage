@@ -1,57 +1,52 @@
-import { Metadata } from 'next';
-import { Users, Crown, Store, UserCheck, Shield } from 'lucide-react';
+import type { Metadata } from 'next';
+import { Shield, Store, UserCheck, Users } from 'lucide-react';
+import { listUsers } from '@/lib/server/auth-store';
 
-export const metadata: Metadata = { title: '회원 관리 | 관리자' };
+export const metadata: Metadata = { title: 'Users | Admin' };
 
-const MOCK_USERS = [
-  { id: 'u1', name: '관리자', email: 'admin@healing.kr', role: 'super_admin', joinDate: '2024-01-01' },
-  { id: 'u2', name: '강남힐링 담당', email: 'gangnam@healing.kr', role: 'shop_admin', joinDate: '2024-02-01' },
-  { id: 'u3', name: '홍대아로 담당', email: 'hongdae@healing.kr', role: 'shop_admin', joinDate: '2024-02-15' },
-  { id: 'u4', name: '일반회원1', email: 'user1@example.com', role: 'user', joinDate: '2024-03-01' },
-];
+const roleMap = {
+  ADMIN: { label: 'Admin', bg: 'bg-purple-100', text: 'text-purple-700', icon: Shield },
+  OWNER: { label: 'Owner', bg: 'bg-amber-100', text: 'text-amber-700', icon: Store },
+  USER: { label: 'User', bg: 'bg-gray-100', text: 'text-gray-600', icon: UserCheck },
+} as const;
 
-const roleMap: Record<string, { label: string; bg: string; text: string; icon: typeof Crown }> = {
-  super_admin: { label: '최고관리자', bg: 'bg-purple-100', text: 'text-purple-700', icon: Shield },
-  shop_admin: { label: '업체관리자', bg: 'bg-amber-100', text: 'text-amber-700', icon: Store },
-  user: { label: '일반회원', bg: 'bg-gray-100', text: 'text-gray-600', icon: UserCheck },
-};
+export default async function AdminUsersPage() {
+  const users = await listUsers();
 
-export default function AdminUsersPage() {
   return (
     <div className="max-w-[1000px] space-y-4">
-      <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
-        <Users className="w-5 h-5 text-red-600" /> 대상별 회원 관리
+      <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
+        <Users className="h-5 w-5 text-red-600" />
+        User management
       </h1>
 
-      <div className="bg-white border border-gray-200 rounded overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase">
+      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50 text-[11px] uppercase text-gray-500">
             <tr>
-              <th className="px-4 py-2 font-bold">이름</th>
-              <th className="px-4 py-2 font-bold">이메일</th>
-              <th className="px-4 py-2 font-bold text-center">권한</th>
-              <th className="px-4 py-2 font-bold">가입일</th>
-              <th className="px-4 py-2 font-bold text-center">관리</th>
+              <th className="px-4 py-2 font-bold">Name</th>
+              <th className="px-4 py-2 font-bold">Email</th>
+              <th className="px-4 py-2 text-center font-bold">Role</th>
+              <th className="px-4 py-2 font-bold">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
-            {MOCK_USERS.map(user => {
-              const r = roleMap[user.role];
+            {users.map((user) => {
+              const role = roleMap[user.role];
+              const Icon = role.icon;
               return (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2.5 font-bold text-gray-800">{user.name}</td>
                   <td className="px-4 py-2.5 text-gray-600">{user.email}</td>
                   <td className="px-4 py-2.5 text-center">
-                    <span className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${r.bg} ${r.text}`}>
-                      {user.role === 'super_admin' ? '👑' : user.role === 'shop_admin' ? '🏢' : '👤'} {r.label}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold ${role.bg} ${role.text}`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {role.label}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400">{user.joinDate}</td>
-                  <td className="px-4 py-2.5 text-center">
-                    <button className="px-2 py-1 bg-white border border-gray-300 rounded text-[10px] text-gray-600 hover:bg-gray-100">
-                      수정
-                    </button>
-                  </td>
+                  <td className="px-4 py-2.5 text-gray-500">{user.status ?? 'approved'}</td>
                 </tr>
               );
             })}
