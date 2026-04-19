@@ -4,21 +4,39 @@
 
 This document defines the remaining backend and database work for the current massage directory project.
 
-The current codebase is a frontend-heavy prototype:
+The current codebase is no longer a frontend-only prototype. It is a hybrid application mid-way through a backend migration.
 
-- Most pages read from `src/lib/mockData.ts`
-- Authentication is simulated in the client
-- Admin actions update only local React state
-- There is no real database, ORM, or API layer yet
+## Status Update (April 2026)
 
-This document is the implementation reference for replacing the mock-based flow with a production-backed flow.
+### Already real / persisted through Prisma
+
+- `prisma/schema.prisma` and `prisma/seed.ts` exist
+- `src/lib/db/prisma.ts` provides the shared Prisma client
+- `src/app/api/shops/*` uses `src/lib/server/shop-store.ts`
+- `src/app/api/auth/*` uses `src/lib/server/auth-store.ts`
+- owner approval routes under `src/app/api/admin/approvals/*` use Prisma-backed user data
+- shop visibility / premium toggles under `src/app/api/admin/shops/*` partially persist through Prisma
+
+### Still transitional / in-memory
+
+- `src/lib/server/communityStore.ts` still powers notices, Q&A, reviews, and admin dashboard data
+- some admin shop editing routes still use in-memory sample data
+- several docs in this repository still describe the project as if Prisma and route handlers do not exist yet
+
+### Important clarification
+
+- `src/lib/mockData.ts` is a legacy dataset and should not be treated as the authoritative runtime source for the current API layer
+- the active transitional in-memory source is primarily `src/lib/server/sample-data.ts` via `communityStore`
+
+This document is the implementation reference for finishing the migration from mixed in-memory/server-seeded flows to a fully persisted production-backed flow.
 
 ## Current Status
 
 ### Already implemented
 
 - Public pages and admin pages exist in the Next.js App Router structure
-- Core domain shapes are roughly modeled in `src/lib/types.ts`
+- Core domain shapes are modeled in `src/lib/types.ts`
+- Prisma schema, DB client, and seed script exist
 - User flows are visible in the UI:
   - user registration
   - owner registration
@@ -28,18 +46,25 @@ This document is the implementation reference for replacing the mock-based flow 
   - Q&A
   - admin approvals
   - admin shop management
+- The following backend flows already exist:
+  - `GET /api/shops`
+  - `GET /api/shops/:slug`
+  - `POST /api/auth/register/user`
+  - `POST /api/auth/register/owner`
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
+  - owner approval list / approve / reject endpoints
 
 ### Not implemented yet
 
-- Real database connection
-- Schema migrations
-- Seed setup
-- Auth/session persistence
-- Role and permission enforcement
-- Server-side CRUD APIs
-- Real admin actions
-- Real Q&A / review / notice persistence
-- Real statistics aggregation
+- Full removal of in-memory `communityStore`
+- Persisted Q&A / review / notice flows across all routes
+- Fully persisted admin dashboard aggregation
+- Consistent Prisma-backed admin shop editing flows
+- Request validation on all write endpoints
+- Automated tests for critical flows
+- Production hardening around auth/session secrets and operational safeguards
 
 ## Recommended Architecture
 
@@ -428,9 +453,9 @@ Creates notice.
 
 Updates notice.
 
-## Frontend Replacement Map
+## Remaining Replacement Map
 
-The following screens currently depend on mock data or client-only state and must be rewired.
+The following screens or route groups still depend on in-memory data and should be rewired next.
 
 ### Public
 
@@ -562,10 +587,10 @@ The backend integration is complete when all of the following are true:
 
 ## Suggested Immediate Next Task
 
-Start with:
+Continue with:
 
-1. Add Prisma and PostgreSQL configuration
-2. Create `prisma/schema.prisma`
-3. Generate first migration
-4. Add seed data for one admin, one owner, one user, and a small shop dataset
-5. Implement auth endpoints before touching admin screens
+1. Replace `communityStore` reads/writes with Prisma-backed repositories
+2. Migrate notices, Q&A, reviews, and dashboard summary endpoints off in-memory sample data
+3. Remove remaining runtime dependence on `sample-data.ts` / legacy mock sources
+4. Add request validation and error-shaping to write endpoints
+5. Add basic automated coverage for auth, shops, and community routes

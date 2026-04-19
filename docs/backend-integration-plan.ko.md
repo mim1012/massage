@@ -4,21 +4,39 @@
 
 이 문서는 현재 마사지 디렉터리 프로젝트에서 남아 있는 DB 연동 및 백엔드 연동 작업을 정의합니다.
 
-현재 코드베이스는 프론트엔드 중심의 프로토타입 상태입니다.
+현재 코드베이스는 더 이상 순수 프론트엔드 프로토타입이 아니라, 백엔드 전환이 진행 중인 하이브리드 상태입니다.
 
-- 대부분의 화면이 `src/lib/mockData.ts`를 직접 사용함
-- 인증이 클라이언트에서만 시뮬레이션됨
-- 관리자 액션이 로컬 React 상태만 변경함
-- 실제 DB, ORM, API 계층이 아직 없음
+## 상태 업데이트 (2026년 4월)
 
-이 문서는 목데이터 기반 흐름을 실제 운영 가능한 백엔드 구조로 바꾸기 위한 기준 문서입니다.
+### 이미 실제 저장/동작하는 영역
+
+- `prisma/schema.prisma`, `prisma/seed.ts` 가 존재함
+- `src/lib/db/prisma.ts` 에 공용 Prisma 클라이언트가 존재함
+- `src/app/api/shops/*` 는 `src/lib/server/shop-store.ts` 를 통해 Prisma를 사용함
+- `src/app/api/auth/*` 는 `src/lib/server/auth-store.ts` 를 통해 Prisma를 사용함
+- `src/app/api/admin/approvals/*` 는 점주 승인 데이터를 Prisma 기반으로 처리함
+- `src/app/api/admin/shops/*` 일부(노출/프리미엄 변경)는 Prisma에 실제 반영됨
+
+### 아직 전환 중인 영역
+
+- `src/lib/server/communityStore.ts` 가 공지/Q&A/리뷰/관리자 대시보드 데이터를 메모리 기반으로 처리함
+- 일부 관리자 매장 편집 라우트는 아직 샘플 데이터 기반임
+- 일부 문서는 Prisma와 Route Handler가 아직 없는 것처럼 서술되어 있음
+
+### 중요한 정리
+
+- `src/lib/mockData.ts` 는 레거시 데이터셋이며 현재 API 런타임의 기준 소스로 보면 안 됨
+- 현재 전환 중인 메모리 기반 소스는 주로 `communityStore` 가 사용하는 `src/lib/server/sample-data.ts` 임
+
+이 문서는 혼합 상태의 현재 구조를 실제 운영 가능한 전체 서버/DB 구조로 마무리하기 위한 기준 문서입니다.
 
 ## 현재 상태
 
 ### 이미 구현된 것
 
 - Next.js App Router 기반의 공개/관리자 화면 구조
-- `src/lib/types.ts`에 핵심 도메인 타입 초안 존재
+- `src/lib/types.ts`에 핵심 도메인 타입 존재
+- Prisma 스키마, DB 클라이언트, 시드 스크립트 존재
 - 주요 사용자 흐름의 UI 존재
   - 일반 회원가입
   - 점주 회원가입
@@ -28,18 +46,25 @@
   - Q&A
   - 관리자 승인
   - 관리자 매장 관리
+- 아래 백엔드 흐름은 이미 구현되어 있음
+  - `GET /api/shops`
+  - `GET /api/shops/:slug`
+  - `POST /api/auth/register/user`
+  - `POST /api/auth/register/owner`
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
+  - 점주 승인 목록 / 승인 / 반려 API
 
 ### 아직 구현되지 않은 것
 
-- 실제 데이터베이스 연결
-- 스키마 마이그레이션
-- 시드 데이터
-- 인증/세션 유지
-- 권한 및 역할 강제
-- 서버 CRUD API
-- 실제 관리자 액션 저장
-- 실제 Q&A / 리뷰 / 공지 저장
-- 실제 통계 집계
+- `communityStore` 완전 제거
+- Q&A / 리뷰 / 공지 전 구간의 실제 DB 저장
+- 관리자 대시보드 통계의 실제 집계
+- 관리자 매장 편집 흐름의 Prisma 통일
+- 모든 쓰기 API 입력 검증
+- 핵심 흐름 자동 테스트
+- 인증/세션 비밀값 등 운영 하드닝
 
 ## 권장 아키텍처
 
@@ -429,9 +454,9 @@ docs/
 
 공지 수정.
 
-## 화면별 교체 대상
+## 남은 교체 대상
 
-현재 목데이터 또는 클라이언트 전용 상태에 의존하는 화면은 아래와 같습니다.
+아래 화면/라우트 그룹은 아직 메모리 기반 데이터에 의존하므로 다음 전환 대상입니다.
 
 ### 공개 화면
 
@@ -563,10 +588,10 @@ docs/
 
 ## 바로 다음 작업
 
-다음 순서로 시작하는 것을 권장합니다.
+다음 순서로 이어서 진행하는 것을 권장합니다.
 
-1. Prisma 및 PostgreSQL 설정 추가
-2. `prisma/schema.prisma` 생성
-3. 첫 마이그레이션 생성
-4. 관리자 1명, 점주 1명, 일반회원 1명, 기본 매장 데이터 시드 추가
-5. 관리자 화면보다 먼저 인증 API부터 구현
+1. `communityStore` 읽기/쓰기 로직을 Prisma 기반 저장소로 교체
+2. 공지/Q&A/리뷰/대시보드 요약 API를 메모리 기반 샘플 데이터에서 분리
+3. 런타임에서 `sample-data.ts` / 레거시 mock 의존 제거
+4. 쓰기 API 입력 검증 및 오류 응답 정리
+5. 인증/매장/커뮤니티 핵심 흐름 자동 검증 추가
