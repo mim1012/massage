@@ -174,29 +174,30 @@ export async function createNotice(
 }
 
 export async function updateNotice(id: string, input: Pick<Notice, 'title' | 'content' | 'isPinned'>) {
-  try {
-    const notice = await prisma.notice.update({
-      where: { id },
-      data: {
-        title: input.title.trim(),
-        content: input.content.trim(),
-        isPinned: input.isPinned,
-      },
-    });
+  const existingNotice = await prisma.notice.findUnique({
+    where: { id },
+    select: { id: true },
+  });
 
-    return mapNotice(notice);
-  } catch {
+  if (!existingNotice) {
     return null;
   }
+
+  const notice = await prisma.notice.update({
+    where: { id },
+    data: {
+      title: input.title.trim(),
+      content: input.content.trim(),
+      isPinned: input.isPinned,
+    },
+  });
+
+  return mapNotice(notice);
 }
 
 export async function deleteNotice(id: string) {
-  try {
-    await prisma.notice.delete({ where: { id } });
-    return true;
-  } catch {
-    return false;
-  }
+  const result = await prisma.notice.deleteMany({ where: { id } });
+  return result.count > 0;
 }
 
 export async function listQna(shopId?: string) {
@@ -209,21 +210,26 @@ export async function listQna(shopId?: string) {
 }
 
 export async function answerQna(id: string, answer: string, answeredBy?: string) {
-  try {
-    const entry = await prisma.qnA.update({
-      where: { id },
-      data: {
-        answer: answer.trim(),
-        answeredBy: answeredBy ?? null,
-        answeredAt: new Date(),
-        status: QnaStatus.ANSWERED,
-      },
-    });
+  const existingEntry = await prisma.qnA.findUnique({
+    where: { id },
+    select: { id: true },
+  });
 
-    return mapQna(entry);
-  } catch {
+  if (!existingEntry) {
     return null;
   }
+
+  const entry = await prisma.qnA.update({
+    where: { id },
+    data: {
+      answer: answer.trim(),
+      answeredBy: answeredBy ?? null,
+      answeredAt: new Date(),
+      status: QnaStatus.ANSWERED,
+    },
+  });
+
+  return mapQna(entry);
 }
 
 export async function createQna(
