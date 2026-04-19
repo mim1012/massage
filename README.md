@@ -81,6 +81,7 @@ Run Prisma validation / generate / seed as needed:
 
 ```bash
 npm run prisma:validate
+npm run prisma:deploy
 npx prisma generate
 npx prisma db push
 npx prisma db seed
@@ -109,6 +110,7 @@ The Prisma seed currently provisions:
 - `npm run typecheck`
 - `npm run verify`
 - `npm run lint`
+- `npm run prisma:deploy`
 - `npm run prisma:validate`
 
 ## Verification commands
@@ -119,6 +121,7 @@ Useful local verification commands:
 npm run typecheck
 npm test
 npm run lint
+npm run prisma:deploy
 npm run prisma:validate
 npm run build
 npm run verify
@@ -139,7 +142,7 @@ Recent hardening added:
 
 - Browser-driven admin/owner session flows are not covered by a full end-to-end UI suite yet
 - `src/lib/mockData.ts` is legacy data and should not be treated as the current runtime source of truth
-- `SESSION_SECRET` still has a development fallback and should be required in production
+- production deployments must provide a real `SESSION_SECRET`; the development fallback is now rejected in production mode
 
 ## Documentation
 

@@ -1,11 +1,12 @@
 import crypto from 'node:crypto';
 import { type OwnerProfile, type User as DbUser, UserRole, UserStatus } from '@prisma/client';
+import { getSessionSecret } from '@/lib/auth/session-secret';
 import type { User } from '@/lib/types';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/db/prisma';
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-const SESSION_SECRET = process.env.SESSION_SECRET ?? 'replace-this-with-a-long-random-secret';
+const SESSION_SECRET = getSessionSecret();
 
 type UserWithProfile = DbUser & {
   ownerProfile: OwnerProfile | null;
