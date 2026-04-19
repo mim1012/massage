@@ -8,8 +8,10 @@ export const metadata: Metadata = {
   title: 'Notice',
 };
 
-export default function NoticePage() {
-  const notices = listNotices();
+export const dynamic = 'force-dynamic';
+
+export default async function NoticePage() {
+  const notices = await listNotices();
 
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">

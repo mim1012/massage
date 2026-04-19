@@ -5,7 +5,7 @@ import { getPremiumBoardData, updatePremiumOrder } from '@/lib/server/communityS
 export async function GET() {
   try {
     await requireRole('ADMIN');
-    return Response.json(getPremiumBoardData());
+    return Response.json(await getPremiumBoardData());
   } catch (error) {
     return errorResponse(error);
   }
@@ -19,7 +19,7 @@ export async function PATCH(request: Request) {
       return Response.json({ error: 'orderedIds must be an array.' }, { status: 400 });
     }
 
-    return Response.json(updatePremiumOrder(body.orderedIds));
+    return Response.json(await updatePremiumOrder(body.orderedIds));
   } catch (error) {
     return errorResponse(error);
   }

@@ -8,8 +8,10 @@ export const metadata: Metadata = {
   title: 'Reviews',
 };
 
-export default function ReviewPage() {
-  const reviews = listReviews();
+export const dynamic = 'force-dynamic';
+
+export default async function ReviewPage() {
+  const reviews = await listReviews();
 
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">

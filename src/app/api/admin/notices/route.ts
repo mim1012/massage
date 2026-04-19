@@ -5,7 +5,7 @@ import { createNotice, listNotices } from '@/lib/server/communityStore';
 export async function GET() {
   try {
     await requireRole('ADMIN');
-    return Response.json({ notices: listNotices() });
+    return Response.json({ notices: await listNotices() });
   } catch (error) {
     return errorResponse(error);
   }
@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireRole('ADMIN');
+    const user = await requireRole('ADMIN');
     const body = (await request.json()) as {
       title?: string;
       content?: string;
@@ -26,10 +26,11 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        notice: createNotice({
+        notice: await createNotice({
           title: body.title,
           content: body.content,
           isPinned: Boolean(body.isPinned),
+          createdBy: user.id,
         }),
       },
       { status: 201 },

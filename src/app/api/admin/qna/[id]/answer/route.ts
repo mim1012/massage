@@ -7,7 +7,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
     const body = (await request.json()) as { answer?: string };
 
@@ -15,7 +15,7 @@ export async function PATCH(
       return Response.json({ error: 'answer is required.' }, { status: 400 });
     }
 
-    const qna = answerQna(id, body.answer);
+    const qna = await answerQna(id, body.answer, user.id);
     if (!qna) {
       return Response.json({ error: 'Q&A entry not found.' }, { status: 404 });
     }

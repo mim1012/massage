@@ -9,11 +9,15 @@ export const metadata: Metadata = {
   description: 'Notices, Q&A, and reviews.',
 };
 
-export default function BoardPage() {
-  const summary = getBoardSummary();
-  const notices = listNotices();
-  const qnaEntries = listQna().slice(0, 3);
-  const reviews = listReviews(3);
+export const dynamic = 'force-dynamic';
+
+export default async function BoardPage() {
+  const [summary, notices, qnaEntries, reviews] = await Promise.all([
+    getBoardSummary(),
+    listNotices(),
+    listQna(),
+    listReviews(3),
+  ]);
 
   return (
     <div className="mx-auto max-w-[1000px] px-3 py-4">
@@ -73,7 +77,7 @@ export default function BoardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {qnaEntries.map((entry) => (
+          {qnaEntries.slice(0, 3).map((entry) => (
             <div key={entry.id} className="py-2.5">
               <div className="mb-1 flex items-start gap-2">
                 <span

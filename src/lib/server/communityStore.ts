@@ -1,10 +1,8 @@
+import { QnaStatus, type Notice as DbNotice, type QnA as DbQnA, type Review as DbReview } from '@prisma/client';
 import type { Notice, QnA, Review, Shop } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, PremiumBoardData } from '@/lib/communityTypes';
-import { getStore } from '@/lib/server/mock-store';
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
+import { prisma } from '@/lib/db/prisma';
+import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
@@ -26,70 +24,103 @@ function mapShopForAdmin(shop: Shop): AdminShopListItem {
   };
 }
 
-function sortNotices(notices: Notice[]) {
-  return [...notices].sort((left, right) => {
-    if (left.isPinned !== right.isPinned) {
-      return Number(right.isPinned) - Number(left.isPinned);
-    }
+function mapNotice(notice: DbNotice): Notice {
+  return {
+    id: notice.id,
+    title: notice.title,
+    content: notice.content,
+    isPinned: notice.isPinned,
+    createdAt: notice.createdAt.toISOString(),
+  };
+}
 
-    return right.createdAt.localeCompare(left.createdAt);
+function mapQna(entry: DbQnA): QnA {
+  return {
+    id: entry.id,
+    shopId: entry.shopId ?? undefined,
+    question: entry.question,
+    answer: entry.answer ?? undefined,
+    authorName: entry.authorName,
+    isAnswered: entry.status === QnaStatus.ANSWERED || Boolean(entry.answer),
+    createdAt: entry.createdAt.toISOString(),
+  };
+}
+
+function mapReview(review: DbReview & { shop: { name: string } }): Review {
+  return {
+    id: review.id,
+    shopId: review.shopId,
+    shopName: review.shop.name,
+    authorName: review.authorName,
+    rating: review.rating,
+    content: review.content,
+    createdAt: review.createdAt.toISOString(),
+  };
+}
+
+function parseInteger(value: string) {
+  const parsed = Number.parseInt(value.replace(/\D/g, ''), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildShopPayload(input: Shop) {
+  return {
+    name: input.name.trim(),
+    slug: input.slug.trim(),
+    region: input.region,
+    regionLabel: input.regionLabel,
+    subRegion: input.subRegion?.trim() ? input.subRegion.trim() : null,
+    subRegionLabel: input.subRegionLabel?.trim() ? input.subRegionLabel.trim() : null,
+    theme: input.theme,
+    themeLabel: input.themeLabel,
+    tagline: input.tagline.trim(),
+    description: input.description.trim(),
+    address: input.address.trim(),
+    phone: input.phone.trim(),
+    hours: input.hours.trim(),
+    isVisible: input.isVisible,
+    isPremium: input.isPremium,
+    premiumOrder: input.isPremium ? input.premiumOrder ?? 1 : null,
+    thumbnailUrl: input.thumbnailUrl.trim() || null,
+    bannerUrl: input.bannerUrl.trim() || null,
+    ownerId: input.ownerId?.trim() ? input.ownerId.trim() : null,
+    rating: input.rating,
+    tags: input.tags,
+  };
+}
+
+export async function listAdminShops() {
+  const shops = await prisma.shop.findMany({
+    include: shopInclude,
+    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
   });
+
+  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
 }
 
-function sortReviews(reviews: Review[]) {
-  return [...reviews].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-}
+export async function updatePremiumOrder(orderedIds: string[]) {
+  const existingShops = await prisma.shop.findMany({ select: { id: true } });
+  const existingIds = new Set(existingShops.map((shop) => shop.id));
+  const validIds = Array.from(new Set(orderedIds.filter((id) => existingIds.has(id))));
 
-function sortQna(entries: QnA[]) {
-  return [...entries].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-}
-
-export function listAdminShops() {
-  const { shops } = getStore();
-
-  return clone(
-    shops
-      .map(mapShopForAdmin)
-      .sort((left, right) => {
-        if (left.isPremium !== right.isPremium) {
-          return Number(right.isPremium) - Number(left.isPremium);
-        }
-
-        if (left.isPremium && right.isPremium) {
-          return (left.premiumOrder ?? Number.MAX_SAFE_INTEGER) - (right.premiumOrder ?? Number.MAX_SAFE_INTEGER);
-        }
-
-        return left.name.localeCompare(right.name);
+  await prisma.$transaction([
+    prisma.shop.updateMany({
+      where: validIds.length > 0 ? { id: { notIn: validIds }, isPremium: true } : { isPremium: true },
+      data: { isPremium: false, premiumOrder: null },
+    }),
+    ...validIds.map((id, index) =>
+      prisma.shop.update({
+        where: { id },
+        data: { isPremium: true, premiumOrder: index + 1 },
       }),
-  );
+    ),
+  ]);
+
+  return await getPremiumBoardData();
 }
 
-export function updatePremiumOrder(orderedIds: string[]) {
-  const { shops } = getStore();
-  const now = new Date().toISOString();
-  const premiumIds = Array.from(new Set(orderedIds)).filter((id) => shops.some((shop) => shop.id === id));
-
-  shops.forEach((shop) => {
-    const index = premiumIds.indexOf(shop.id);
-    if (index >= 0) {
-      shop.isPremium = true;
-      shop.premiumOrder = index + 1;
-      shop.updatedAt = now;
-      return;
-    }
-
-    if (shop.isPremium) {
-      shop.isPremium = false;
-      shop.premiumOrder = undefined;
-      shop.updatedAt = now;
-    }
-  });
-
-  return getPremiumBoardData();
-}
-
-export function getPremiumBoardData(): PremiumBoardData {
-  const shops = listAdminShops();
+export async function getPremiumBoardData(): Promise<PremiumBoardData> {
+  const shops = await listAdminShops();
 
   return {
     premiumShops: shops.filter((shop) => shop.isPremium),
@@ -97,146 +128,230 @@ export function getPremiumBoardData(): PremiumBoardData {
   };
 }
 
-export function listNotices() {
-  const { notices } = getStore();
-  return clone(sortNotices(notices));
+export async function listNotices() {
+  const notices = await prisma.notice.findMany({
+    orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  return notices.map(mapNotice);
 }
 
-export function getNoticeById(id: string) {
-  const { notices } = getStore();
-  return clone(notices.find((notice) => notice.id === id) ?? null);
+export async function getNoticeById(id: string) {
+  const notice = await prisma.notice.findUnique({ where: { id } });
+  return notice ? mapNotice(notice) : null;
 }
 
-export function createNotice(input: Pick<Notice, 'title' | 'content' | 'isPinned'>) {
-  const { notices } = getStore();
-  const notice: Notice = {
-    id: `notice-${Date.now()}`,
-    title: input.title.trim(),
-    content: input.content.trim(),
-    isPinned: input.isPinned,
-    createdAt: new Date().toISOString(),
-  };
+export async function createNotice(
+  input: Pick<Notice, 'title' | 'content' | 'isPinned'> & { createdBy: string },
+) {
+  const notice = await prisma.notice.create({
+    data: {
+      title: input.title.trim(),
+      content: input.content.trim(),
+      isPinned: input.isPinned,
+      createdBy: input.createdBy,
+    },
+  });
 
-  notices.unshift(notice);
-  return clone(notice);
+  return mapNotice(notice);
 }
 
-export function updateNotice(id: string, input: Pick<Notice, 'title' | 'content' | 'isPinned'>) {
-  const { notices } = getStore();
-  const notice = notices.find((item) => item.id === id);
-  if (!notice) {
+export async function updateNotice(id: string, input: Pick<Notice, 'title' | 'content' | 'isPinned'>) {
+  try {
+    const notice = await prisma.notice.update({
+      where: { id },
+      data: {
+        title: input.title.trim(),
+        content: input.content.trim(),
+        isPinned: input.isPinned,
+      },
+    });
+
+    return mapNotice(notice);
+  } catch {
     return null;
   }
-
-  notice.title = input.title.trim();
-  notice.content = input.content.trim();
-  notice.isPinned = input.isPinned;
-  return clone(notice);
 }
 
-export function deleteNotice(id: string) {
-  const { notices } = getStore();
-  const index = notices.findIndex((notice) => notice.id === id);
-  if (index < 0) {
+export async function deleteNotice(id: string) {
+  try {
+    await prisma.notice.delete({ where: { id } });
+    return true;
+  } catch {
     return false;
   }
-
-  notices.splice(index, 1);
-  return true;
 }
 
-export function listQna(shopId?: string) {
-  const { qna } = getStore();
-  const entries = shopId ? qna.filter((item) => item.shopId === shopId) : qna;
-  return clone(sortQna(entries));
+export async function listQna(shopId?: string) {
+  const entries = await prisma.qnA.findMany({
+    where: shopId ? { shopId } : undefined,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return entries.map(mapQna);
 }
 
-export function answerQna(id: string, answer: string) {
-  const { qna } = getStore();
-  const entry = qna.find((item) => item.id === id);
-  if (!entry) {
+export async function answerQna(id: string, answer: string, answeredBy?: string) {
+  try {
+    const entry = await prisma.qnA.update({
+      where: { id },
+      data: {
+        answer: answer.trim(),
+        answeredBy: answeredBy ?? null,
+        answeredAt: new Date(),
+        status: QnaStatus.ANSWERED,
+      },
+    });
+
+    return mapQna(entry);
+  } catch {
     return null;
   }
-
-  entry.answer = answer.trim();
-  entry.isAnswered = true;
-  return clone(entry);
 }
 
-export function createQna(input: Pick<QnA, 'question' | 'authorName'> & { shopId?: string }) {
-  const { qna } = getStore();
-  const entry: QnA = {
-    id: `qna-${Date.now()}`,
-    shopId: input.shopId,
-    question: input.question.trim(),
-    authorName: input.authorName.trim(),
-    isAnswered: false,
-    createdAt: new Date().toISOString(),
-  };
+export async function createQna(
+  input: Pick<QnA, 'question' | 'authorName'> & { shopId?: string; userId?: string },
+) {
+  const entry = await prisma.qnA.create({
+    data: {
+      question: input.question.trim(),
+      authorName: input.authorName.trim(),
+      shopId: input.shopId?.trim() || null,
+      userId: input.userId?.trim() || null,
+      status: QnaStatus.OPEN,
+    },
+  });
 
-  qna.unshift(entry);
-  return clone(entry);
+  return mapQna(entry);
 }
 
-export function listReviews(limit?: number) {
-  const { reviews } = getStore();
-  const sorted = sortReviews(reviews);
-  return clone(typeof limit === 'number' ? sorted.slice(0, limit) : sorted);
+export async function listReviews(limit?: number) {
+  const reviews = await prisma.review.findMany({
+    include: { shop: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+    ...(typeof limit === 'number' ? { take: limit } : {}),
+  });
+
+  return reviews.map(mapReview);
 }
 
-export function getAdminShopById(id: string) {
-  const { shops } = getStore();
-  return clone(shops.find((shop) => shop.id === id) ?? null);
+export async function getAdminShopById(id: string) {
+  const shop = await prisma.shop.findUnique({
+    where: { id },
+    include: shopInclude,
+  });
+
+  return shop ? mapShop(shop) : null;
 }
 
-export function createAdminShop(input: Shop) {
-  const { shops } = getStore();
-  shops.unshift(clone(input));
-  return clone(input);
+export async function createAdminShop(input: Shop) {
+  const shop = await prisma.shop.create({
+    data: {
+      ...buildShopPayload(input),
+      images: {
+        create: input.images.map((imageUrl, index) => ({
+          imageUrl,
+          sortOrder: index,
+        })),
+      },
+      courses: {
+        create: input.courses.map((course, index) => ({
+          name: course.name.trim(),
+          durationMinutes: parseInteger(course.duration),
+          price: parseInteger(course.price),
+          description: course.description?.trim() || null,
+          sortOrder: index,
+        })),
+      },
+    },
+    include: shopInclude,
+  });
+
+  return mapShop(shop);
 }
 
-export function updateAdminShop(id: string, input: Shop) {
-  const { shops } = getStore();
-  const index = shops.findIndex((shop) => shop.id === id);
-  if (index < 0) {
+export async function updateAdminShop(id: string, input: Shop) {
+  try {
+    const shop = await prisma.shop.update({
+      where: { id },
+      data: {
+        ...buildShopPayload(input),
+        images: {
+          deleteMany: {},
+          create: input.images.map((imageUrl, index) => ({
+            imageUrl,
+            sortOrder: index,
+          })),
+        },
+        courses: {
+          deleteMany: {},
+          create: input.courses.map((course, index) => ({
+            name: course.name.trim(),
+            durationMinutes: parseInteger(course.duration),
+            price: parseInteger(course.price),
+            description: course.description?.trim() || null,
+            sortOrder: index,
+          })),
+        },
+      },
+      include: shopInclude,
+    });
+
+    return mapShop(shop);
+  } catch {
     return null;
   }
-
-  shops[index] = clone(input);
-  return clone(shops[index]);
 }
 
-export function getBoardSummary() {
-  const { notices, qna, reviews } = getStore();
+export async function getBoardSummary() {
+  const [notices, qna, reviews] = await Promise.all([
+    prisma.notice.count(),
+    prisma.qnA.count(),
+    prisma.review.count(),
+  ]);
 
   return {
-    notices: notices.length,
-    qna: qna.length,
-    reviews: reviews.length,
+    notices,
+    qna,
+    reviews,
   };
 }
 
-export function getAdminDashboardData(): AdminDashboardData {
-  const { shops, notices, qna, reviews } = getStore();
+export async function getAdminDashboardData(): Promise<AdminDashboardData> {
+  const [shopCount, premiumCount, unansweredCount, noticeCount, pendingQna, recentReviews] = await Promise.all([
+    prisma.shop.count(),
+    prisma.shop.count({ where: { isPremium: true } }),
+    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
+    prisma.notice.count(),
+    prisma.qnA.findMany({
+      where: { status: QnaStatus.OPEN },
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+    }),
+    prisma.review.findMany({
+      include: { shop: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+    }),
+  ]);
 
   return {
     summary: [
-      { label: '전체 업소', value: shops.length },
-      { label: '프리미엄 업소', value: shops.filter((shop) => shop.isPremium).length },
-      { label: '미답변 Q&A', value: qna.filter((item) => !item.isAnswered).length },
-      { label: '공지 수', value: notices.length },
+      { label: '전체 업소', value: shopCount },
+      { label: '프리미엄 업소', value: premiumCount },
+      { label: '미답변 Q&A', value: unansweredCount },
+      { label: '공지 수', value: noticeCount },
     ],
-    pendingQna: sortQna(qna)
-      .filter((item) => !item.isAnswered)
-      .slice(0, 4)
-      .map((item) => ({ id: item.id, question: item.question, isAnswered: item.isAnswered })),
-    recentReviews: sortReviews(reviews)
-      .slice(0, 4)
-      .map((item) => ({
-        id: item.id,
-        shopName: item.shopName,
-        rating: item.rating,
-        content: item.content,
-      })),
+    pendingQna: pendingQna.map((item) => ({
+      id: item.id,
+      question: item.question,
+      isAnswered: false,
+    })),
+    recentReviews: recentReviews.map((item) => ({
+      id: item.id,
+      shopName: item.shop.name,
+      rating: item.rating,
+      content: item.content,
+    })),
   };
 }

@@ -6,7 +6,7 @@ import type { Shop } from '@/lib/types';
 export async function GET() {
   try {
     await requireRole('ADMIN');
-    return Response.json({ shops: listAdminShops() });
+    return Response.json({ shops: await listAdminShops() });
   } catch (error) {
     return errorResponse(error);
   }
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'shop is required.' }, { status: 400 });
     }
 
-    return Response.json({ shop: createAdminShop(body.shop) }, { status: 201 });
+    return Response.json({ shop: await createAdminShop(body.shop) }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

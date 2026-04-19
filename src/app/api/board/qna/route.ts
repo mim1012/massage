@@ -1,9 +1,9 @@
 import { createQna, listQna } from '@/lib/server/communityStore';
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const url = new URL(request.url);
   const shopId = url.searchParams.get('shopId') ?? undefined;
-  return Response.json({ qna: listQna(shopId) });
+  return Response.json({ qna: await listQna(shopId) });
 }
 
 export async function POST(request: Request) {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   return Response.json(
     {
-      qna: createQna({
+      qna: await createQna({
         question: body.question,
         authorName: body.authorName,
         shopId: body.shopId?.trim() || undefined,

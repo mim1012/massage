@@ -9,19 +9,19 @@ interface ShopFilters {
   query?: string;
 }
 
-type ShopRecord = DbShop & {
+export type ShopRecord = DbShop & {
   images: ShopImage[];
   courses: ShopCourse[];
   reviews: DbReview[];
 };
 
-const shopInclude = {
+export const shopInclude = {
   images: true,
   courses: true,
   reviews: true,
 } satisfies Prisma.ShopInclude;
 
-function mapShop(record: ShopRecord): Shop {
+export function mapShop(record: ShopRecord): Shop {
   return {
     id: record.id,
     name: record.name,

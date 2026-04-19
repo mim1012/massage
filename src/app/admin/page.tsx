@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: 'Admin Dashboard',
 };
 
+export const dynamic = 'force-dynamic';
+
 const iconMap = {
   '전체 업소': Store,
   '프리미엄 업소': Star,
@@ -21,8 +23,8 @@ const colorMap = {
   '공지 수': 'text-green-600 bg-green-50',
 } as const;
 
-export default function AdminDashboardPage() {
-  const dashboard = getAdminDashboardData();
+export default async function AdminDashboardPage() {
+  const dashboard = await getAdminDashboardData();
 
   return (
     <div className="max-w-[1000px] space-y-4">

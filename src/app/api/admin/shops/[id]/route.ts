@@ -10,7 +10,7 @@ export async function GET(
   try {
     await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
-    const shop = getAdminShopById(id);
+    const shop = await getAdminShopById(id);
     if (!shop) {
       return Response.json({ error: 'Shop not found.' }, { status: 404 });
     }
@@ -33,7 +33,7 @@ export async function PATCH(
       return Response.json({ error: 'shop is required.' }, { status: 400 });
     }
 
-    const shop = updateAdminShop(id, body.shop);
+    const shop = await updateAdminShop(id, body.shop);
     if (!shop) {
       return Response.json({ error: 'Shop not found.' }, { status: 404 });
     }

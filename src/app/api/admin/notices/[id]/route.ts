@@ -6,7 +6,7 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
   try {
     await requireRole('ADMIN');
     const { id } = await context.params;
-    const notice = getNoticeById(id);
+    const notice = await getNoticeById(id);
     if (!notice) {
       return Response.json({ error: 'Notice not found.' }, { status: 404 });
     }
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return Response.json({ error: 'title and content are required.' }, { status: 400 });
     }
 
-    const notice = updateNotice(id, {
+    const notice = await updateNotice(id, {
       title: body.title,
       content: body.content,
       isPinned: Boolean(body.isPinned),
@@ -50,7 +50,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ id: string
   try {
     await requireRole('ADMIN');
     const { id } = await context.params;
-    if (!deleteNotice(id)) {
+    if (!(await deleteNotice(id))) {
       return Response.json({ error: 'Notice not found.' }, { status: 404 });
     }
 
