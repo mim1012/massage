@@ -31,11 +31,28 @@ function mapStatus(status: UserStatus): NonNullable<User['status']> {
   }
 }
 
+function isBrokenDisplayName(name: string) {
+  const trimmed = name.trim();
+  return trimmed.length === 0 || /^[?？�\s]+$/.test(trimmed);
+}
+
+function getFallbackDisplayName(user: UserWithProfile) {
+  if (user.role === UserRole.ADMIN) {
+    return '관리자';
+  }
+
+  if (user.role === UserRole.OWNER) {
+    return user.ownerProfile?.businessName?.trim() || '업체 관리자';
+  }
+
+  return '회원';
+}
+
 function sanitizeUser(user: UserWithProfile): User {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
+    name: isBrokenDisplayName(user.name) ? getFallbackDisplayName(user) : user.name,
     role: user.role,
     managedShopId: user.managedShopId ?? undefined,
     status: mapStatus(user.status),

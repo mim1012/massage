@@ -11,6 +11,21 @@ const globalForPrisma = globalThis as typeof globalThis & {
   prisma?: PrismaClient;
 };
 
+function resolvePoolMax(url: URL) {
+  const configuredMax =
+    process.env.PGPOOL_MAX ??
+    url.searchParams.get('pool_max') ??
+    url.searchParams.get('connection_limit') ??
+    url.searchParams.get('pool_size');
+
+  const parsed = configuredMax ? Number(configuredMax) : Number.NaN;
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+
+  return process.env.NODE_ENV === 'production' ? 1 : 10;
+}
+
 function createPoolConfig(connectionString: string): PoolConfig {
   const url = new URL(connectionString);
   const sslMode = url.searchParams.get('sslmode');
@@ -18,6 +33,9 @@ function createPoolConfig(connectionString: string): PoolConfig {
 
   return {
     connectionString,
+    max: resolvePoolMax(url),
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 10_000,
     ...(useSsl
       ? {
           ssl: {
