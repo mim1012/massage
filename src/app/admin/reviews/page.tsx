@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import clsx from 'clsx';
-import { Eye, EyeOff, MessageSquare, Star, Trash2 } from 'lucide-react';
+import { MessageSquare, Star, Trash2 } from 'lucide-react';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
@@ -30,22 +29,6 @@ export default function AdminReviewsPage() {
     void load();
   }, []);
 
-  async function toggleHidden(id: string, isHidden: boolean) {
-    const response = await fetch(`/api/admin/reviews/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isHidden }),
-    });
-
-    if (!response.ok) {
-      const result = (await response.json()) as { error?: string };
-      setError(result.error ?? '리뷰 상태를 변경하지 못했습니다.');
-      return;
-    }
-
-    setReviews((current) => current.map((review) => (review.id === id ? { ...review, isHidden } : review)));
-  }
-
   async function removeReview(id: string) {
     const response = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
     if (!response.ok && response.status !== 204) {
@@ -67,11 +50,15 @@ export default function AdminReviewsPage() {
         <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">총 {reviews.length}건</div>
       </div>
 
+      <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+        리뷰는 삭제만 가능합니다. 오너와 관리자는 본인 권한 범위의 리뷰를 삭제할 수 있습니다.
+      </div>
+
       {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
         {reviews.map((review) => (
-          <div key={review.id} className={clsx('flex items-start gap-3 p-4', review.isHidden && 'bg-gray-50 opacity-70')}>
+          <div key={review.id} className="flex items-start gap-3 p-4">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
@@ -93,13 +80,6 @@ export default function AdminReviewsPage() {
             </div>
             <div className="flex gap-1.5">
               <button
-                onClick={() => void toggleHidden(review.id, !review.isHidden)}
-                className="rounded border border-gray-300 p-1.5 text-gray-500 hover:bg-gray-50"
-                title={review.isHidden ? '노출' : '숨김'}
-              >
-                {review.isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              </button>
-              <button
                 onClick={() => void removeReview(review.id)}
                 className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50"
                 title="삭제"
@@ -109,6 +89,7 @@ export default function AdminReviewsPage() {
             </div>
           </div>
         ))}
+        {reviews.length === 0 ? <div className="p-6 text-center text-sm text-gray-400">등록된 리뷰가 없습니다.</div> : null}
       </div>
     </div>
   );

@@ -1,8 +1,57 @@
-import { listReviews } from '@/lib/server/communityStore';
+import { requireUser } from '@/lib/auth/guards';
+import { errorResponse } from '@/lib/auth/http';
+import { createReview, listReviews } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const limitParam = url.searchParams.get('limit');
-  const limit = limitParam ? Number(limitParam) : undefined;
-  return Response.json({ reviews: await listReviews(Number.isFinite(limit) ? limit : undefined) });
+  try {
+    await requireUser();
+
+    const url = new URL(request.url);
+    const limitParam = url.searchParams.get('limit');
+    const shopId = url.searchParams.get('shopId') ?? undefined;
+    const limit = limitParam ? Number(limitParam) : undefined;
+
+    return Response.json({
+      reviews: await listReviews({
+        limit: Number.isFinite(limit) ? limit : undefined,
+        shopId: shopId?.trim() || undefined,
+      }),
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await requireUser();
+    const body = (await request.json()) as {
+      shopId?: string;
+      rating?: number;
+      content?: string;
+    };
+
+    if (!body.shopId?.trim() || !body.content?.trim() || typeof body.rating !== 'number') {
+      return Response.json({ error: '업소, 평점, 리뷰 내용은 필수입니다.' }, { status: 400 });
+    }
+
+    if (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
+      return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
+    }
+
+    return Response.json(
+      {
+        review: await createReview({
+          shopId: body.shopId.trim(),
+          userId: user.id,
+          authorName: user.name,
+          rating: body.rating,
+          content: body.content,
+        }),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    return errorResponse(error);
+  }
 }

@@ -1,18 +1,108 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, Star } from 'lucide-react';
-import { listReviews } from '@/lib/server/communityStore';
-import type { Review } from '@/lib/types';
+import type { Review, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
-export const metadata: Metadata = {
-  title: '이용 후기',
-};
+function ReviewContent() {
+  const searchParams = useSearchParams();
+  const shopId = searchParams.get('shopId');
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({ rating: 5, content: '' });
 
-export const dynamic = 'force-dynamic';
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
 
-export default async function ReviewPage() {
-  const reviews = await listReviews();
+      try {
+        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!meResponse.ok) {
+          setUser(null);
+          setReviews([]);
+          return;
+        }
+
+        const meResult = (await meResponse.json()) as { user?: User };
+        const nextUser = meResult.user ?? null;
+        setUser(nextUser);
+
+        if (!nextUser) {
+          setReviews([]);
+          return;
+        }
+
+        const query = new URLSearchParams();
+        if (shopId) query.set('shopId', shopId);
+        const reviewResponse = await fetch(`/api/board/reviews${query.toString() ? `?${query.toString()}` : ''}`, {
+          cache: 'no-store',
+        });
+        const reviewResult = (await reviewResponse.json()) as { reviews?: Review[]; error?: string };
+        if (!reviewResponse.ok || !reviewResult.reviews) {
+          throw new Error(reviewResult.error ?? '리뷰 목록을 불러오지 못했습니다.');
+        }
+
+        setReviews(reviewResult.reviews);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : '리뷰 목록을 불러오지 못했습니다.');
+      } finally {
+        setAuthChecked(true);
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [shopId]);
+
+  const filteredReviews = useMemo(
+    () => (shopId ? reviews.filter((review) => review.shopId === shopId) : reviews),
+    [reviews, shopId],
+  );
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) {
+      setError('로그인한 회원만 리뷰를 작성할 수 있습니다.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    setSubmitted(false);
+
+    try {
+      const response = await fetch('/api/board/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopId,
+          rating: form.rating,
+          content: form.content,
+        }),
+      });
+      const result = (await response.json()) as { review?: Review; error?: string };
+      if (!response.ok || !result.review) {
+        throw new Error(result.error ?? '리뷰를 등록하지 못했습니다.');
+      }
+
+      setReviews((current) => [result.review!, ...current]);
+      setForm({ rating: 5, content: '' });
+      setSubmitted(true);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '리뷰를 등록하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
@@ -28,28 +118,101 @@ export default async function ReviewPage() {
         <span className="text-gray-800">이용 후기</span>
       </div>
       <h1 className="mb-3 text-lg font-black text-gray-800">업소 후기</h1>
-      <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
-        {reviews.map((review: Review) => (
-          <div key={review.id} className="p-3">
-            <div className="mb-1 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
-                <span className="text-xs text-red-500">{review.shopName}</span>
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <Star
-                      key={score}
-                      className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
-            </div>
-            <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
+
+      {!authChecked || loading ? (
+        <div className="rounded border border-gray-200 bg-white py-10 text-center text-sm text-gray-400">
+          리뷰를 불러오는 중입니다.
+        </div>
+      ) : !user ? (
+        <div className="space-y-3 rounded border border-gray-200 bg-white p-6 text-center">
+          <p className="text-sm font-bold text-gray-800">리뷰는 로그인한 회원만 읽고 작성할 수 있습니다.</p>
+          <p className="text-xs text-gray-500">로그인 후 이용 후기를 확인하고 직접 후기를 남겨보세요.</p>
+          <div className="flex justify-center gap-2">
+            <Link href="/auth/login" className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
+              로그인
+            </Link>
+            <Link href="/auth/register" className="rounded border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
+              회원가입
+            </Link>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          <form onSubmit={handleSubmit} className="mb-4 space-y-3 rounded border border-red-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-800">리뷰 작성</p>
+                <p className="text-xs text-gray-500">작성자: {user.name}</p>
+              </div>
+              <select
+                value={form.rating}
+                onChange={(event) => setForm((current) => ({ ...current, rating: Number(event.target.value) }))}
+                className="rounded border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-red-500"
+              >
+                {[5, 4, 3, 2, 1].map((score) => (
+                  <option key={score} value={score}>
+                    {score}점
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              required
+              rows={4}
+              value={form.content}
+              onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
+              placeholder={shopId ? '이 업소 이용 후기를 입력해 주세요.' : '이용 후기를 입력해 주세요.'}
+              className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+            />
+            <button
+              type="submit"
+              disabled={submitting || !shopId}
+              className="w-full rounded bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {!shopId ? '업소 상세에서 작성할 수 있습니다' : submitting ? '등록 중' : '리뷰 등록'}
+            </button>
+          </form>
+
+          {submitted ? (
+            <div className="mb-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">리뷰가 등록되었습니다.</div>
+          ) : null}
+          {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div> : null}
+
+          <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
+            {filteredReviews.map((review) => (
+              <div key={review.id} className="p-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
+                    <span className="text-xs text-red-500">{review.shopName}</span>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <Star
+                          key={score}
+                          className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+                </div>
+                <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
+              </div>
+            ))}
+            {filteredReviews.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">등록된 리뷰가 아직 없습니다.</div>
+            ) : null}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <ReviewContent />
+    </Suspense>
   );
 }

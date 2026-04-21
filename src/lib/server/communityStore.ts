@@ -319,12 +319,59 @@ export async function createQna(
   return mapQna(entry);
 }
 
-export async function listReviews(limit?: number) {
+type ReviewListOptions = {
+  limit?: number;
+  shopId?: string;
+};
+
+async function refreshShopReviewRating(shopId: string) {
+  const aggregate = await prisma.review.aggregate({
+    where: { shopId },
+    _avg: { rating: true },
+  });
+
+  await prisma.shop.update({
+    where: { id: shopId },
+    data: { rating: aggregate._avg.rating ?? 0 },
+  });
+}
+
+export async function createReview(input: {
+  shopId: string;
+  userId: string;
+  authorName: string;
+  rating: number;
+  content: string;
+}) {
+  const review = await prisma.review.create({
+    data: {
+      shopId: input.shopId,
+      userId: input.userId,
+      authorName: input.authorName.trim(),
+      rating: input.rating,
+      content: input.content.trim(),
+    },
+    include: { shop: { select: { name: true } } },
+  });
+
+  await refreshShopReviewRating(input.shopId);
+  return mapReview(review);
+}
+
+export async function listReviews(options: number | ReviewListOptions = {}) {
+  const normalizedOptions =
+    typeof options === 'number'
+      ? { limit: options }
+      : options;
+
   const reviews = await prisma.review.findMany({
-    where: { isHidden: false },
+    where: {
+      isHidden: false,
+      ...(normalizedOptions.shopId ? { shopId: normalizedOptions.shopId } : {}),
+    },
     include: { shop: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
-    ...(typeof limit === 'number' ? { take: limit } : {}),
+    ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
   });
 
   return reviews.map(mapReview);
@@ -406,6 +453,7 @@ export async function deleteManagedReview(user: { id: string; role: UserRole }, 
   }
 
   await prisma.review.delete({ where: { id: reviewId } });
+  await refreshShopReviewRating(review.shopId);
   return true;
 }
 

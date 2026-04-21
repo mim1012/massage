@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
+import { getSessionUser } from '@/lib/auth/guards';
 import { getBoardSummary, listNotices, listQna, listReviews } from '@/lib/server/communityStore';
 import type { Notice, QnA, Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -13,11 +14,12 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function BoardPage() {
+  const currentUser = await getSessionUser();
   const [summary, notices, qnaEntries, reviews] = await Promise.all([
     getBoardSummary(),
     listNotices(),
     listQna(),
-    listReviews(3),
+    currentUser ? listReviews(3) : Promise.resolve([]),
   ]);
 
   return (
@@ -105,27 +107,34 @@ export default async function BoardPage() {
             전체 &raquo;
           </Link>
         </div>
-        <div className="divide-y divide-gray-100">
-          {reviews.slice(0, 3).map((review: Review) => (
-            <div key={review.id} className="py-2.5">
-              <div className="mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-800">{review.authorName}</span>
-                  <span className="text-xs text-red-500">{review.shopName}</span>
+        {!currentUser ? (
+          <div className="rounded border border-gray-100 bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">
+            후기는 로그인한 회원만 확인할 수 있습니다.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {reviews.slice(0, 3).map((review: Review) => (
+              <div key={review.id} className="py-2.5">
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-800">{review.authorName}</span>
+                    <span className="text-xs text-red-500">{review.shopName}</span>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((score) => (
+                      <Star
+                        key={score}
+                        className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <Star
-                      key={score}
-                      className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
-                    />
-                  ))}
-                </div>
+                <p className="line-clamp-2 text-sm text-gray-600">{review.content}</p>
               </div>
-              <p className="line-clamp-2 text-sm text-gray-600">{review.content}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+            {reviews.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">등록된 후기가 없습니다.</div> : null}
+          </div>
+        )}
       </div>
     </div>
   );

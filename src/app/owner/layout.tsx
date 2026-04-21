@@ -29,9 +29,15 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           <h1 className="text-lg font-black text-gray-900">업체 관리</h1>
           <p className="text-xs text-gray-500">내 업소 정보와 노출 상태를 이곳에서 확인할 수 있습니다.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
           <Link href="/owner/shops" className="rounded border border-gray-300 px-3 py-2 font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
             내 업소
+          </Link>
+          <Link href="/owner/reviews" className="rounded border border-gray-300 px-3 py-2 font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
+            리뷰 관리
+          </Link>
+          <Link href="/owner/qna" className="rounded border border-gray-300 px-3 py-2 font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
+            Q&A 관리
           </Link>
           <Link href="/" className="rounded border border-gray-300 px-3 py-2 font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
             홈으로

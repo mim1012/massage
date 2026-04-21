@@ -59,7 +59,7 @@ export default function AdminQnAPage() {
     <div className="max-w-[800px] space-y-4">
       <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
         <MessageCircle className="h-5 w-5 text-red-600" />
-        Q&amp;A 답변 관리
+        Q&amp;A 댓글 관리
       </h1>
 
       <div className="mb-4 flex gap-2 border-b border-gray-200">
@@ -106,9 +106,9 @@ export default function AdminQnAPage() {
                 <div className="text-gray-700">
                   <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-green-600">
                     <CheckCircle className="h-3.5 w-3.5" />
-                    답변 완료
+                    댓글 등록 완료
                   </div>
-                  <p className="text-xs leading-relaxed">A. {qna.answer}</p>
+                  <p className="text-xs leading-relaxed">{qna.answer}</p>
                 </div>
               ) : answeringId === qna.id ? (
                 <div className="space-y-2">
@@ -116,7 +116,7 @@ export default function AdminQnAPage() {
                     rows={3}
                     value={answerText}
                     onChange={(event) => setAnswerText(event.target.value)}
-                    placeholder="답변 내용을 입력해 주세요."
+                    placeholder="댓글 내용을 입력해 주세요."
                     className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500"
                   />
                   <div className="flex justify-end gap-1">
@@ -143,7 +143,7 @@ export default function AdminQnAPage() {
                   className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <Send className="h-3 w-3" />
-                  답변 작성
+                  댓글 작성
                 </button>
               )}
             </div>

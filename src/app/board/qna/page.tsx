@@ -1,19 +1,21 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronRight, ChevronUp, Plus, X } from 'lucide-react';
-import type { QnA } from '@/lib/types';
+import type { QnA, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 function QnaContent() {
   const searchParams = useSearchParams();
   const shopId = searchParams.get('shopId');
   const [entries, setEntries] = useState<QnA[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ question: '', authorName: '' });
+  const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,15 +25,27 @@ function QnaContent() {
     void loadQna(shopId);
   }, [shopId]);
 
+  const pageTitle = useMemo(() => (shopId ? '업소 Q&A' : 'Q&A'), [shopId]);
+
   async function loadQna(currentShopId: string | null) {
     setLoading(true);
     setError(null);
 
     try {
-      const query = currentShopId ? `?shopId=${encodeURIComponent(currentShopId)}` : '';
-      const response = await fetch(`/api/board/qna${query}`, { cache: 'no-store' });
-      const result = (await response.json()) as { qna?: QnA[]; error?: string };
-      if (!response.ok || !result.qna) {
+      const [meResponse, qnaResponse] = await Promise.all([
+        fetch('/api/auth/me', { cache: 'no-store' }),
+        fetch(`/api/board/qna${currentShopId ? `?shopId=${encodeURIComponent(currentShopId)}` : ''}`, { cache: 'no-store' }),
+      ]);
+
+      if (meResponse.ok) {
+        const meResult = (await meResponse.json()) as { user?: User };
+        setUser(meResult.user ?? null);
+      } else {
+        setUser(null);
+      }
+
+      const result = (await qnaResponse.json()) as { qna?: QnA[]; error?: string };
+      if (!qnaResponse.ok || !result.qna) {
         throw new Error(result.error ?? 'Q&A 목록을 불러오지 못했습니다.');
       }
 
@@ -40,12 +54,18 @@ function QnaContent() {
       setError(loadError instanceof Error ? loadError.message : 'Q&A 목록을 불러오지 못했습니다.');
       console.error(loadError);
     } finally {
+      setAuthChecked(true);
       setLoading(false);
     }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!user) {
+      setError('로그인한 회원만 질문을 작성할 수 있습니다.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setSubmitted(false);
@@ -54,14 +74,14 @@ function QnaContent() {
       const response = await fetch('/api/board/qna', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, shopId }),
+        body: JSON.stringify({ question, shopId }),
       });
       const result = (await response.json()) as { qna?: QnA; error?: string };
       if (!response.ok || !result.qna) {
         throw new Error(result.error ?? 'Q&A를 등록하지 못했습니다.');
       }
 
-      setFormData({ question: '', authorName: '' });
+      setQuestion('');
       setShowForm(false);
       setSubmitted(true);
       await loadQna(shopId);
@@ -87,7 +107,7 @@ function QnaContent() {
         <span className="text-gray-800">Q&amp;A</span>
       </div>
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-lg font-black text-gray-800">Q&amp;A</h1>
+        <h1 className="text-lg font-black text-gray-800">{pageTitle}</h1>
         <button
           onClick={() => setShowForm((current) => !current)}
           className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
@@ -98,31 +118,38 @@ function QnaContent() {
       </div>
 
       {showForm ? (
-        <form onSubmit={handleSubmit} className="mb-3 space-y-3 rounded border border-red-200 bg-white p-4">
-          <input
-            type="text"
-            required
-            value={formData.authorName}
-            onChange={(event) => setFormData((current) => ({ ...current, authorName: event.target.value }))}
-            placeholder="작성자명"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
-          />
-          <textarea
-            required
-            value={formData.question}
-            onChange={(event) => setFormData((current) => ({ ...current, question: event.target.value }))}
-            placeholder="질문 내용을 입력해 주세요."
-            rows={3}
-            className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
-          />
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? '등록 중' : '등록'}
-          </button>
-        </form>
+        !authChecked ? null : !user ? (
+          <div className="mb-3 space-y-3 rounded border border-gray-200 bg-white p-4 text-center">
+            <p className="text-sm font-bold text-gray-800">질문 작성은 로그인한 회원만 가능합니다.</p>
+            <div className="flex justify-center gap-2">
+              <Link href="/auth/login" className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
+                로그인
+              </Link>
+              <Link href="/auth/register" className="rounded border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:text-red-600">
+                회원가입
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mb-3 space-y-3 rounded border border-red-200 bg-white p-4">
+            <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">작성자: {user.name}</div>
+            <textarea
+              required
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="질문 내용을 입력해 주세요."
+              rows={3}
+              className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+            />
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? '등록 중' : '등록'}
+            </button>
+          </form>
+        )
       ) : null}
 
       {submitted ? (
@@ -169,12 +196,12 @@ function QnaContent() {
                 <div className="px-3 pb-3">
                   {entry.answer ? (
                     <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
-                      <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
-                      A. {entry.answer}
+                      <p className="mb-1 text-[11px] font-bold text-red-500">운영자 댓글</p>
+                      {entry.answer}
                     </div>
                   ) : (
                     <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-                      답변 준비 중입니다.
+                      아직 등록된 댓글이 없습니다.
                     </div>
                   )}
                 </div>

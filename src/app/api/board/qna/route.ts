@@ -1,3 +1,5 @@
+import { requireUser } from '@/lib/auth/guards';
+import { errorResponse } from '@/lib/auth/http';
 import { createQna, listQna } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
@@ -7,24 +9,29 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
-    question?: string;
-    authorName?: string;
-    shopId?: string | null;
-  };
+  try {
+    const user = await requireUser();
+    const body = (await request.json()) as {
+      question?: string;
+      shopId?: string | null;
+    };
 
-  if (!body.question?.trim() || !body.authorName?.trim()) {
-    return Response.json({ error: '질문 내용과 작성자명은 필수입니다.' }, { status: 400 });
+    if (!body.question?.trim()) {
+      return Response.json({ error: '질문 내용은 필수입니다.' }, { status: 400 });
+    }
+
+    return Response.json(
+      {
+        qna: await createQna({
+          question: body.question,
+          authorName: user.name,
+          userId: user.id,
+          shopId: body.shopId?.trim() || undefined,
+        }),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  return Response.json(
-    {
-      qna: await createQna({
-        question: body.question,
-        authorName: body.authorName,
-        shopId: body.shopId?.trim() || undefined,
-      }),
-    },
-    { status: 201 },
-  );
 }
