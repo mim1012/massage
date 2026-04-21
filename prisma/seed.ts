@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { PrismaClient, QnaStatus, UserRole, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import { DEFAULT_HOME_SEO, DEFAULT_SITE_SETTINGS } from '../src/lib/site-content-defaults';
 
 const DATABASE_URL =
   process.env.DATABASE_URL ??
@@ -246,41 +247,35 @@ async function main() {
   await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },
     update: {
-      siteName: 'Healing Finder',
-      siteTitle: 'Massage Directory',
-      siteDescription: 'Verified wellness listings',
-      heroMainText: 'Find a trusted massage spot near you',
-      heroSubText: 'Verified listings, curated by area and theme',
-      contactPhone: '1588-0000',
-      footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
-      seoSection1Title: 'Healing Finder: discover massage and wellness shops',
-      seoSection1Content:
-        'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
-      seoSection2Title: 'Filter by district and service type',
-      seoSection2Content:
-        'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
-      seoSection3Title: 'Track premium and trending listings',
-      seoSection3Content:
-        'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
+      siteName: DEFAULT_SITE_SETTINGS.siteName,
+      siteTitle: DEFAULT_SITE_SETTINGS.siteTitle,
+      siteDescription: DEFAULT_SITE_SETTINGS.siteDescription,
+      heroMainText: DEFAULT_SITE_SETTINGS.heroMainText,
+      heroSubText: DEFAULT_SITE_SETTINGS.heroSubText,
+      contactPhone: DEFAULT_SITE_SETTINGS.contactPhone,
+      footerInfo: DEFAULT_SITE_SETTINGS.footerInfo,
+      seoSection1Title: DEFAULT_HOME_SEO.section1Title,
+      seoSection1Content: DEFAULT_HOME_SEO.section1Content,
+      seoSection2Title: DEFAULT_HOME_SEO.section2Title,
+      seoSection2Content: DEFAULT_HOME_SEO.section2Content,
+      seoSection3Title: DEFAULT_HOME_SEO.section3Title,
+      seoSection3Content: DEFAULT_HOME_SEO.section3Content,
     },
     create: {
       id: SITE_SETTINGS_ID,
-      siteName: 'Healing Finder',
-      siteTitle: 'Massage Directory',
-      siteDescription: 'Verified wellness listings',
-      heroMainText: 'Find a trusted massage spot near you',
-      heroSubText: 'Verified listings, curated by area and theme',
-      contactPhone: '1588-0000',
-      footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
-      seoSection1Title: 'Healing Finder: discover massage and wellness shops',
-      seoSection1Content:
-        'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
-      seoSection2Title: 'Filter by district and service type',
-      seoSection2Content:
-        'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
-      seoSection3Title: 'Track premium and trending listings',
-      seoSection3Content:
-        'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
+      siteName: DEFAULT_SITE_SETTINGS.siteName,
+      siteTitle: DEFAULT_SITE_SETTINGS.siteTitle,
+      siteDescription: DEFAULT_SITE_SETTINGS.siteDescription,
+      heroMainText: DEFAULT_SITE_SETTINGS.heroMainText,
+      heroSubText: DEFAULT_SITE_SETTINGS.heroSubText,
+      contactPhone: DEFAULT_SITE_SETTINGS.contactPhone,
+      footerInfo: DEFAULT_SITE_SETTINGS.footerInfo,
+      seoSection1Title: DEFAULT_HOME_SEO.section1Title,
+      seoSection1Content: DEFAULT_HOME_SEO.section1Content,
+      seoSection2Title: DEFAULT_HOME_SEO.section2Title,
+      seoSection2Content: DEFAULT_HOME_SEO.section2Content,
+      seoSection3Title: DEFAULT_HOME_SEO.section3Title,
+      seoSection3Content: DEFAULT_HOME_SEO.section3Content,
     },
   });
 }

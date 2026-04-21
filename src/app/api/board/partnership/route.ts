@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   ];
 
   if (requiredFields.some((field) => !body[field]?.toString().trim())) {
-    return Response.json({ error: 'missing required partnership fields.' }, { status: 400 });
+    return Response.json({ error: '제휴 문의 필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
   const inquiry = await createPartnershipInquiry({

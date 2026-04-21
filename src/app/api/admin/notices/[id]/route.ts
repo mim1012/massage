@@ -8,7 +8,7 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
     const { id } = await context.params;
     const notice = await getNoticeById(id);
     if (!notice) {
-      return Response.json({ error: 'Notice not found.' }, { status: 404 });
+      return Response.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ notice });
@@ -28,7 +28,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     };
 
     if (!body.title?.trim() || !body.content?.trim()) {
-      return Response.json({ error: 'title and content are required.' }, { status: 400 });
+      return Response.json({ error: '제목과 내용은 필수입니다.' }, { status: 400 });
     }
 
     const notice = await updateNotice(id, {
@@ -37,7 +37,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       isPinned: Boolean(body.isPinned),
     });
     if (!notice) {
-      return Response.json({ error: 'Notice not found.' }, { status: 404 });
+      return Response.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ notice });
@@ -51,7 +51,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ id: string
     await requireRole('ADMIN');
     const { id } = await context.params;
     if (!(await deleteNotice(id))) {
-      return Response.json({ error: 'Notice not found.' }, { status: 404 });
+      return Response.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return new Response(null, { status: 204 });

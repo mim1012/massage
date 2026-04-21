@@ -6,7 +6,7 @@ import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Reviews',
+  title: '이용 후기',
 };
 
 export const dynamic = 'force-dynamic';
@@ -18,14 +18,14 @@ export default async function ReviewPage() {
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
         <Link href="/" className="hover:text-red-600">
-          Home
+          홈
         </Link>
         <ChevronRight className="h-3 w-3" />
         <Link href="/board" className="hover:text-red-600">
-          Board
+          게시판
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="text-gray-800">Reviews</span>
+        <span className="text-gray-800">이용 후기</span>
       </div>
       <h1 className="mb-3 text-lg font-black text-gray-800">업소 후기</h1>
       <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
@@ -46,7 +46,7 @@ export default async function ReviewPage() {
               </div>
               <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
             </div>
-            <p className="leading-relaxed text-sm text-gray-600">{review.content}</p>
+            <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
           </div>
         ))}
       </div>

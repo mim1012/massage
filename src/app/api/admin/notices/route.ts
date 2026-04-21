@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     };
 
     if (!body.title?.trim() || !body.content?.trim()) {
-      return Response.json({ error: 'title and content are required.' }, { status: 400 });
+      return Response.json({ error: '제목과 내용은 필수입니다.' }, { status: 400 });
     }
 
     return Response.json(

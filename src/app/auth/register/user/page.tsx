@@ -33,7 +33,7 @@ export default function RegisterUserPage() {
     setLoading(false);
 
     if (!response.ok) {
-      setError(result.error ?? 'Registration failed.');
+      setError(result.error ?? '회원가입에 실패했습니다.');
       return;
     }
 
@@ -45,15 +45,15 @@ export default function RegisterUserPage() {
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
-          <h1 className="text-lg font-black text-gray-800 mb-2">Registration complete</h1>
+          <h1 className="text-lg font-black text-gray-800 mb-2">회원가입이 완료되었습니다</h1>
           <p className="text-sm text-gray-500 mb-6">
-            Your account has been created. You can log in with the new credentials.
+            계정이 생성되었습니다. 방금 등록한 정보로 바로 로그인할 수 있습니다.
           </p>
           <Link
             href="/auth/login"
             className="px-6 py-2.5 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700"
           >
-            Go to login
+            로그인하러 가기
           </Link>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function RegisterUserPage() {
             <div className="w-10 h-10 rounded bg-red-600 flex items-center justify-center mx-auto mb-3">
               <span className="text-white font-black text-lg">M</span>
             </div>
-            <h1 className="text-lg font-black text-gray-800 mb-1">User Registration</h1>
+            <h1 className="text-lg font-black text-gray-800 mb-1">일반 회원 가입</h1>
           </div>
           <form onSubmit={handleSubmit} className="space-y-3">
             <input
@@ -76,7 +76,7 @@ export default function RegisterUserPage() {
               required
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Name"
+              placeholder="이름"
               className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
             />
             <input
@@ -84,7 +84,7 @@ export default function RegisterUserPage() {
               required
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="Email"
+              placeholder="이메일"
               className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
             />
             <div className="relative">
@@ -95,7 +95,7 @@ export default function RegisterUserPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, password: event.target.value }))
                 }
-                placeholder="Password"
+                placeholder="비밀번호"
                 className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500 pr-10"
               />
               <button
@@ -115,21 +115,21 @@ export default function RegisterUserPage() {
                 }
                 className="mt-0.5 accent-red-600"
               />
-              <span className="text-xs text-gray-500">I agree to the basic terms of service.</span>
+              <span className="text-xs text-gray-500">기본 이용약관에 동의합니다.</span>
             </label>
             <button
               type="submit"
               disabled={loading || !form.agree}
               className="w-full py-2.5 bg-red-600 text-white font-bold text-sm rounded hover:bg-red-700 disabled:opacity-50"
             >
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? '계정을 생성하는 중...' : '회원가입'}
             </button>
             {error && <p className="text-xs text-red-600">{error}</p>}
           </form>
           <div className="mt-4 text-center text-xs">
-            <span className="text-gray-400">Already have an account? </span>
+            <span className="text-gray-400">이미 계정이 있으신가요? </span>
             <Link href="/auth/login" className="text-red-600 font-semibold">
-              Login
+              로그인
             </Link>
           </div>
         </div>

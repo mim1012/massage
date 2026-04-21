@@ -13,7 +13,7 @@ export async function GET(
     const { id } = await context.params;
     const shop = await getAdminShopById(id);
     if (!shop) {
-      return Response.json({ error: 'Shop not found.' }, { status: 404 });
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     assertOwnershipOrAdmin(user, shop.ownerId);
@@ -33,12 +33,12 @@ export async function PATCH(
     const { id } = await context.params;
     const body = (await request.json()) as { shop?: Shop };
     if (!body.shop) {
-      return Response.json({ error: 'shop is required.' }, { status: 400 });
+      return Response.json({ error: '업소 정보가 필요합니다.' }, { status: 400 });
     }
 
     const existingShop = await getAdminShopById(id);
     if (!existingShop) {
-      return Response.json({ error: 'Shop not found.' }, { status: 404 });
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     assertOwnershipOrAdmin(user, existingShop.ownerId);
@@ -47,7 +47,7 @@ export async function PATCH(
 
     const shop = await updateAdminShop(id, shopInput);
     if (!shop) {
-      return Response.json({ error: 'Shop not found.' }, { status: 404 });
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ shop });

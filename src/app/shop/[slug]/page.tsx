@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await getShopBySlug(slug);
 
   if (!data) {
-    return { title: 'Shop not found' };
+    return { title: '업소를 찾을 수 없습니다' };
   }
 
   return {
@@ -49,7 +49,7 @@ export default async function ShopDetailPage({ params }: Props) {
     <div className="max-w-[1400px] mx-auto px-3 py-3">
       <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
         <Link href="/" className="hover:text-red-600">
-          Home
+          홈
         </Link>
         <ChevronRight className="w-3 h-3" />
         <Link href={`/?region=${shop.region}`} className="hover:text-red-600">
@@ -66,7 +66,7 @@ export default async function ShopDetailPage({ params }: Props) {
               {shop.isPremium && (
                 <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded mb-2">
                   <Crown className="w-3 h-3" />
-                  PREMIUM
+                  프리미엄
                 </span>
               )}
               <h1 className="text-2xl font-black text-gray-900 mb-1">{shop.name}</h1>
@@ -81,13 +81,13 @@ export default async function ShopDetailPage({ params }: Props) {
                   />
                 ))}
                 <span className="text-sm font-bold text-gray-700 ml-1">{shop.rating.toFixed(1)}</span>
-                <span className="text-xs text-gray-500">({reviews.length} reviews)</span>
+                <span className="text-xs text-gray-500">({reviews.length}개 리뷰)</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">Shop intro</h2>
+            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">업소 소개</h2>
             <p className="text-sm text-gray-600 leading-relaxed">{shop.description}</p>
             {shop.tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
@@ -104,13 +104,13 @@ export default async function ShopDetailPage({ params }: Props) {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">Courses</h2>
+            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">코스 안내</h2>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 border-b border-gray-100">
-                  <th className="text-left py-2 font-medium">Course</th>
+                  <th className="text-left py-2 font-medium">코스</th>
                   <th className="text-center py-2 font-medium">Time</th>
-                  <th className="text-right py-2 font-medium">Price</th>
+                  <th className="text-right py-2 font-medium">가격</th>
                 </tr>
               </thead>
               <tbody>
@@ -138,7 +138,7 @@ export default async function ShopDetailPage({ params }: Props) {
               </Link>
             </div>
             {reviews.length === 0 ? (
-              <p className="text-center py-6 text-gray-400 text-sm">No reviews yet.</p>
+              <p className="text-center py-6 text-gray-400 text-sm">등록된 리뷰가 아직 없습니다.</p>
             ) : (
               <div className="divide-y divide-gray-100">
                 {reviews.map((review: Review) => (
@@ -173,16 +173,16 @@ export default async function ShopDetailPage({ params }: Props) {
             className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors active:scale-95"
           >
             <Phone className="w-4 h-4" />
-            Call now
+            전화 문의
           </a>
 
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-black text-gray-800 mb-3 pb-2 border-b border-gray-200">Business info</h3>
+            <h3 className="text-sm font-black text-gray-800 mb-3 pb-2 border-b border-gray-200">업소 정보</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">Phone</p>
+                  <p className="text-[11px] text-gray-400 mb-0.5">연락처</p>
                   <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-red-600">
                     {shop.phone}
                   </a>
@@ -191,7 +191,7 @@ export default async function ShopDetailPage({ params }: Props) {
               <div className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">Hours</p>
+                  <p className="text-[11px] text-gray-400 mb-0.5">운영 시간</p>
                   <p className="text-gray-800">{shop.hours}</p>
                 </div>
               </div>

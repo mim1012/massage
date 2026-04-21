@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const user = await requireRole('ADMIN', 'OWNER');
     const body = (await request.json()) as { shop?: Shop };
     if (!body.shop) {
-      return Response.json({ error: 'shop is required.' }, { status: 400 });
+      return Response.json({ error: '업소 정보가 필요합니다.' }, { status: 400 });
     }
 
     if (user.role === 'OWNER' && body.shop.ownerId && body.shop.ownerId !== user.id) {

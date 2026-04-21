@@ -9,7 +9,7 @@ import { DISTRICTS, REGIONS, THEMES, type Course, type Shop, type User } from '@
 const DEFAULT_ADMIN: User = {
   id: 'admin',
   email: 'admin@massage.local',
-  name: 'Admin',
+  name: '관리자',
   role: 'ADMIN',
 };
 
@@ -93,15 +93,11 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   }, [id, isNew]);
 
   if (!form) {
-    return <div className="p-10 text-center text-gray-500">Loading shop...</div>;
+    return <div className="p-10 text-center text-gray-500">업소 정보를 불러오는 중...</div>;
   }
 
   if (!isNew && currentUser.role === 'OWNER' && form.ownerId !== currentUser.id) {
-    return (
-      <div className="p-10 text-center font-bold text-red-500">
-        You can only edit shops that belong to your owner account.
-      </div>
-    );
+    return <div className="p-10 text-center font-bold text-red-500">내 계정에 연결된 업소만 수정할 수 있습니다.</div>;
   }
 
   const inputClassName =
@@ -184,18 +180,16 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
         <Link href="/admin/shops" className="rounded p-1 text-gray-600 hover:bg-gray-200">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-xl font-black text-gray-800">{isNew ? 'Create shop' : 'Edit shop'}</h1>
+        <h1 className="text-xl font-black text-gray-800">{isNew ? '업소 등록' : '업소 수정'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-800">
-            Basic info
-          </h2>
+          <h2 className="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-800">기본 정보</h2>
 
           <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClassName}>Shop name</label>
+              <label className={labelClassName}>업소명</label>
               <input
                 type="text"
                 required
@@ -205,7 +199,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               />
             </div>
             <div>
-              <label className={labelClassName}>Slug</label>
+              <label className={labelClassName}>슬러그</label>
               <input
                 type="text"
                 required
@@ -218,7 +212,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
 
           <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className={labelClassName}>Region</label>
+              <label className={labelClassName}>지역</label>
               <select value={form.region} onChange={handleRegionChange} className={inputClassName}>
                 {REGIONS.filter((region) => region.code !== 'all').map((region) => (
                   <option key={region.code} value={region.code}>
@@ -228,14 +222,14 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               </select>
             </div>
             <div>
-              <label className={labelClassName}>District</label>
+              <label className={labelClassName}>세부 지역</label>
               <select
                 value={form.subRegion ?? ''}
                 onChange={handleDistrictChange}
                 className={inputClassName}
                 disabled={currentDistricts.length === 0}
               >
-                <option value="">Select</option>
+                <option value="">선택</option>
                 {currentDistricts
                   .filter((district) => district.code !== 'all')
                   .map((district) => (
@@ -246,7 +240,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               </select>
             </div>
             <div>
-              <label className={labelClassName}>Theme</label>
+              <label className={labelClassName}>테마</label>
               <select value={form.theme} onChange={handleThemeChange} className={inputClassName}>
                 {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
                   <option key={theme.code} value={theme.code}>
@@ -258,7 +252,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <div className="mb-3">
-            <label className={labelClassName}>Tagline</label>
+            <label className={labelClassName}>한줄 소개</label>
             <input
               type="text"
               value={form.tagline}
@@ -268,7 +262,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <div className="mb-3">
-            <label className={labelClassName}>Description</label>
+            <label className={labelClassName}>설명</label>
             <textarea
               rows={4}
               value={form.description}
@@ -279,7 +273,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClassName}>Phone</label>
+              <label className={labelClassName}>연락처</label>
               <input
                 type="text"
                 value={form.phone}
@@ -288,7 +282,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               />
             </div>
             <div>
-              <label className={labelClassName}>Hours</label>
+              <label className={labelClassName}>운영 시간</label>
               <input
                 type="text"
                 value={form.hours}
@@ -299,7 +293,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <div className="mt-3">
-            <label className={labelClassName}>Address</label>
+            <label className={labelClassName}>주소</label>
             <input
               type="text"
               value={form.address}
@@ -309,12 +303,12 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <div className="mt-3">
-            <label className={labelClassName}>Tags</label>
+            <label className={labelClassName}>태그</label>
             <input
               type="text"
               value={tagsStr}
               onChange={(event) => setTagsStr(event.target.value)}
-              placeholder="spa, parking, late-night"
+              placeholder="예: 스파, 주차가능, 심야영업"
               className={inputClassName}
             />
           </div>
@@ -322,7 +316,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
 
         <div className="rounded border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
-            <h2 className="text-sm font-bold text-gray-800">Courses</h2>
+            <h2 className="text-sm font-bold text-gray-800">코스 정보</h2>
             <button
               type="button"
               onClick={() =>
@@ -334,7 +328,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
             >
               <Plus className="h-3 w-3" />
-              Add
+              추가
             </button>
           </div>
 
@@ -343,21 +337,21 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               <div key={`${course.name}-${index}`} className="flex items-start gap-2">
                 <input
                   type="text"
-                  placeholder="Course"
+                  placeholder="코스명"
                   value={course.name}
                   onChange={(event) => updateCourse(index, 'name', event.target.value)}
                   className={`${inputClassName} w-1/3`}
                 />
                 <input
                   type="text"
-                  placeholder="Duration"
+                  placeholder="소요 시간"
                   value={course.duration}
                   onChange={(event) => updateCourse(index, 'duration', event.target.value)}
                   className={`${inputClassName} w-1/4`}
                 />
                 <input
                   type="text"
-                  placeholder="Price"
+                  placeholder="가격"
                   value={course.price}
                   onChange={(event) => updateCourse(index, 'price', event.target.value)}
                   className={`${inputClassName} flex-1`}
@@ -374,9 +368,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               </div>
             ))}
 
-            {courses.length === 0 ? (
-              <p className="text-xs text-gray-400">No courses registered yet.</p>
-            ) : null}
+            {courses.length === 0 ? <p className="text-xs text-gray-400">등록된 코스가 아직 없습니다.</p> : null}
           </div>
         </div>
 
@@ -385,14 +377,14 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
             href="/admin/shops"
             className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
           >
-            Cancel
+            취소
           </Link>
           <button
             type="submit"
             className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
           >
             <Save className="h-4 w-4" />
-            Save
+            저장
           </button>
         </div>
       </form>

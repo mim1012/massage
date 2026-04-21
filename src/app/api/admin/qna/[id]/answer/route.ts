@@ -12,19 +12,19 @@ export async function PATCH(
     const body = (await request.json()) as { answer?: string };
 
     if (!body.answer?.trim()) {
-      return Response.json({ error: 'answer is required.' }, { status: 400 });
+      return Response.json({ error: '답변 내용은 필수입니다.' }, { status: 400 });
     }
 
     const qnaAccess = await getQnaShopOwnerId(id);
     if (!qnaAccess.exists) {
-      return Response.json({ error: 'Q&A entry not found.' }, { status: 404 });
+      return Response.json({ error: 'Q&A 항목을 찾을 수 없습니다.' }, { status: 404 });
     }
 
     assertOwnershipOrAdmin(user, qnaAccess.ownerId);
 
     const qna = await answerQna(id, body.answer, user.id);
     if (!qna) {
-      return Response.json({ error: 'Q&A entry not found.' }, { status: 404 });
+      return Response.json({ error: 'Q&A 항목을 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ qna });

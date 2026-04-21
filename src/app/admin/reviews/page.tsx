@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, MessageSquare, Star, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
+import { Eye, EyeOff, MessageSquare, Star, Trash2 } from 'lucide-react';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
@@ -43,9 +43,7 @@ export default function AdminReviewsPage() {
       return;
     }
 
-    setReviews((current) =>
-      current.map((review) => (review.id === id ? { ...review, isHidden } : review)),
-    );
+    setReviews((current) => current.map((review) => (review.id === id ? { ...review, isHidden } : review)));
   }
 
   async function removeReview(id: string) {
@@ -66,29 +64,20 @@ export default function AdminReviewsPage() {
           <MessageSquare className="h-5 w-5 text-red-600" />
           리뷰 관리
         </h1>
-        <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
-          총 {reviews.length}건
-        </div>
+        <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">총 {reviews.length}건</div>
       </div>
 
-      {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-      ) : null}
+      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
         {reviews.map((review) => (
-          <div
-            key={review.id}
-            className={clsx('flex items-start gap-3 p-4', review.isHidden && 'bg-gray-50 opacity-70')}
-          >
+          <div key={review.id} className={clsx('flex items-start gap-3 p-4', review.isHidden && 'bg-gray-50 opacity-70')}>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2 flex-wrap">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
                 <span className="text-xs text-red-500">{review.shopName}</span>
                 {review.shopRegionLabel ? (
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
-                    {review.shopRegionLabel}
-                  </span>
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">{review.shopRegionLabel}</span>
                 ) : null}
                 <div className="flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((score) => (

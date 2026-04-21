@@ -35,7 +35,7 @@ export default function LoginPage() {
       const result = (await response.json()) as LoginResult;
 
       if (!response.ok || !result.user) {
-        setError(result.error ?? 'Login failed.');
+        setError(result.error ?? '로그인에 실패했습니다.');
         return;
       }
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
               )}
             >
               <User className="w-4 h-4" />
-              User
+              일반 회원
             </button>
             <button
               onClick={() => {
@@ -88,7 +88,7 @@ export default function LoginPage() {
               )}
             >
               <Store className="w-4 h-4" />
-              Owner
+              업주 회원
             </button>
           </div>
 
@@ -98,14 +98,14 @@ export default function LoginPage() {
                 <span className="text-white font-black text-lg">M</span>
               </div>
               <h1 className="text-lg font-black text-gray-800 mb-1">
-                {activeTab === 'user' ? 'User Login' : 'Owner Login'}
+                {activeTab === 'user' ? '일반 회원 로그인' : '업주 회원 로그인'}
               </h1>
               <p className="text-xs text-gray-400">
-                Demo accounts:
+                테스트 계정:
                 {' '}
                 <code>admin@massage.local / admin1234</code>
                 {' '}
-                or
+                또는
                 {' '}
                 <code>owner@massage.local / owner1234</code>
               </p>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, email: event.target.value }))
                 }
-                placeholder="Email"
+                placeholder="이메일"
                 className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
               />
               <div className="relative">
@@ -130,7 +130,7 @@ export default function LoginPage() {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }
-                  placeholder="Password"
+                  placeholder="비밀번호"
                   className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500 pr-10"
                 />
                 <button
@@ -146,17 +146,17 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full py-2.5 bg-red-600 text-white font-bold text-sm rounded hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? '로그인 중...' : '로그인'}
               </button>
               {error && <p className="text-xs text-red-600">{error}</p>}
             </form>
 
             <div className="mt-4 flex justify-between items-center text-xs">
               <Link href="/auth/register" className="text-red-600 font-bold hover:underline">
-                Create account
+                회원가입
               </Link>
               <Link href="/admin" className="text-gray-500 hover:text-red-600">
-                Admin
+                관리자
               </Link>
             </div>
           </div>

@@ -36,7 +36,7 @@ export async function PATCH(request: Request) {
     ];
 
     if (requiredFields.some((field) => !body[field]?.trim())) {
-      return Response.json({ error: 'all site settings fields are required.' }, { status: 400 });
+      return Response.json({ error: '사이트 설정의 모든 항목을 입력해 주세요.' }, { status: 400 });
     }
 
     return Response.json(

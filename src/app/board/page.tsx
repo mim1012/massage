@@ -30,7 +30,7 @@ export default async function BoardPage() {
           { href: '/board/qna', label: '문의답변', count: summary.qna, badge: 'Q' },
           { href: '/board/review', label: '후기', count: summary.reviews, badge: 'R' },
           { href: '/board/partnership', label: '제휴문의', count: 0, badge: 'P' },
-        ].map((item: { href: string; label: string; count: number; badge: string }) => (
+        ].map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -91,9 +91,7 @@ export default async function BoardPage() {
                 </span>
                 <p className="text-sm text-gray-700">Q. {entry.question}</p>
               </div>
-              {entry.answer ? (
-                <p className="ml-3 border-l-2 border-red-200 pl-10 text-xs text-gray-500">A. {entry.answer}</p>
-              ) : null}
+              {entry.answer ? <p className="ml-3 border-l-2 border-red-200 pl-10 text-xs text-gray-500">A. {entry.answer}</p> : null}
             </div>
           ))}
         </div>

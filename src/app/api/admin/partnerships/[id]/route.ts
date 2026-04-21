@@ -14,12 +14,12 @@ export async function PATCH(request: Request, context: Context) {
     const body = (await request.json()) as { status?: PartnershipInquiry['status'] };
 
     if (!body.status || !['pending', 'contacted', 'completed'].includes(body.status)) {
-      return Response.json({ error: 'valid status is required.' }, { status: 400 });
+      return Response.json({ error: '유효한 상태값이 필요합니다.' }, { status: 400 });
     }
 
     const inquiry = await updatePartnershipInquiryStatus(id, body.status);
     if (!inquiry) {
-      return Response.json({ error: 'inquiry not found.' }, { status: 404 });
+      return Response.json({ error: '제휴 문의를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ inquiry });
@@ -34,7 +34,7 @@ export async function DELETE(_: Request, context: Context) {
     const { id } = await context.params;
     const deleted = await deletePartnershipInquiry(id);
     if (!deleted) {
-      return Response.json({ error: 'inquiry not found.' }, { status: 404 });
+      return Response.json({ error: '제휴 문의를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return new Response(null, { status: 204 });

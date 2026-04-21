@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     };
 
     if (!body.email || !body.password) {
-      return Response.json({ error: 'Missing required fields.' }, { status: 400 });
+      return Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 });
     }
 
     const result = await login({

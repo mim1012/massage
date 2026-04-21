@@ -11,12 +11,12 @@ export async function PATCH(
     const { id } = await context.params;
     const body = (await request.json()) as { isPremium?: boolean; premiumOrder?: number };
     if (typeof body.isPremium !== 'boolean') {
-      return Response.json({ error: 'isPremium must be provided.' }, { status: 400 });
+      return Response.json({ error: '프리미엄 여부 값이 필요합니다.' }, { status: 400 });
     }
 
     const shop = await updateShopPremium(id, body.isPremium, body.premiumOrder);
     if (!shop) {
-      return Response.json({ error: 'Shop not found.' }, { status: 404 });
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ shop });

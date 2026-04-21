@@ -26,7 +26,7 @@ export default function ApprovalsPage() {
       const result = (await response.json()) as ApprovalResponse;
 
       if (!response.ok) {
-        setError(result.error ?? 'Failed to load approvals.');
+        setError(result.error ?? '승인 요청 목록을 불러오지 못했습니다.');
         setLoading(false);
         return;
       }
@@ -46,7 +46,7 @@ export default function ApprovalsPage() {
     const result = (await response.json()) as { user?: User; error?: string };
 
     if (!response.ok || !result.user) {
-      setError(result.error ?? 'Failed to update status.');
+      setError(result.error ?? '상태를 변경하지 못했습니다.');
       return;
     }
 
@@ -58,19 +58,19 @@ export default function ApprovalsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
           <UserCheck className="w-5 h-5 text-red-600" />
-          Owner approvals
+          업주 승인 관리
         </h1>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-          Pending requests ({pendingUsers.length})
+          승인 대기 요청 ({pendingUsers.length})
         </h2>
-        {loading && <div className="text-sm text-gray-500 mb-4">Loading approvals...</div>}
+        {loading && <div className="text-sm text-gray-500 mb-4">승인 요청을 불러오는 중...</div>}
         {error && <div className="text-sm text-red-600 mb-4">{error}</div>}
 
         {pendingUsers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No pending owner requests.</div>
+          <div className="text-center py-8 text-gray-500">대기 중인 업주 요청이 없습니다.</div>
         ) : (
           <div className="grid gap-4">
             {pendingUsers.map((user) => (
@@ -82,7 +82,7 @@ export default function ApprovalsPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-lg text-gray-800">{user.businessName}</span>
                     <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-bold">
-                      Pending
+                      대기 중
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
@@ -110,14 +110,14 @@ export default function ApprovalsPage() {
                     className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors"
                   >
                     <Check className="w-4 h-4" />
-                    Approve
+                    승인
                   </button>
                   <button
                     onClick={() => void updateStatus(user.id, 'reject')}
                     className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-bold text-sm transition-colors"
                   >
                     <X className="w-4 h-4" />
-                    Reject
+                    반려
                   </button>
                 </div>
               </div>
@@ -127,18 +127,18 @@ export default function ApprovalsPage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Processed requests</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">처리 완료 요청</h2>
         {processedUsers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No processed requests yet.</div>
+          <div className="text-center py-8 text-gray-500">아직 처리된 요청이 없습니다.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left whitespace-nowrap">
               <thead className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
                 <tr>
-                  <th className="px-4 py-2 font-bold text-center">Status</th>
-                  <th className="px-4 py-2 font-bold">Business</th>
-                  <th className="px-4 py-2 font-bold">Email</th>
-                  <th className="px-4 py-2 font-bold">Phone</th>
+                  <th className="px-4 py-2 font-bold text-center">상태</th>
+                  <th className="px-4 py-2 font-bold">업소명</th>
+                  <th className="px-4 py-2 font-bold">이메일</th>
+                  <th className="px-4 py-2 font-bold">연락처</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -153,7 +153,7 @@ export default function ApprovalsPage() {
                             : 'bg-red-100 text-red-700',
                         )}
                       >
-                        {user.status === 'approved' ? 'Approved' : 'Rejected'}
+                        {user.status === 'approved' ? '승인' : '반려'}
                       </span>
                     </td>
                     <td className="px-4 py-2 font-bold text-gray-800">{user.businessName}</td>

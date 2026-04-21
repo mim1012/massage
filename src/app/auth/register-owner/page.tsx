@@ -27,7 +27,7 @@ export default function RegisterOwnerPage() {
     setError(null);
 
     if (formData.password !== formData.passwordConfirm) {
-      setError('Passwords do not match.');
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
 
@@ -48,7 +48,7 @@ export default function RegisterOwnerPage() {
     setLoading(false);
 
     if (!response.ok) {
-      setError(result.error ?? 'Owner registration failed.');
+      setError(result.error ?? '업주 회원 가입 요청에 실패했습니다.');
       return;
     }
 
@@ -67,17 +67,16 @@ export default function RegisterOwnerPage() {
             <Store className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Owner request submitted</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">업주 가입 요청이 접수되었습니다</h2>
             <p className="text-gray-600">
-              Your account is now pending admin approval. Once approved, you can log in and manage
-              your shop.
+              현재 관리자 승인 대기 상태입니다. 승인되면 로그인 후 업소 정보를 관리할 수 있습니다.
             </p>
           </div>
           <Link
             href="/"
             className="inline-block w-full bg-gray-800 text-white font-bold py-3 rounded-lg hover:bg-gray-900 transition-colors"
           >
-            Back to home
+            홈으로 돌아가기
           </Link>
         </div>
       </div>
@@ -94,15 +93,15 @@ export default function RegisterOwnerPage() {
           >
             <span className="text-white font-black text-xl">M</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-800">Owner Registration</h1>
+          <h1 className="text-2xl font-bold text-gray-800">업주 회원 가입</h1>
           <p className="text-sm text-gray-500 mt-2">
-            Create an owner account and wait for admin approval.
+            업주 계정을 생성하고 관리자 승인을 기다려 주세요.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -119,7 +118,7 @@ export default function RegisterOwnerPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -129,12 +128,12 @@ export default function RegisterOwnerPage() {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
-                  placeholder="Password"
+                  placeholder="비밀번호"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -144,14 +143,14 @@ export default function RegisterOwnerPage() {
                   value={formData.passwordConfirm}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
-                  placeholder="Confirm"
+                  placeholder="비밀번호 확인"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Owner name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">담당자 이름</label>
             <div className="relative">
               <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -161,13 +160,13 @@ export default function RegisterOwnerPage() {
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
-                placeholder="Owner name"
+                placeholder="담당자 이름"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">업소명</label>
             <div className="relative">
               <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -177,13 +176,13 @@ export default function RegisterOwnerPage() {
                 value={formData.businessName}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
-                placeholder="Healing Spa"
+                placeholder="예: 힐링 스파"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
             <div className="relative">
               <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -199,7 +198,7 @@ export default function RegisterOwnerPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -219,16 +218,16 @@ export default function RegisterOwnerPage() {
             disabled={loading}
             className="w-full bg-red-600 text-white font-bold py-3 rounded-lg mt-6 hover:bg-red-700 transition-colors disabled:opacity-60"
           >
-            {loading ? 'Submitting...' : 'Request owner account'}
+            {loading ? '제출 중...' : '업주 계정 승인 요청'}
           </button>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-500">
-          Already have an account?
+          이미 계정이 있으신가요?
           {' '}
           <Link href="/auth/login" className="text-red-600 font-medium hover:underline">
-            Login
+            로그인
           </Link>
         </div>
       </div>

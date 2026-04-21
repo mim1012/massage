@@ -25,12 +25,12 @@ export default function AdminShopsPage() {
       const response = await fetch('/api/admin/shops', { cache: 'no-store' });
       const result = (await response.json()) as { shops?: AdminShopListItem[]; error?: string };
       if (!response.ok || !result.shops) {
-        throw new Error(result.error ?? 'Failed to load shops.');
+        throw new Error(result.error ?? '업소 목록을 불러오지 못했습니다.');
       }
 
       setShops(result.shops);
     } catch (loadError) {
-      setError('업소 목록을 불러오지 못했습니다.');
+      setError(loadError instanceof Error ? loadError.message : '업소 목록을 불러오지 못했습니다.');
       console.error(loadError);
     } finally {
       setLoading(false);
@@ -48,12 +48,12 @@ export default function AdminShopsPage() {
       });
       const result = (await response.json()) as { shop?: AdminShopListItem; error?: string };
       if (!response.ok || !result.shop) {
-        throw new Error(result.error ?? 'Failed to update shop visibility.');
+        throw new Error(result.error ?? '업소 노출 상태를 변경하지 못했습니다.');
       }
 
       setShops((current) => current.map((item) => (item.id === shop.id ? result.shop! : item)));
     } catch (updateError) {
-      setError('업소 노출 상태를 변경하지 못했습니다.');
+      setError(updateError instanceof Error ? updateError.message : '업소 노출 상태를 변경하지 못했습니다.');
       console.error(updateError);
     }
   }
@@ -72,12 +72,12 @@ export default function AdminShopsPage() {
       });
       const result = (await response.json()) as { shop?: AdminShopListItem; error?: string };
       if (!response.ok || !result.shop) {
-        throw new Error(result.error ?? 'Failed to update shop premium state.');
+        throw new Error(result.error ?? '프리미엄 상태를 변경하지 못했습니다.');
       }
 
       await loadShops();
     } catch (updateError) {
-      setError('프리미엄 상태를 변경하지 못했습니다.');
+      setError(updateError instanceof Error ? updateError.message : '프리미엄 상태를 변경하지 못했습니다.');
       console.error(updateError);
     }
   }
@@ -136,7 +136,7 @@ export default function AdminShopsPage() {
         </select>
       </div>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="overflow-x-auto rounded border border-gray-200 bg-white">
         <table className="w-full whitespace-nowrap text-left text-sm">
@@ -203,8 +203,8 @@ export default function AdminShopsPage() {
               ))}
           </tbody>
         </table>
-        {loading && <div className="py-6 text-center text-sm text-gray-400">업소 목록을 불러오는 중입니다.</div>}
-        {!loading && filteredShops.length === 0 && <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div>}
+        {loading ? <div className="py-6 text-center text-sm text-gray-400">업소 목록을 불러오는 중입니다.</div> : null}
+        {!loading && filteredShops.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div> : null}
       </div>
     </div>
   );

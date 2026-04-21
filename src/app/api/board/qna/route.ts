@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   };
 
   if (!body.question?.trim() || !body.authorName?.trim()) {
-    return Response.json({ error: 'question and authorName are required.' }, { status: 400 });
+    return Response.json({ error: '질문 내용과 작성자명은 필수입니다.' }, { status: 400 });
   }
 
   return Response.json(

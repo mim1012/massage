@@ -23,13 +23,13 @@ export default function AdminPremiumPage() {
       const response = await fetch('/api/admin/premium', { cache: 'no-store' });
       const result = (await response.json()) as PremiumBoardData & { error?: string };
       if (!response.ok || !('premiumShops' in result) || !('availableShops' in result)) {
-        throw new Error(result.error ?? 'Failed to load premium board.');
+        throw new Error(result.error ?? '프리미엄 배너 목록을 불러오지 못했습니다.');
       }
 
       setPremiumShops(result.premiumShops);
       setAvailableShops(result.availableShops);
     } catch (loadError) {
-      setError('프리미엄 배너 목록을 불러오지 못했습니다.');
+      setError(loadError instanceof Error ? loadError.message : '프리미엄 배너 목록을 불러오지 못했습니다.');
       console.error(loadError);
     } finally {
       setLoading(false);
@@ -83,13 +83,13 @@ export default function AdminPremiumPage() {
       });
       const result = (await response.json()) as PremiumBoardData & { error?: string };
       if (!response.ok || !('premiumShops' in result) || !('availableShops' in result)) {
-        throw new Error(result.error ?? 'Failed to save premium order.');
+        throw new Error(result.error ?? '프리미엄 순서를 저장하지 못했습니다.');
       }
 
       setPremiumShops(result.premiumShops);
       setAvailableShops(result.availableShops);
     } catch (saveError) {
-      setError('프리미엄 순서를 저장하지 못했습니다.');
+      setError(saveError instanceof Error ? saveError.message : '프리미엄 순서를 저장하지 못했습니다.');
       console.error(saveError);
     } finally {
       setSaving(false);
@@ -115,10 +115,10 @@ export default function AdminPremiumPage() {
 
       <div className="flex items-start gap-1.5 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>메인 화면 상단에 노출되는 프리미엄 업소의 순서를 관리합니다. 저장 후에만 실제 노출 순서에 반영됩니다.</p>
+        <p>메인 화면 상단에 노출되는 프리미엄 업소의 순서를 관리합니다. 저장 후 실제 노출 순서에 반영됩니다.</p>
       </div>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="rounded border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2.5">
@@ -166,9 +166,9 @@ export default function AdminPremiumPage() {
                 </button>
               </div>
             ))}
-            {premiumShops.length === 0 && (
+            {premiumShops.length === 0 ? (
               <div className="py-6 text-center text-sm text-gray-400">선택된 프리미엄 업소가 없습니다.</div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
@@ -192,9 +192,9 @@ export default function AdminPremiumPage() {
               </button>
             </div>
           ))}
-          {!loading && availableShops.length === 0 && (
+          {!loading && availableShops.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">추가 가능한 일반 업소가 없습니다.</div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

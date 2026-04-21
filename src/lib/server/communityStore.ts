@@ -9,6 +9,10 @@ import {
 import type { HomeSeoContent, Notice, PartnershipInquiry, QnA, Review, Shop, SiteSettings, UserRole } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
+import {
+  normalizeHomeSeo,
+  normalizeSiteSettings,
+} from '@/lib/site-content-defaults';
 import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
@@ -103,7 +107,7 @@ function mapPartnershipStatus(status: PartnershipInquiry['status']) {
 }
 
 function mapSiteSettings(record: DbSiteSettings) {
-  const siteSettings: SiteSettings = {
+  const siteSettings = normalizeSiteSettings({
     siteName: record.siteName,
     siteTitle: record.siteTitle,
     siteDescription: record.siteDescription,
@@ -111,16 +115,16 @@ function mapSiteSettings(record: DbSiteSettings) {
     heroSubText: record.heroSubText,
     contactPhone: record.contactPhone,
     footerInfo: record.footerInfo,
-  };
+  });
 
-  const homeSeo: HomeSeoContent = {
+  const homeSeo = normalizeHomeSeo({
     section1Title: record.seoSection1Title,
     section1Content: record.seoSection1Content,
     section2Title: record.seoSection2Title,
     section2Content: record.seoSection2Content,
     section3Title: record.seoSection3Title,
     section3Content: record.seoSection3Content,
-  };
+  });
 
   return { siteSettings, homeSeo };
 }
@@ -552,7 +556,45 @@ export async function getSiteContent() {
     return null;
   }
 
-  return mapSiteSettings(record);
+  const content = mapSiteSettings(record);
+
+  const hasLegacyContent =
+    record.siteName !== content.siteSettings.siteName ||
+    record.siteTitle !== content.siteSettings.siteTitle ||
+    record.siteDescription !== content.siteSettings.siteDescription ||
+    record.heroMainText !== content.siteSettings.heroMainText ||
+    record.heroSubText !== content.siteSettings.heroSubText ||
+    record.contactPhone !== content.siteSettings.contactPhone ||
+    record.footerInfo !== content.siteSettings.footerInfo ||
+    record.seoSection1Title !== content.homeSeo.section1Title ||
+    record.seoSection1Content !== content.homeSeo.section1Content ||
+    record.seoSection2Title !== content.homeSeo.section2Title ||
+    record.seoSection2Content !== content.homeSeo.section2Content ||
+    record.seoSection3Title !== content.homeSeo.section3Title ||
+    record.seoSection3Content !== content.homeSeo.section3Content;
+
+  if (hasLegacyContent) {
+    await prisma.siteSettings.update({
+      where: { id: SITE_SETTINGS_ID },
+      data: {
+        siteName: content.siteSettings.siteName,
+        siteTitle: content.siteSettings.siteTitle,
+        siteDescription: content.siteSettings.siteDescription,
+        heroMainText: content.siteSettings.heroMainText,
+        heroSubText: content.siteSettings.heroSubText,
+        contactPhone: content.siteSettings.contactPhone,
+        footerInfo: content.siteSettings.footerInfo,
+        seoSection1Title: content.homeSeo.section1Title,
+        seoSection1Content: content.homeSeo.section1Content,
+        seoSection2Title: content.homeSeo.section2Title,
+        seoSection2Content: content.homeSeo.section2Content,
+        seoSection3Title: content.homeSeo.section3Title,
+        seoSection3Content: content.homeSeo.section3Content,
+      },
+    });
+  }
+
+  return content;
 }
 
 export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {

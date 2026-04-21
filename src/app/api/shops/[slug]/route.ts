@@ -7,7 +7,7 @@ export async function GET(
   const { slug } = await context.params;
   const data = await getShopBySlug(slug);
   if (!data) {
-    return Response.json({ error: 'Shop not found.' }, { status: 404 });
+    return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
   }
 
   return Response.json(data);

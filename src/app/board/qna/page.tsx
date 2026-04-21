@@ -32,12 +32,12 @@ function QnaContent() {
       const response = await fetch(`/api/board/qna${query}`, { cache: 'no-store' });
       const result = (await response.json()) as { qna?: QnA[]; error?: string };
       if (!response.ok || !result.qna) {
-        throw new Error(result.error ?? 'Failed to load Q&A.');
+        throw new Error(result.error ?? 'Q&A 목록을 불러오지 못했습니다.');
       }
 
       setEntries(result.qna);
     } catch (loadError) {
-      setError('Q&A 목록을 불러오지 못했습니다.');
+      setError(loadError instanceof Error ? loadError.message : 'Q&A 목록을 불러오지 못했습니다.');
       console.error(loadError);
     } finally {
       setLoading(false);
@@ -58,7 +58,7 @@ function QnaContent() {
       });
       const result = (await response.json()) as { qna?: QnA; error?: string };
       if (!response.ok || !result.qna) {
-        throw new Error(result.error ?? 'Failed to submit Q&A.');
+        throw new Error(result.error ?? 'Q&A를 등록하지 못했습니다.');
       }
 
       setFormData({ question: '', authorName: '' });
@@ -66,7 +66,7 @@ function QnaContent() {
       setSubmitted(true);
       await loadQna(shopId);
     } catch (submitError) {
-      setError('질문을 등록하지 못했습니다.');
+      setError(submitError instanceof Error ? submitError.message : '질문을 등록하지 못했습니다.');
       console.error(submitError);
     } finally {
       setSubmitting(false);
@@ -77,11 +77,11 @@ function QnaContent() {
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
         <Link href="/" className="hover:text-red-600">
-          Home
+          홈
         </Link>
         <ChevronRight className="h-3 w-3" />
         <Link href="/board" className="hover:text-red-600">
-          Board
+          게시판
         </Link>
         <ChevronRight className="h-3 w-3" />
         <span className="text-gray-800">Q&amp;A</span>
@@ -97,21 +97,21 @@ function QnaContent() {
         </button>
       </div>
 
-      {showForm && (
+      {showForm ? (
         <form onSubmit={handleSubmit} className="mb-3 space-y-3 rounded border border-red-200 bg-white p-4">
           <input
             type="text"
             required
             value={formData.authorName}
             onChange={(event) => setFormData((current) => ({ ...current, authorName: event.target.value }))}
-            placeholder="닉네임"
+            placeholder="작성자명"
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
           />
           <textarea
             required
             value={formData.question}
             onChange={(event) => setFormData((current) => ({ ...current, question: event.target.value }))}
-            placeholder="질문 내용을 입력하세요"
+            placeholder="질문 내용을 입력해 주세요."
             rows={3}
             className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
           />
@@ -123,20 +123,20 @@ function QnaContent() {
             {submitting ? '등록 중' : '등록'}
           </button>
         </form>
-      )}
+      ) : null}
 
-      {submitted && (
+      {submitted ? (
         <div className="mb-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
           질문이 등록되었습니다.
         </div>
-      )}
-      {error && <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+      ) : null}
+      {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div> : null}
 
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
         {loading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Q&A 목록을 불러오는 중입니다.</p>
+          <p className="py-8 text-center text-sm text-gray-400">Q&amp;A 목록을 불러오는 중입니다.</p>
         ) : entries.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">등록된 Q&A가 없습니다.</p>
+          <p className="py-8 text-center text-sm text-gray-400">등록된 Q&amp;A가 없습니다.</p>
         ) : (
           entries.map((entry, index) => (
             <div key={entry.id} className={index < entries.length - 1 ? 'border-b border-gray-100' : ''}>
@@ -165,7 +165,7 @@ function QnaContent() {
                   <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
                 )}
               </button>
-              {openId === entry.id && (
+              {openId === entry.id ? (
                 <div className="px-3 pb-3">
                   {entry.answer ? (
                     <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
@@ -178,7 +178,7 @@ function QnaContent() {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
           ))
         )}

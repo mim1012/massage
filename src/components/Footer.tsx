@@ -9,16 +9,22 @@ export default function Footer() {
   return (
     <footer className="mt-6 w-full border-t border-gray-200 bg-white pb-16 md:pb-0">
       <div className="border-b border-gray-200 bg-[#f8f8f8]">
-        <div className="max-w-[1400px] mx-auto flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-gray-600">
-          <Link href="/ad" className="hover:text-gray-900">광고문의</Link>
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 text-[13px] font-medium text-gray-600">
+          <Link href="/ad" className="hover:text-gray-900">
+            광고문의
+          </Link>
           <span className="text-gray-300">|</span>
-          <Link href="/terms" className="hover:text-gray-900">이용약관</Link>
+          <Link href="/terms" className="hover:text-gray-900">
+            이용약관
+          </Link>
           <span className="text-gray-300">|</span>
-          <Link href="/privacy" className="font-bold hover:text-gray-900">개인정보처리방침</Link>
+          <Link href="/privacy" className="font-bold hover:text-gray-900">
+            개인정보처리방침
+          </Link>
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-4 py-8">
+      <div className="mx-auto max-w-[1400px] px-4 py-8">
         <div className="flex flex-col justify-between gap-8 md:flex-row">
           <div className="flex-1 space-y-4">
             <div className="mb-2 flex items-center gap-2">
@@ -31,9 +37,9 @@ export default function Footer() {
               </div>
             </div>
 
-            <div className="text-[12px] font-medium uppercase leading-relaxed tracking-tight text-gray-500">
+            <div className="text-[12px] leading-relaxed tracking-tight text-gray-500">
               <p>{siteSettings.footerInfo}</p>
-              <p className="mt-4 font-normal">Copyright 2018 {siteSettings.siteName}. All rights reserved.</p>
+              <p className="mt-4">Copyright 2018 {siteSettings.siteName}. 모든 권리 보유.</p>
             </div>
           </div>
 
@@ -44,9 +50,9 @@ export default function Footer() {
                 {siteSettings.contactPhone}
               </div>
               <div className="space-y-1.5 text-[12px] font-medium tracking-tight text-gray-500">
-                <p>평일 : 09:00 - 18:00</p>
-                <p>점심시간 : 12:00 - 13:30</p>
-                <p>E-MAIL: help@beaulead.co.kr</p>
+                <p>운영 시간: 09:00 - 18:00</p>
+                <p>점심 시간: 12:00 - 13:30</p>
+                <p>이메일: help@beaulead.co.kr</p>
               </div>
             </div>
           </div>

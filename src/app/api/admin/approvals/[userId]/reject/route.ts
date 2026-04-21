@@ -11,7 +11,7 @@ export async function PATCH(
     const { userId } = await context.params;
     const user = await updateOwnerStatus(userId, 'rejected');
     if (!user) {
-      return Response.json({ error: 'Owner not found.' }, { status: 404 });
+      return Response.json({ error: '업주 계정을 찾을 수 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ user });

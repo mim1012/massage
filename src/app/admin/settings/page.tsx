@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Globe, Info, Layout, Save, Settings } from 'lucide-react';
 import clsx from 'clsx';
+import { Globe, Info, Layout, Save, Settings } from 'lucide-react';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
 
@@ -60,6 +60,27 @@ export default function AdminSettingsPage() {
       setSaving(false);
     }
   }
+
+  const sections = [
+    {
+      title: seoForm.section1Title,
+      content: seoForm.section1Content,
+      setTitle: (value: string) => setSeoForm((current) => ({ ...current, section1Title: value })),
+      setContent: (value: string) => setSeoForm((current) => ({ ...current, section1Content: value })),
+    },
+    {
+      title: seoForm.section2Title,
+      content: seoForm.section2Content,
+      setTitle: (value: string) => setSeoForm((current) => ({ ...current, section2Title: value })),
+      setContent: (value: string) => setSeoForm((current) => ({ ...current, section2Content: value })),
+    },
+    {
+      title: seoForm.section3Title,
+      content: seoForm.section3Content,
+      setTitle: (value: string) => setSeoForm((current) => ({ ...current, section3Title: value })),
+      setContent: (value: string) => setSeoForm((current) => ({ ...current, section3Content: value })),
+    },
+  ];
 
   return (
     <div className="max-w-[1200px] space-y-8 pb-10">
@@ -121,7 +142,9 @@ export default function AdminSettingsPage() {
                     <label className="mb-1.5 block text-xs font-bold text-gray-700">사이트 설명</label>
                     <input
                       value={siteForm.siteDescription}
-                      onChange={(event) => setSiteForm((current) => ({ ...current, siteDescription: event.target.value }))}
+                      onChange={(event) =>
+                        setSiteForm((current) => ({ ...current, siteDescription: event.target.value }))
+                      }
                       className={inputClassName}
                     />
                   </div>
@@ -138,7 +161,9 @@ export default function AdminSettingsPage() {
                   <label className="mb-1.5 block text-xs font-bold text-gray-700">메인 문구</label>
                   <input
                     value={siteForm.heroMainText}
-                    onChange={(event) => setSiteForm((current) => ({ ...current, heroMainText: event.target.value }))}
+                    onChange={(event) =>
+                      setSiteForm((current) => ({ ...current, heroMainText: event.target.value }))
+                    }
                     className={inputClassName}
                   />
                 </div>
@@ -188,26 +213,7 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {[
-            {
-              title: seoForm.section1Title,
-              content: seoForm.section1Content,
-              setTitle: (value: string) => setSeoForm((current) => ({ ...current, section1Title: value })),
-              setContent: (value: string) => setSeoForm((current) => ({ ...current, section1Content: value })),
-            },
-            {
-              title: seoForm.section2Title,
-              content: seoForm.section2Content,
-              setTitle: (value: string) => setSeoForm((current) => ({ ...current, section2Title: value })),
-              setContent: (value: string) => setSeoForm((current) => ({ ...current, section2Content: value })),
-            },
-            {
-              title: seoForm.section3Title,
-              content: seoForm.section3Content,
-              setTitle: (value: string) => setSeoForm((current) => ({ ...current, section3Title: value })),
-              setContent: (value: string) => setSeoForm((current) => ({ ...current, section3Content: value })),
-            },
-          ].map((section, index) => (
+          {sections.map((section, index) => (
             <div key={index} className="rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-blue-600">
                 블록 {index + 1}
@@ -235,8 +241,8 @@ export default function AdminSettingsPage() {
       <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs text-blue-700">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
         <p>
-          메인 배너와 홈페이지 SEO 문구를 관리자 화면에서 바로 수정할 수 있습니다. 저장한 값은
-          사이트 전역에 반영됩니다.
+          메인 배너와 홈페이지 SEO 문구는 관리자 화면에서 바로 수정할 수 있습니다. 저장한 내용은 사이트 전역에
+          즉시 반영됩니다.
         </p>
       </div>
     </div>

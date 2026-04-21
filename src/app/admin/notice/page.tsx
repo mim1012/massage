@@ -26,12 +26,12 @@ export default function AdminNoticePage() {
       const response = await fetch('/api/admin/notices', { cache: 'no-store' });
       const result = (await response.json()) as { notices?: Notice[]; error?: string };
       if (!response.ok || !result.notices) {
-        throw new Error(result.error ?? 'Failed to load notices.');
+        throw new Error(result.error ?? '공지 목록을 불러오지 못했습니다.');
       }
 
       setNotices(result.notices);
     } catch (loadError) {
-      setError('공지 목록을 불러오지 못했습니다.');
+      setError(loadError instanceof Error ? loadError.message : '공지 목록을 불러오지 못했습니다.');
       console.error(loadError);
     } finally {
       setLoading(false);
@@ -66,7 +66,7 @@ export default function AdminNoticePage() {
 
       const result = response.status === 204 ? {} : ((await response.json()) as { error?: string });
       if (!response.ok) {
-        throw new Error(result.error ?? 'Failed to save notice.');
+        throw new Error(result.error ?? '공지를 저장하지 못했습니다.');
       }
 
       await loadNotices();
@@ -74,7 +74,7 @@ export default function AdminNoticePage() {
       setEditing(null);
       setForm({ title: '', content: '', isPinned: false });
     } catch (saveError) {
-      setError('공지를 저장하지 못했습니다.');
+      setError(saveError instanceof Error ? saveError.message : '공지를 저장하지 못했습니다.');
       console.error(saveError);
     } finally {
       setSaving(false);
@@ -88,12 +88,12 @@ export default function AdminNoticePage() {
       const response = await fetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
       if (!response.ok && response.status !== 204) {
         const result = (await response.json()) as { error?: string };
-        throw new Error(result.error ?? 'Failed to delete notice.');
+        throw new Error(result.error ?? '공지를 삭제하지 못했습니다.');
       }
 
       setNotices((current) => current.filter((notice) => notice.id !== id));
     } catch (deleteError) {
-      setError('공지를 삭제하지 못했습니다.');
+      setError(deleteError instanceof Error ? deleteError.message : '공지를 삭제하지 못했습니다.');
       console.error(deleteError);
     }
   }
@@ -114,7 +114,7 @@ export default function AdminNoticePage() {
         </button>
       </div>
 
-      {showForm && (
+      {showForm ? (
         <form onSubmit={handleSubmit} className="rounded border border-red-300 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
             <h2 className="text-sm font-bold text-gray-800">{editing ? '공지 수정' : '새 공지 작성'}</h2>
@@ -161,9 +161,9 @@ export default function AdminNoticePage() {
             </div>
           </div>
         </form>
-      )}
+      ) : null}
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
         {loading ? (
@@ -173,11 +173,11 @@ export default function AdminNoticePage() {
             {notices.map((notice) => (
               <div key={notice.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
                 <div className="flex min-w-0 items-center gap-2">
-                  {notice.isPinned && (
+                  {notice.isPinned ? (
                     <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
                       고정
                     </span>
-                  )}
+                  ) : null}
                   <span className="truncate text-sm font-semibold text-gray-800">{notice.title}</span>
                   <span className="ml-2 shrink-0 text-[11px] text-gray-400">{formatDate(notice.createdAt)}</span>
                 </div>
@@ -197,7 +197,7 @@ export default function AdminNoticePage() {
                 </div>
               </div>
             ))}
-            {notices.length === 0 && <div className="p-6 text-center text-sm text-gray-400">등록된 공지가 없습니다.</div>}
+            {notices.length === 0 ? <div className="p-6 text-center text-sm text-gray-400">등록된 공지가 없습니다.</div> : null}
           </div>
         )}
       </div>

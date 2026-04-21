@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle, MessageCircle, Send } from 'lucide-react';
 import clsx from 'clsx';
+import { CheckCircle, MessageCircle, Send } from 'lucide-react';
 import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 const TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'done', label: 'Answered' },
+  { key: 'all', label: '전체' },
+  { key: 'pending', label: '대기' },
+  { key: 'done', label: '답변 완료' },
 ] satisfies Array<{ key: 'all' | 'pending' | 'done'; label: string }>;
 
 export default function AdminQnAPage() {
@@ -59,7 +59,7 @@ export default function AdminQnAPage() {
     <div className="max-w-[800px] space-y-4">
       <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
         <MessageCircle className="h-5 w-5 text-red-600" />
-        Q&amp;A Reply Management
+        Q&amp;A 답변 관리
       </h1>
 
       <div className="mb-4 flex gap-2 border-b border-gray-200">
@@ -89,16 +89,14 @@ export default function AdminQnAPage() {
                   qna.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600',
                 )}
               >
-                {qna.isAnswered ? 'Done' : 'Open'}
+                {qna.isAnswered ? '완료' : '대기'}
               </span>
               <div className="flex-1">
                 <p className="mb-1 font-semibold leading-snug text-gray-800">Q. {qna.question}</p>
                 <div className="flex gap-2 text-[11px] text-gray-400">
                   <span>{qna.authorName}</span>
                   <span>{formatDate(qna.createdAt)}</span>
-                  {qna.shopId ? (
-                    <span className="rounded bg-red-50 px-1 font-bold text-red-500">Shop</span>
-                  ) : null}
+                  {qna.shopId ? <span className="rounded bg-red-50 px-1 font-bold text-red-500">업소 문의</span> : null}
                 </div>
               </div>
             </div>
@@ -108,7 +106,7 @@ export default function AdminQnAPage() {
                 <div className="text-gray-700">
                   <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-green-600">
                     <CheckCircle className="h-3.5 w-3.5" />
-                    Answer
+                    답변 완료
                   </div>
                   <p className="text-xs leading-relaxed">A. {qna.answer}</p>
                 </div>
@@ -118,7 +116,7 @@ export default function AdminQnAPage() {
                     rows={3}
                     value={answerText}
                     onChange={(event) => setAnswerText(event.target.value)}
-                    placeholder="Type an answer"
+                    placeholder="답변 내용을 입력해 주세요."
                     className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500"
                   />
                   <div className="flex justify-end gap-1">
@@ -126,13 +124,13 @@ export default function AdminQnAPage() {
                       onClick={() => setAnsweringId(null)}
                       className="rounded border border-gray-300 px-3 py-1.5 text-[11px] text-gray-600 hover:bg-gray-100"
                     >
-                      Cancel
+                      취소
                     </button>
                     <button
                       onClick={() => void handleAnswer(qna.id)}
                       className="rounded bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700"
                     >
-                      Save
+                      저장
                     </button>
                   </div>
                 </div>
@@ -145,7 +143,7 @@ export default function AdminQnAPage() {
                   className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <Send className="h-3 w-3" />
-                  Write answer
+                  답변 작성
                 </button>
               )}
             </div>
@@ -154,7 +152,7 @@ export default function AdminQnAPage() {
 
         {filtered.length === 0 ? (
           <div className="rounded border border-gray-200 bg-white py-8 text-center text-sm text-gray-400">
-            No questions in this tab.
+            이 탭에는 표시할 질문이 없습니다.
           </div>
         ) : null}
       </div>

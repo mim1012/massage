@@ -13,12 +13,12 @@ export async function PATCH(request: Request, context: Context) {
     const body = (await request.json()) as { isHidden?: boolean };
 
     if (typeof body.isHidden !== 'boolean') {
-      return Response.json({ error: 'isHidden must be boolean.' }, { status: 400 });
+      return Response.json({ error: '숨김 여부는 boolean 값이어야 합니다.' }, { status: 400 });
     }
 
     const review = await setReviewHiddenState(user, id, body.isHidden);
     if (!review) {
-      return Response.json({ error: 'review not found or forbidden.' }, { status: 404 });
+      return Response.json({ error: '리뷰를 찾을 수 없거나 권한이 없습니다.' }, { status: 404 });
     }
 
     return Response.json({ review });
@@ -34,7 +34,7 @@ export async function DELETE(_: Request, context: Context) {
     const deleted = await deleteManagedReview(user, id);
 
     if (!deleted) {
-      return Response.json({ error: 'review not found or forbidden.' }, { status: 404 });
+      return Response.json({ error: '리뷰를 찾을 수 없거나 권한이 없습니다.' }, { status: 404 });
     }
 
     return new Response(null, { status: 204 });

@@ -8,6 +8,7 @@ import {
   SiteSettings,
   HomeSeoContent,
 } from './types';
+import { DEFAULT_HOME_SEO, DEFAULT_SITE_SETTINGS } from './site-content-defaults';
 
 // ===== 모의 사용자 데이터 =====
 export const MOCK_USERS: User[] = [
@@ -411,24 +412,6 @@ export const MOCK_PARTNERSHIPS: PartnershipInquiry[] = [
   },
 ];
 
-export const MOCK_SITE_SETTINGS: SiteSettings = {
-  siteName: 'Healing Finder',
-  siteTitle: 'Massage Directory',
-  siteDescription: 'Verified wellness listings',
-  heroMainText: 'Find a trusted massage spot near you',
-  heroSubText: 'Verified listings, curated by area and theme',
-  contactPhone: '1588-0000',
-  footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
-};
+export const MOCK_SITE_SETTINGS: SiteSettings = DEFAULT_SITE_SETTINGS;
 
-export const MOCK_HOME_SEO: HomeSeoContent = {
-  section1Title: 'Healing Finder: discover massage and wellness shops',
-  section1Content:
-    'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
-  section2Title: 'Filter by district and service type',
-  section2Content:
-    'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
-  section3Title: 'Track premium and trending listings',
-  section3Content:
-    'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
-};
+export const MOCK_HOME_SEO: HomeSeoContent = DEFAULT_HOME_SEO;
