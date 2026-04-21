@@ -1,5 +1,6 @@
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
 import type { Review, Shop } from '@/lib/types';
+import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
 
 interface ShopFilters {
@@ -78,9 +79,11 @@ function mapReview(review: DbReview, shopName: string): Review {
 }
 
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
+  const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
+
   return {
     isVisible: true,
-    ...(filters.region && filters.region !== 'all' ? { region: filters.region } : {}),
+    ...(mappedRegion ? { region: mappedRegion } : {}),
     ...(filters.subRegion && filters.subRegion !== 'all' ? { subRegion: filters.subRegion } : {}),
     ...(filters.theme && filters.theme !== 'all' ? { theme: filters.theme } : {}),
     ...(filters.query

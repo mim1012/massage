@@ -68,51 +68,162 @@ body { font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; }
 
 /* 배너 아이템 호버 */
 .banner-item {
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
 }
 .banner-item:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
   border-color: #dc2626;
+  transform: translateY(-2px);
 }
 
 ::selection { background: rgba(220, 38, 38, 0.15); }
 
+/* ===== 프리미엄 배너 고정 비율 (1200x600 → 2:1) ===== */
+.premium-banner-img {
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  width: 100%;
+  border-radius: 6px;
+}
+
+/* ===== 카드형 리스트 (600x600 → 1:1) ===== */
+.shop-card-img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  width: 100%;
+}
+@media (max-width: 768px) {
+  .card-view .shop-card-img { height: 120px; aspect-ratio: auto; }
+}
+
+/* ===== 카드 그리드 반응형 ===== */
 .shop-grid.card-view {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 16px;
 }
-
 @media (max-width: 1024px) {
   .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
 }
-
 @media (max-width: 768px) {
   .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
 
 .shop-grid.list-view {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   gap: 12px;
 }
-
-.seo-content h1 {
-  margin-bottom: 8px;
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #1f2937;
+.list-view .shop-card {
+  flex-direction: row;
+}
+.list-view .shop-card-img {
+  width: 140px;
+  height: 100%;
+  aspect-ratio: auto;
+}
+@media (max-width: 768px) {
+  .list-view .shop-card-img { width: 100px; height: auto; min-height: 100px; }
 }
 
-.seo-content h2 {
-  margin: 16px 0 6px;
-  font-size: 1rem;
+/* ===== 프리미엄 배너 그리드 ===== */
+.premium-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .premium-grid { grid-template-columns: 1fr; }
+}
+
+/* ===== 단계형 UI 스타일 ===== */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #999;
+  font-weight: 600;
+}
+.step-item.active {
+  color: #dc2626;
+}
+.step-item .step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   font-weight: 700;
-  color: #374151;
+  background: #e5e7eb;
+  color: #9ca3af;
+}
+.step-item.active .step-num {
+  background: #dc2626;
+  color: #fff;
+}
+.step-item.completed .step-num {
+  background: #10b981;
+  color: #fff;
+}
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: #e5e7eb;
+  margin: 0 8px;
+}
+.step-connector.active {
+  background: #dc2626;
 }
 
-.seo-content p {
-  font-size: 0.875rem;
-  line-height: 1.7;
-  color: #6b7280;
+/* ===== 드래그 가능 아이템 ===== */
+.draggable-item {
+  cursor: grab;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.draggable-item:active {
+  cursor: grabbing;
+  background: #fef9c3;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ===== 토글 스위치 ===== */
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.toggle-switch .toggle-knob {
+  position: absolute;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch.on { background: #10b981; }
+.toggle-switch.on .toggle-knob { left: 18px; }
+.toggle-switch.off { background: #d1d5db; }
+.toggle-switch.off .toggle-knob { left: 2px; }
+
+/* ===== SEO 하단 영역 ===== */
+.seo-content h1 { font-size: 1.25rem; font-weight: 800; color: #1f2937; margin-bottom: 8px; }
+.seo-content h2 { font-size: 1rem; font-weight: 700; color: #374151; margin-bottom: 6px; margin-top: 16px; }
+.seo-content p { font-size: 0.875rem; color: #6b7280; line-height: 1.7; }
+
+/* ===== 모바일 하단 여백 (바텀 내비 겹침 방지) ===== */
+@media (max-width: 768px) {
+  main { padding-bottom: 60px; }
 }
