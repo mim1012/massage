@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Globe, Info, Layout, Save, Settings } from 'lucide-react';
+import { Globe, Info, Layout, Save, Settings, Type } from 'lucide-react';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
 
 export default function AdminSettingsPage() {
   const [siteForm, setSiteForm] = useState<SiteSettings>(MOCK_SITE_SETTINGS);
   const [seoForm, setSeoForm] = useState<HomeSeoContent>(MOCK_HOME_SEO);
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const inputClassName =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500/20';
+  const ipt =
+    'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/20 transition-all';
+  const lbl = 'flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5';
 
   useEffect(() => {
     const load = async () => {
@@ -37,7 +38,7 @@ export default function AdminSettingsPage() {
   }, []);
 
   async function handleSave() {
-    setSaving(true);
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -57,24 +58,30 @@ export default function AdminSettingsPage() {
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '설정을 저장하지 못했습니다.');
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   }
 
-  const sections = [
+  const seoSections = [
     {
+      key: 'section1',
+      label: '첫 번째 블록',
       title: seoForm.section1Title,
       content: seoForm.section1Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section1Title: value })),
       setContent: (value: string) => setSeoForm((current) => ({ ...current, section1Content: value })),
     },
     {
+      key: 'section2',
+      label: '두 번째 블록',
       title: seoForm.section2Title,
       content: seoForm.section2Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section2Title: value })),
       setContent: (value: string) => setSeoForm((current) => ({ ...current, section2Content: value })),
     },
     {
+      key: 'section3',
+      label: '세 번째 블록',
       title: seoForm.section3Title,
       content: seoForm.section3Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section3Title: value })),
@@ -83,159 +90,170 @@ export default function AdminSettingsPage() {
   ];
 
   return (
-    <div className="max-w-[1200px] space-y-8 pb-10">
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-gray-50/90 py-4 backdrop-blur">
+    <div className="max-w-[1200px] space-y-10 pb-10">
+      <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-gray-200 bg-gray-50/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <Settings className="h-5 w-5 text-red-600" />
-          사이트 설정
+          <Settings className="h-5 w-5 text-red-600" /> 사이트 통합 관리 설정
         </h1>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={isSaving}
           className={clsx(
-            'flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-bold text-white transition',
-            saving ? 'cursor-not-allowed bg-gray-400' : 'bg-red-600 hover:bg-red-700',
+            'flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-bold shadow-md transition-all active:scale-95',
+            isSaving ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-red-600 text-white hover:bg-red-700',
           )}
         >
-          <Save className={clsx('h-4 w-4', saving && 'animate-spin')} />
-          {saving ? '저장 중...' : '설정 저장'}
+          <Save className={clsx('h-4 w-4', isSaving && 'animate-spin')} />
+          {isSaving ? '저장 중...' : '전체 설정 저장'}
         </button>
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
       ) : null}
 
-      <section className="space-y-4">
+      <section className="space-y-6">
         <div className="flex items-center gap-2 border-l-4 border-red-600 pl-3">
           <Globe className="h-5 w-5 text-gray-800" />
-          <h2 className="text-lg font-black text-gray-800">브랜드 및 메인 문구</h2>
+          <h2 className="text-lg font-black text-gray-800">1. 사이트 기본 모듈 설정</h2>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700">
-                브랜드 기본 정보
+                기본 브랜드 설정
               </div>
               <div className="space-y-4 p-5">
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-700">사이트명</label>
+                  <label className={lbl}>사이트 이름</label>
                   <input
+                    type="text"
                     value={siteForm.siteName}
                     onChange={(event) => setSiteForm((current) => ({ ...current, siteName: event.target.value }))}
-                    className={inputClassName}
+                    className={ipt}
+                    placeholder="사이트 이름 입력"
                   />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-bold text-gray-700">사이트 제목</label>
+                    <label className={lbl}>사이트 제목 (SEO)</label>
                     <input
+                      type="text"
                       value={siteForm.siteTitle}
                       onChange={(event) => setSiteForm((current) => ({ ...current, siteTitle: event.target.value }))}
-                      className={inputClassName}
+                      className={ipt}
+                      placeholder="사이트 제목 입력"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-bold text-gray-700">사이트 설명</label>
+                    <label className={lbl}>사이트 영문명/설명</label>
                     <input
+                      type="text"
                       value={siteForm.siteDescription}
                       onChange={(event) =>
                         setSiteForm((current) => ({ ...current, siteDescription: event.target.value }))
                       }
-                      className={inputClassName}
+                      className={ipt}
+                      placeholder="사이트 설명 입력"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700">
-                메인 배너 문구
+                홈 화면 상단 배너 문구
               </div>
               <div className="space-y-4 p-5">
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-700">메인 문구</label>
+                  <label className={lbl}>배너 메인 강조 텍스트</label>
                   <input
+                    type="text"
                     value={siteForm.heroMainText}
                     onChange={(event) =>
                       setSiteForm((current) => ({ ...current, heroMainText: event.target.value }))
                     }
-                    className={inputClassName}
+                    className={ipt}
+                    placeholder="배너 메인 문구 입력"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-700">보조 문구</label>
+                  <label className={lbl}>배너 하단 안내 텍스트</label>
                   <input
+                    type="text"
                     value={siteForm.heroSubText}
                     onChange={(event) => setSiteForm((current) => ({ ...current, heroSubText: event.target.value }))}
-                    className={inputClassName}
+                    className={ipt}
+                    placeholder="배너 보조 문구 입력"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700">
-              연락처 및 푸터
-            </div>
-            <div className="space-y-4 p-5">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-gray-700">대표 연락처</label>
-                <input
-                  value={siteForm.contactPhone}
-                  onChange={(event) => setSiteForm((current) => ({ ...current, contactPhone: event.target.value }))}
-                  className={inputClassName}
-                />
-                <p className="mt-1 text-[11px] text-gray-500">푸터 고객센터 번호로 그대로 노출됩니다.</p>
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700">
+                연락처 및 푸터 정보
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-gray-700">푸터 정보</label>
-                <textarea
-                  rows={5}
-                  value={siteForm.footerInfo}
-                  onChange={(event) => setSiteForm((current) => ({ ...current, footerInfo: event.target.value }))}
-                  className={inputClassName}
-                  placeholder="사업자 정보, 운영 시간, 이메일 등을 줄바꿈 또는 | 로 구분해 입력하세요."
-                />
-                <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-                  입력한 문구가 공개 푸터에 그대로 표시됩니다. 기존 구분자(|)와 줄바꿈 모두 지원합니다.
-                </p>
+              <div className="space-y-4 p-5">
+                <div>
+                  <label className={lbl}>대표 연락처</label>
+                  <input
+                    type="text"
+                    value={siteForm.contactPhone}
+                    onChange={(event) => setSiteForm((current) => ({ ...current, contactPhone: event.target.value }))}
+                    className={ipt}
+                    placeholder="대표 연락처 입력"
+                  />
+                </div>
+                <div>
+                  <label className={lbl}>푸터 사업자 정보</label>
+                  <textarea
+                    rows={4}
+                    value={siteForm.footerInfo}
+                    onChange={(event) => setSiteForm((current) => ({ ...current, footerInfo: event.target.value }))}
+                    className={ipt}
+                    placeholder="푸터 노출 정보를 입력하세요"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="space-y-4">
+      <hr className="border-gray-200" />
+
+      <section className="space-y-6">
         <div className="flex items-center gap-2 border-l-4 border-blue-600 pl-3">
           <Layout className="h-5 w-5 text-gray-800" />
-          <h2 className="text-lg font-black text-gray-800">홈페이지 SEO 문구</h2>
+          <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {sections.map((section, index) => (
-            <div key={index} className="rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-blue-600">
-                블록 {index + 1}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {seoSections.map((section) => (
+            <div key={section.key} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                <span className="text-xs font-bold text-blue-600">{section.label}</span>
+                <Type className="h-3.5 w-3.5 text-gray-400" />
               </div>
               <div className="space-y-3 p-4">
                 <input
+                  type="text"
                   value={section.title}
                   onChange={(event) => section.setTitle(event.target.value)}
-                  className={inputClassName}
-                  placeholder="제목"
+                  className={ipt}
+                  placeholder="제목 입력"
                 />
                 <textarea
-                  rows={6}
+                  rows={5}
                   value={section.content}
                   onChange={(event) => section.setContent(event.target.value)}
-                  className={inputClassName}
-                  placeholder="내용"
+                  className={ipt}
+                  placeholder="내용 입력"
                 />
               </div>
             </div>
@@ -243,12 +261,15 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
-      <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs text-blue-700">
+      <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
-        <p>
-          메인 배너와 홈페이지 SEO 문구는 관리자 화면에서 바로 수정할 수 있습니다. 저장한 내용은 사이트 전역에
-          즉시 반영됩니다.
-        </p>
+        <div className="text-xs leading-relaxed text-blue-700">
+          <p className="mb-1 font-bold">관리 지침</p>
+          <p>
+            1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의
+            마케팅용 SEO 텍스트를 구성합니다. 모든 항목은 저장 후 시스템에 반영됩니다.
+          </p>
+        </div>
       </div>
     </div>
   );

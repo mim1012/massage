@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
-import { useSessionUser } from '@/lib/use-session-user';
+import clsx from 'clsx';
 
 type LoginResult = {
   user?: {
@@ -16,13 +15,18 @@ type LoginResult = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const currentUser = useSessionUser();
-  const isAdmin = currentUser?.role === 'ADMIN';
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const resetFormState = (tab: 'user' | 'owner') => {
+    setActiveTab(tab);
+    setForm({ email: '', password: '' });
+    setShowPw(false);
+    setError(null);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -45,7 +49,7 @@ export default function LoginPage() {
       if (result.user.role === 'ADMIN') {
         router.push('/admin');
       } else if (result.user.role === 'OWNER') {
-        router.push('/owner/shops');
+        router.push('/admin/shops');
       } else {
         router.push('/');
       }
@@ -60,12 +64,7 @@ export default function LoginPage() {
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="flex border-b border-gray-200">
             <button
-              onClick={() => {
-                setActiveTab('user');
-                setForm({ email: '', password: '' });
-                setShowPw(false);
-                setError(null);
-              }}
+              onClick={() => resetFormState('user')}
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'user'
@@ -73,16 +72,10 @@ export default function LoginPage() {
                   : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
-              <User className="h-4 w-4" />
-              일반 회원
+              <User className="h-4 w-4" /> 일반 고객
             </button>
             <button
-              onClick={() => {
-                setActiveTab('owner');
-                setForm({ email: '', password: '' });
-                setShowPw(false);
-                setError(null);
-              }}
+              onClick={() => resetFormState('owner')}
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'owner'
@@ -90,19 +83,23 @@ export default function LoginPage() {
                   : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
-              <Store className="h-4 w-4" />
-              업주 회원
+              <Store className="h-4 w-4" /> 입점사(업체)
             </button>
           </div>
 
           <div className="p-6">
             <div className="mb-6 text-center">
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-red-600">
-                <span className="text-lg font-black text-white">M</span>
+                <span className="text-lg font-black text-white">힐</span>
               </div>
               <h1 className="mb-1 text-lg font-black text-gray-800">
-                {activeTab === 'user' ? '일반 회원 로그인' : '업주 회원 로그인'}
+                {activeTab === 'user' ? '일반 회원 로그인' : '사장님 로그인'}
               </h1>
+              <p className="text-xs text-gray-400">
+                {activeTab === 'user'
+                  ? '힐링찾기 계정으로 안전하게 로그인하세요'
+                  : '입점사 관리 시스템에 접속합니다'}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -111,7 +108,7 @@ export default function LoginPage() {
                 required
                 value={form.email}
                 onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                placeholder="이메일"
+                placeholder={activeTab === 'user' ? '이메일' : '가입하신 대표 이메일'}
                 className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
               />
               <div className="relative">
@@ -142,17 +139,24 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-4 flex items-center justify-between text-xs">
-              <Link href="/auth/register" className="font-bold text-red-600 hover:underline">
-                회원가입
+              <Link href="/auth/forgot" className="text-gray-500 hover:text-red-600">
+                비밀번호 찾기
               </Link>
-              {isAdmin ? (
-                <Link href="/admin" className="text-gray-500 hover:text-red-600">
-                  관리자
-                </Link>
-              ) : (
-                <span />
-              )}
+              <Link href="/auth/register" className="font-bold text-red-600 hover:underline">
+                회원가입 →
+              </Link>
             </div>
+
+            {activeTab === 'user' ? (
+              <div className="mt-6 border-t border-gray-100 pt-4 text-center">
+                <Link
+                  href="/admin"
+                  className="text-[11px] text-gray-400 transition-colors hover:text-red-600"
+                >
+                  관리자 전용 로그인
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

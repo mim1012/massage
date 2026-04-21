@@ -1,147 +1,176 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, List as ListIcon, RefreshCw, Trophy } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
+import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import type { Shop } from '@/lib/types';
 
-type ShopsResponse = {
-  allShops?: Shop[];
+type ShopListResponse = {
+  allShops: Shop[];
+  premiumShops: Shop[];
+  regularShops: Shop[];
+  total: number;
 };
+
+function sortShopsByPopularity(shops: Shop[]) {
+  return [...shops].sort((left, right) => {
+    if (right.reviewCount !== left.reviewCount) {
+      return right.reviewCount - left.reviewCount;
+    }
+    if (right.rating !== left.rating) {
+      return right.rating - left.rating;
+    }
+    return right.createdAt.localeCompare(left.createdAt);
+  });
+}
 
 function Top100Content() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
 
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
-  const [refreshNonce, setRefreshNonce] = useState(0);
   const [shops, setShops] = useState<Shop[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+
+  const updateData = useCallback(async () => {
+    setIsRefreshing(true);
+
+    const params = new URLSearchParams();
+    if (selectedRegion !== 'all') params.set('region', selectedRegion);
+    if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
+    if (selectedTheme !== 'all') params.set('theme', selectedTheme);
+    if (searchQuery) params.set('q', searchQuery);
+
+    try {
+      const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
+      const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
+
+      if (!response.ok) {
+        setShops([]);
+        return;
+      }
+
+      setShops(sortShopsByPopularity(result.allShops ?? []).slice(0, 100));
+    } catch {
+      setShops([]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [searchQuery, selectedRegion, selectedSubRegion, selectedTheme]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    void updateData();
+  }, [updateData]);
 
-    async function loadTopShops() {
-      setLoading(true);
-      setLoadError(null);
-
-      const params = new URLSearchParams();
-      if (selectedRegion !== 'all') params.set('region', selectedRegion);
-      if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
-      if (selectedTheme !== 'all') params.set('theme', selectedTheme);
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
-
-      try {
-        const response = await fetch(`/api/shops?${params.toString()}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        const result = (await response.json()) as ShopsResponse;
-
-        if (!response.ok || !result.allShops) {
-          throw new Error('TOP 100 ???? ???? ?????.');
-        }
-
-        const ranked = [...result.allShops].sort((left, right) => {
-          if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
-          if (right.rating !== left.rating) return right.rating - left.rating;
-          return `${left.id}-${refreshNonce}`.localeCompare(`${right.id}-${refreshNonce}`);
-        });
-
-        setShops(ranked.slice(0, 100));
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setLoadError(error instanceof Error ? error.message : 'TOP 100 ???? ???? ?????.');
-          setShops([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
+  const regionLabel = useMemo(
+    () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',
+    [selectedRegion],
+  );
+  const subRegionLabel = useMemo(() => {
+    if (selectedRegion === 'all' || selectedSubRegion === 'all') {
+      return '';
     }
 
-    void loadTopShops();
-    return () => controller.abort();
-  }, [refreshNonce, searchQuery, selectedRegion, selectedSubRegion, selectedTheme]);
+    return DISTRICTS[selectedRegion]?.find((district) => district.code === selectedSubRegion)?.label ?? '';
+  }, [selectedRegion, selectedSubRegion]);
+  const themeLabel = useMemo(
+    () => THEMES.find((theme) => theme.code === selectedTheme)?.label,
+    [selectedTheme],
+  );
 
-  const helperText = useMemo(() => {
-    if (loading) return '??? ??? ???? ????.';
-    if (loadError) return loadError;
-    return '?? ?? ??? ???? ??? ?????.';
-  }, [loadError, loading]);
+  const filterTitle = `${regionLabel}${subRegionLabel ? ` ${subRegionLabel}` : ''}${themeLabel ? ` ${themeLabel}` : ''}`;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-3 py-3">
+    <div className="mx-auto max-w-[1400px] px-3 py-3">
       <div className="flex gap-3">
         <Sidebar />
-        <div className="flex-1 min-w-0">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-red-600 to-rose-500 p-5 text-white">
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-red-600 to-rose-500 p-5 text-white shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-white/20 p-2">
-                <Trophy className="h-7 w-7 text-yellow-300" />
+                <Trophy className="h-8 w-8 text-yellow-300" />
               </div>
               <div>
-                <h1 className="text-xl font-black">?? 100</h1>
-                <p className="text-sm text-white/80">{helperText}</p>
+                <h1 className="flex items-center gap-2 text-xl font-black">
+                  🔥 {filterTitle === '전체' ? '' : filterTitle} 인기순위 TOP 100
+                </h1>
+                <p className="mt-1 text-sm text-white/80">리뷰수와 평점을 기반으로 선정된 실시간 인기 업소입니다.</p>
               </div>
             </div>
             <button
-              onClick={() => {
-                setRefreshNonce((current) => current + 1);
-                router.refresh();
-              }}
-              className="hidden items-center gap-1.5 rounded-lg bg-white/20 px-4 py-2 text-sm font-bold hover:bg-white/30 sm:flex"
+              onClick={() => void updateData()}
+              disabled={isRefreshing}
+              className="hidden items-center gap-1.5 rounded-lg bg-white/20 px-4 py-2 text-sm font-bold transition-all hover:bg-white/30 disabled:opacity-50 sm:flex"
             >
-              <RefreshCw className="h-4 w-4" />
-              ????
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              새로고침
             </button>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-3">
-            <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-3">
-              <span className="text-sm font-black text-gray-800">?? ?? ({shops.length})</span>
-              <div className="flex rounded-lg bg-gray-100 p-0.5">
-                <button
-                  onClick={() => setViewMode('card')}
-                  className={`rounded-md p-1.5 ${viewMode === 'card' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400'}`}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`rounded-md p-1.5 ${viewMode === 'list' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400'}`}
-                >
-                  <ListIcon className="h-4 w-4" />
-                </button>
+            <div className="mb-3 flex items-center justify-between border-b border-gray-50 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-gray-800">
+                  🏆 {filterTitle === '전체' ? '전국' : filterTitle} 랭킹
+                </span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">({shops.length}개)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg bg-gray-100 p-0.5">
+                  <button
+                    onClick={() => setViewMode('card')}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'card' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <ListIcon className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {loading ? (
-              <div className="py-16 text-center text-sm text-gray-400">TOP 100 ???? ???? ????.</div>
-            ) : loadError ? (
-              <div className="py-16 text-center text-sm text-red-500">{loadError}</div>
-            ) : shops.length === 0 ? (
-              <div className="py-16 text-center text-sm text-gray-400">?? ??? ?? ?? ??? ????.</div>
+            {shops.length === 0 ? (
+              <div className="py-20 text-center text-sm text-gray-400">해당 조건의 인기 업소가 없습니다.</div>
             ) : (
-              <div className={`shop-grid ${viewMode === 'list' ? 'list-view' : 'card-view'}`}>
-                {shops.map((shop, index) => (
-                  <div key={shop.id} className="relative">
-                    <div className="absolute -left-1.5 -top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-xs font-black text-white shadow-lg">
-                      {index + 1}
+              <div
+                className={`shop-grid transition-opacity duration-200 ${isRefreshing ? 'opacity-30' : 'opacity-100'} ${viewMode === 'list' ? 'list-view' : 'card-view'}`}
+              >
+                {shops.map((shop, idx) => (
+                  <div key={shop.id} className="group relative">
+                    <div
+                      className={`absolute -left-1.5 -top-1.5 z-20 flex h-9 w-9 items-center justify-center rounded-lg border-2 border-white text-xs font-black tracking-tighter text-white shadow-lg ${
+                        idx === 0
+                          ? 'scale-110 bg-gradient-to-br from-yellow-400 to-amber-600'
+                          : idx === 1
+                            ? 'bg-gradient-to-br from-gray-300 to-gray-500'
+                            : idx === 2
+                              ? 'bg-gradient-to-br from-orange-400 to-orange-700'
+                              : 'bg-gray-800'
+                      }`}
+                    >
+                      {idx + 1}
                     </div>
                     <ShopCard shop={shop} />
                   </div>
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-[11px] leading-relaxed text-gray-400">
+            <p>· 인기순위는 실제 유저들의 리뷰 개수와 평점을 종합하여 실시간으로 산정됩니다.</p>
+            <p>· 깨끗하고 건전한 마사지 문화를 위해 허위 리뷰가 발견될 경우 순위에서 제외될 수 있습니다.</p>
           </div>
         </div>
       </div>

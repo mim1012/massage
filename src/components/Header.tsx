@@ -2,79 +2,57 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, Search, X } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import clsx from 'clsx';
-import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { Search, Menu, X } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { useSiteContent } from '@/lib/use-site-content';
-import { useSessionUser } from '@/lib/use-session-user';
+import clsx from 'clsx';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('all');
   const searchParams = useSearchParams();
   const router = useRouter();
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
-  const currentQuery = searchParams.get('q') ?? '';
   const { siteSettings } = useSiteContent();
-  const currentUser = useSessionUser();
-  const isAdmin = currentUser?.role === 'ADMIN';
 
-  function handleSearch(event: React.FormEvent<HTMLFormElement>) {
+  const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-
-    const formData = new FormData(event.currentTarget);
-    const nextRegion = String(formData.get('region') ?? 'all');
-    const nextQuery = String(formData.get('q') ?? '').trim();
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (nextRegion === 'all') {
-      params.delete('region');
-      params.delete('subRegion');
-    } else {
-      params.set('region', nextRegion);
-
-      if (currentRegion !== nextRegion) {
-        params.delete('subRegion');
-      }
-    }
-
-    if (nextQuery) {
-      params.set('q', nextQuery);
-    } else {
-      params.delete('q');
-    }
-
+    const params = new URLSearchParams();
+    if (selectedRegion !== 'all') params.set('region', selectedRegion);
+    if (searchQuery.trim()) params.set('q', searchQuery.trim());
     router.push(`/?${params.toString()}`);
     setMobileMenuOpen(false);
-  }
+  };
 
   return (
-    <header className="sticky top-0 z-50 border-b-2 border-red-600 bg-white shadow-sm">
-      <div className="bg-red-600 py-1 text-center text-xs font-medium text-white">
-        제휴 업소 입점 문의 환영 | 고객센터 | ☎ {siteSettings.contactPhone}
+    <header className="bg-white border-b-2 border-red-600 shadow-sm sticky top-0 z-50">
+      <div className="bg-red-600 text-white text-center text-xs py-1 font-medium">
+        🎁 제휴업소 입점 문의 환영! &nbsp;|&nbsp; 프리미엄 배너 광고 진행중 &nbsp;|&nbsp; ☎ {siteSettings.contactPhone}
       </div>
 
-      <div className="mx-auto max-w-[1400px] px-3">
-        <div className="flex h-14 items-center gap-3">
-          <Link href="/" className="flex shrink-0 items-center gap-1.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-red-600">
-              <span className="text-sm font-black text-white">{siteSettings.siteName[0]}</span>
+      <div className="max-w-[1400px] mx-auto px-3">
+        <div className="flex items-center h-14 gap-3">
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center">
+              <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
             </div>
-            <div className="hidden leading-tight sm:block">
-              <span className="text-base font-black text-red-600">{siteSettings.siteName}</span>
-              <span className="block text-[10px] text-gray-400">{siteSettings.siteDescription}</span>
+            <div className="hidden sm:block leading-tight">
+              <span className="text-red-600 font-black text-base">{siteSettings.siteName}</span>
+              <span className="text-gray-400 text-[10px] block -mt-0.5">{siteSettings.siteDescription}</span>
             </div>
           </Link>
 
-          <form key={`desktop-${searchParams.toString()}`} onSubmit={handleSearch} className="mx-auto flex-1 md:max-w-xl">
-            <div className="flex overflow-hidden rounded-lg border border-gray-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500/30">
+          <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-auto">
+            <div className="flex gap-0 border border-gray-300 rounded-lg overflow-hidden focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500/30">
               <select
-                name="region"
-                defaultValue={currentRegion ?? 'all'}
-                className="shrink-0 border-r border-gray-200 bg-gray-50 px-2.5 py-2 text-sm text-gray-700 focus:outline-none"
+                value={selectedRegion}
+                onChange={(event) => setSelectedRegion(event.target.value)}
+                className="shrink-0 pl-2.5 pr-1 py-2 text-sm bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none"
               >
-                <option value="all">전체 지역</option>
+                <option value="all">전체지역</option>
                 {REGIONS.filter((region) => region.code !== 'all').map((region) => (
                   <option key={region.code} value={region.code}>
                     {region.label}
@@ -83,63 +61,61 @@ export default function Header() {
               </select>
               <input
                 type="text"
-                name="q"
-                placeholder="업소명 또는 테마 검색"
-                defaultValue={currentQuery}
-                className="min-w-0 flex-1 bg-white py-2 pl-3 pr-2 text-sm focus:outline-none"
+                placeholder="업소명, 테마 검색"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="flex-1 pl-3 pr-2 py-2 text-sm focus:outline-none bg-white min-w-0"
               />
-              <button type="submit" className="bg-red-600 px-3 text-white hover:bg-red-700">
-                <Search className="h-4 w-4" />
+              <button type="submit" className="shrink-0 px-3 bg-red-600 text-white hover:bg-red-700 transition-colors">
+                <Search className="w-4 h-4" />
               </button>
             </div>
           </form>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Link href="/auth/login" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Link href="/auth/login" className="text-xs text-gray-600 hover:text-red-600 px-2 py-1 hidden sm:block">
               로그인
             </Link>
-            <span className="hidden text-gray-300 sm:block">|</span>
-            <Link href="/auth/register" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
+            <span className="text-gray-300 hidden sm:block">|</span>
+            <Link href="/auth/register" className="text-xs text-gray-600 hover:text-red-600 px-2 py-1 hidden sm:block">
               회원가입
             </Link>
-            {isAdmin ? <span className="hidden text-gray-300 sm:block">|</span> : null}
-            {isAdmin ? (
-              <Link href="/admin" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
-                관리자
-              </Link>
-            ) : null}
-            <button onClick={() => setMobileMenuOpen((current) => !current)} className="p-1.5 text-gray-600 md:hidden">
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <span className="text-gray-300 hidden sm:block">|</span>
+            <Link href="/admin" className="text-xs text-gray-600 hover:text-red-600 px-2 py-1 hidden sm:block">
+              관리자
+            </Link>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-1.5 text-gray-600">
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="hidden border-t border-blue-800 bg-[#3b5998] md:block">
-        <div className="mx-auto max-w-[1400px] px-3">
-          <ul className="flex items-center text-base font-bold text-white">
+      <div className="hidden md:block bg-[#3b5998] border-t border-blue-800">
+        <div className="max-w-[1400px] mx-auto px-3">
+          <ul className="flex items-center text-white text-base font-bold">
             <li>
-              <Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
-                지역별 업소
+              <Link href="/?view=list" className="block px-6 py-3 hover:bg-blue-800 hover:text-yellow-300 transition-colors">
+                지역별업소
               </Link>
             </li>
             <li>
-              <Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
-                테마별 업소
+              <Link href="/?view=theme" className="block px-6 py-3 hover:bg-blue-800 hover:text-yellow-300 transition-colors">
+                테마별업소
               </Link>
             </li>
             <li>
-              <Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-blue-800 hover:text-yellow-300">
-                TOP 100
+              <Link href="/top100" className="block px-6 py-3 hover:bg-blue-800 hover:text-yellow-300 transition-colors text-yellow-100">
+                인기순위
               </Link>
             </li>
             <li>
-              <Link href="/board" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+              <Link href="/board" className="block px-6 py-3 hover:bg-blue-800 hover:text-yellow-300 transition-colors">
                 커뮤니티
               </Link>
             </li>
             <li>
-              <Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+              <Link href="/board/qna" className="block px-6 py-3 hover:bg-blue-800 hover:text-yellow-300 transition-colors">
                 고객센터
               </Link>
             </li>
@@ -147,171 +123,125 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="mx-auto hidden max-w-[1400px] px-3 md:block">
-        <nav className="-mx-3 flex items-center overflow-x-auto border-t border-gray-200 px-3 scrollbar-hide">
-          {REGIONS.filter((region) => region.code !== 'all').map((region) => (
-            <Link
-              key={region.code}
-              href={`/?region=${region.code}`}
-              className={clsx(
-                'shrink-0 border-b-2 px-4 py-2 text-sm font-medium transition-all',
-                currentRegion === region.code
-                  ? 'border-red-600 bg-red-50 text-red-600'
-                  : 'border-transparent text-gray-700 hover:bg-red-50 hover:text-red-600',
-              )}
-            >
-              {region.label}
-            </Link>
-          ))}
-          <div className="mx-1 h-4 w-px self-center bg-gray-300" />
-          {THEMES.filter((theme) => theme.code !== 'all').slice(0, 5).map((theme) => (
-            <Link
-              key={theme.code}
-              href={`/?theme=${theme.code}`}
-              className="shrink-0 border-b-2 border-transparent px-3 py-2 text-sm text-gray-500 transition-all hover:bg-red-50 hover:text-red-600"
-            >
-              {theme.label}
-            </Link>
-          ))}
-        </nav>
-
-        {currentRegion && DISTRICTS[currentRegion] ? (
-          <div className="mb-2 grid grid-cols-8 gap-x-2 gap-y-2 rounded border border-gray-200 bg-gray-50 p-3">
-            {DISTRICTS[currentRegion].map((district) => (
+      <div className="max-w-[1400px] mx-auto px-3">
+        <div className="hidden md:block">
+          <nav className="flex items-center border-t border-gray-200 -mx-3 px-3 overflow-x-auto scrollbar-hide">
+            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
               <Link
-                key={district.code}
-                href={`/?region=${currentRegion}&subRegion=${district.code}`}
+                key={region.code}
+                href={`/?region=${region.code}`}
                 className={clsx(
-                  'rounded py-1 text-center text-[13px]',
-                  district.code === 'all' && (!currentSubRegion || currentSubRegion === 'all')
-                    ? 'bg-red-500 font-bold text-white'
-                    : currentSubRegion === district.code
-                      ? 'bg-red-500 font-bold text-white'
-                      : 'text-gray-700 hover:bg-gray-200',
+                  'shrink-0 px-4 py-2 text-sm text-gray-700 hover:text-red-600 hover:bg-red-50 border-b-2 font-medium transition-all',
+                  currentRegion === region.code ? 'border-red-600 text-red-600 bg-red-50' : 'border-transparent',
                 )}
               >
-                {district.label}
+                {region.label}
               </Link>
             ))}
-          </div>
-        ) : null}
+            <div className="w-px h-4 bg-gray-300 mx-1 self-center" />
+            {THEMES.filter((theme) => theme.code !== 'all')
+              .slice(0, 5)
+              .map((theme) => (
+                <Link
+                  key={theme.code}
+                  href={`/?theme=${theme.code}`}
+                  className="shrink-0 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all border-b-2 border-transparent"
+                >
+                  {theme.label}
+                </Link>
+              ))}
+          </nav>
+
+          {currentRegion && DISTRICTS[currentRegion] && (
+            <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded grid grid-cols-8 gap-y-2 gap-x-2">
+              {DISTRICTS[currentRegion].map((district) => (
+                <Link
+                  key={district.code}
+                  href={`/?region=${currentRegion}&subRegion=${district.code}`}
+                  className={clsx(
+                    'text-[13px] text-center rounded py-1',
+                    district.code === 'all' && (!currentSubRegion || currentSubRegion === 'all')
+                      ? 'bg-red-500 text-white font-bold'
+                      : currentSubRegion === district.code
+                        ? 'bg-red-500 text-white font-bold'
+                        : 'text-gray-700 hover:bg-gray-200',
+                  )}
+                >
+                  {district.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {mobileMenuOpen ? (
-        <div className="border-t border-gray-200 bg-white shadow-lg md:hidden">
-          <form key={`mobile-${searchParams.toString()}`} onSubmit={handleSearch} className="space-y-2 border-b border-gray-100 p-3">
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+          <form onSubmit={handleSearch} className="p-3 border-b border-gray-100 space-y-2">
             <select
-              name="region"
-              defaultValue={currentRegion ?? 'all'}
-              className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+              value={selectedRegion}
+              onChange={(event) => setSelectedRegion(event.target.value)}
+              className="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-red-500 bg-white"
             >
-              <option value="all">전체 지역</option>
+              <option value="all">전체지역</option>
               {REGIONS.filter((region) => region.code !== 'all').map((region) => (
                 <option key={region.code} value={region.code}>
                   {region.label}
                 </option>
               ))}
             </select>
-            <input
-              type="text"
-              name="q"
-              placeholder="검색어 입력"
-              defaultValue={currentQuery}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-            />
-          </form>
-          <div className="space-y-4 p-3">
-            <div className="grid grid-cols-2 gap-2 text-sm font-semibold text-gray-700">
-              <Link href="/?view=list" onClick={() => setMobileMenuOpen(false)} className="rounded border border-gray-200 px-3 py-2 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
-                지역별 업소
-              </Link>
-              <Link href="/?view=theme" onClick={() => setMobileMenuOpen(false)} className="rounded border border-gray-200 px-3 py-2 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
-                테마별 업소
-              </Link>
-              <Link href="/top100" onClick={() => setMobileMenuOpen(false)} className="rounded border border-gray-200 px-3 py-2 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
-                TOP 100
-              </Link>
-              <Link href="/board" onClick={() => setMobileMenuOpen(false)} className="rounded border border-gray-200 px-3 py-2 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
-                커뮤니티
-              </Link>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="업소명, 테마 검색"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="flex-1 px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-red-500"
+              />
+              <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded text-sm font-bold">
+                검색
+              </button>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-4">
+          </form>
+          <div className="p-3">
+            <p className="text-xs text-gray-400 font-bold mb-2">테마별</p>
+            <div className="flex flex-wrap gap-1 mb-3">
+              {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                <Link
+                  key={theme.code}
+                  href={`/?theme=${theme.code}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-2.5 py-1 rounded border border-gray-200 text-xs text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                >
+                  {theme.label}
+                </Link>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-2 border-t border-gray-100">
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded border border-gray-300 px-3 py-2 text-center text-sm text-gray-700 hover:bg-gray-50"
+                className="flex-1 text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
                 로그인
               </Link>
               <Link
                 href="/auth/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded bg-red-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-red-700"
+                className="flex-1 text-center py-2 text-xs bg-red-600 text-white rounded font-semibold hover:bg-red-700"
               >
                 회원가입
               </Link>
             </div>
-
-            {isAdmin ? (
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-              >
-                관리자
-              </Link>
-            ) : null}
-
-            {currentRegion && DISTRICTS[currentRegion] ? (
-              <div>
-                <p className="mb-2 text-xs font-bold text-gray-400">세부 지역</p>
-                <div className="flex flex-wrap gap-1">
-                  {DISTRICTS[currentRegion]
-                    .filter((district) => district.code !== 'all')
-                    .map((district) => (
-                      <Link
-                        key={district.code}
-                        href={`/?region=${currentRegion}&subRegion=${district.code}`}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={clsx(
-                          'rounded border px-2.5 py-1 text-xs',
-                          currentSubRegion === district.code
-                            ? 'border-red-600 bg-red-50 text-red-600'
-                            : 'border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600',
-                        )}
-                      >
-                        {district.label}
-                      </Link>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div>
-              <p className="mb-2 text-xs font-bold text-gray-400">테마</p>
-              <div className="flex flex-wrap gap-1">
-                {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
-                  <Link
-                    key={theme.code}
-                    href={`/?theme=${theme.code}`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-                  >
-                    {theme.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 safe-area-bottom">
         <div className="flex items-center justify-around py-1.5">
           {[
             { href: '/', label: '홈', emoji: '🏠' },
-            { href: '/top100', label: 'TOP100', emoji: '🏆' },
+            { href: '/?view=list', label: '업소', emoji: '📋' },
             { href: '/board', label: '게시판', emoji: '💬' },
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },
