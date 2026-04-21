@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
+import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { getShopBySlug } from '@/lib/server/shop-store';
 
@@ -140,7 +141,7 @@ export default async function ShopDetailPage({ params }: Props) {
               <p className="text-center py-6 text-gray-400 text-sm">No reviews yet.</p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {reviews.map((review) => (
+                {reviews.map((review: Review) => (
                   <div key={review.id} className="py-3">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
