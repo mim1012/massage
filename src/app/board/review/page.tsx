@@ -2,14 +2,30 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { ChevronRight, Star } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ChevronRight, Search, Star, X } from 'lucide-react';
 import type { Review, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
+function getRoleLabel(role: User['role']) {
+  switch (role) {
+    case 'ADMIN':
+      return '관리자';
+    case 'OWNER':
+      return '업주';
+    case 'USER':
+    default:
+      return '회원';
+  }
+}
+
 function ReviewContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const shopId = searchParams.get('shopId');
+  const initialKeyword = searchParams.get('q') ?? '';
+  const [keyword, setKeyword] = useState(initialKeyword);
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -18,6 +34,10 @@ function ReviewContent() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ rating: 5, content: '' });
+
+  useEffect(() => {
+    setKeyword(initialKeyword);
+  }, [initialKeyword]);
 
   useEffect(() => {
     const load = async () => {
@@ -43,6 +63,7 @@ function ReviewContent() {
 
         const query = new URLSearchParams();
         if (shopId) query.set('shopId', shopId);
+        if (initialKeyword.trim()) query.set('q', initialKeyword.trim());
         const reviewResponse = await fetch(`/api/board/reviews${query.toString() ? `?${query.toString()}` : ''}`, {
           cache: 'no-store',
         });
@@ -61,12 +82,47 @@ function ReviewContent() {
     };
 
     void load();
-  }, [shopId]);
+  }, [initialKeyword, shopId]);
 
-  const filteredReviews = useMemo(
-    () => (shopId ? reviews.filter((review) => review.shopId === shopId) : reviews),
-    [reviews, shopId],
-  );
+  const filteredReviews = useMemo(() => {
+    const query = initialKeyword.trim().toLowerCase();
+
+    return reviews.filter((review) => {
+      if (shopId && review.shopId !== shopId) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [review.authorName, review.shopName, review.content].some((value) => value.toLowerCase().includes(query));
+    });
+  }, [initialKeyword, reviews, shopId]);
+
+  function updateQuery(nextKeyword: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const trimmed = nextKeyword.trim();
+
+    if (trimmed) {
+      params.set('q', trimmed);
+    } else {
+      params.delete('q');
+    }
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }
+
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateQuery(keyword);
+  }
+
+  function handleSearchReset() {
+    setKeyword('');
+    updateQuery('');
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,11 +146,12 @@ function ReviewContent() {
         }),
       });
       const result = (await response.json()) as { review?: Review; error?: string };
-      if (!response.ok || !result.review) {
+      const createdReview = result.review;
+      if (!response.ok || !createdReview) {
         throw new Error(result.error ?? '리뷰를 등록하지 못했습니다.');
       }
 
-      setReviews((current) => [result.review!, ...current]);
+      setReviews((current) => [createdReview, ...current]);
       setForm({ rating: 5, content: '' });
       setSubmitted(true);
     } catch (submitError) {
@@ -139,10 +196,13 @@ function ReviewContent() {
       ) : (
         <>
           <form onSubmit={handleSubmit} className="mb-4 space-y-3 rounded border border-red-200 bg-white p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-gray-800">리뷰 작성</p>
-                <p className="text-xs text-gray-500">작성자: {user.name}</p>
+                <p className="text-xs text-gray-500">
+                  작성자: {user.name}
+                  <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">{getRoleLabel(user.role)}</span>
+                </p>
               </div>
               <select
                 value={form.rating}
@@ -171,6 +231,7 @@ function ReviewContent() {
             >
               {!shopId ? '업소 상세에서 작성할 수 있습니다' : submitting ? '등록 중' : '리뷰 등록'}
             </button>
+            <p className="text-[11px] text-gray-400">일반 회원, 업주, 관리자 로그인 모두 리뷰 작성이 가능합니다.</p>
           </form>
 
           {submitted ? (
@@ -178,14 +239,50 @@ function ReviewContent() {
           ) : null}
           {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div> : null}
 
+          <form onSubmit={handleSearchSubmit} className="mb-3 rounded border border-gray-200 bg-white p-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="작성자, 업소명, 내용으로 검색"
+                  className="w-full rounded border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-red-500"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="rounded bg-gray-800 px-4 py-2 text-sm font-bold text-white hover:bg-black"
+                >
+                  검색
+                </button>
+                {initialKeyword ? (
+                  <button
+                    type="button"
+                    onClick={handleSearchReset}
+                    className="inline-flex items-center gap-1 rounded border border-gray-300 px-3 py-2 text-sm font-bold text-gray-600 hover:border-red-300 hover:text-red-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    초기화
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              총 {filteredReviews.length}개의 리뷰
+              {initialKeyword ? <span> · “{initialKeyword}” 검색 결과</span> : null}
+            </p>
+          </form>
+
           <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
             {filteredReviews.map((review) => (
               <div key={review.id} className="p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
-                    <span className="text-xs text-red-500">{review.shopName}</span>
-                    <div className="flex gap-0.5">
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-bold text-gray-800">{review.authorName}</span>
+                    <span className="truncate text-xs text-red-500">{review.shopName}</span>
+                    <div className="flex shrink-0 gap-0.5">
                       {[1, 2, 3, 4, 5].map((score) => (
                         <Star
                           key={score}
@@ -194,13 +291,15 @@ function ReviewContent() {
                       ))}
                     </div>
                   </div>
-                  <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+                  <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
               </div>
             ))}
             {filteredReviews.length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-400">등록된 리뷰가 아직 없습니다.</div>
+              <div className="py-8 text-center text-sm text-gray-400">
+                {initialKeyword ? '검색 조건에 맞는 리뷰가 없습니다.' : '등록된 리뷰가 아직 없습니다.'}
+              </div>
             ) : null}
           </div>
         </>

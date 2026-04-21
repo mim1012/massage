@@ -87,6 +87,7 @@ export interface QnAComment {
   userId?: string;
   authorName: string;
   role: QnACommentRole;
+  authorRole?: UserRole | 'OPERATOR' | 'STAFF' | 'MANAGER' | string;
   content: string;
   createdAt: string;
 }
