@@ -189,6 +189,20 @@ export const seedQna: QnA[] = [
     answer: 'Use the owner sign-up page and wait for admin approval.',
     authorName: 'Visitor',
     isAnswered: true,
+    canComment: false,
+    commentCount: 1,
+    latestCommentAt: '2024-06-03',
+    latestCommentPreview: 'Use the owner sign-up page and wait for admin approval.',
+    comments: [
+      {
+        id: 'qna-001-comment-001',
+        qnaId: 'qna-001',
+        authorName: 'Admin',
+        role: 'ADMIN',
+        content: 'Use the owner sign-up page and wait for admin approval.',
+        createdAt: '2024-06-03',
+      },
+    ],
     createdAt: '2024-06-03',
   },
   {
@@ -197,6 +211,9 @@ export const seedQna: QnA[] = [
     question: 'Can I reserve for the weekend?',
     authorName: 'Guest',
     isAnswered: false,
+    canComment: false,
+    commentCount: 0,
+    comments: [],
     createdAt: '2024-06-05',
   },
 ];

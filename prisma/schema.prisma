@@ -24,6 +24,11 @@ enum QnaStatus {
   ANSWERED
 }
 
+enum QnaCommentRole {
+  ADMIN
+  OWNER
+}
+
 enum PartnershipInquiryStatus {
   PENDING
   CONTACTED
@@ -31,23 +36,24 @@ enum PartnershipInquiryStatus {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String         @map("password_hash")
-  name          String
-  role          UserRole
-  status        UserStatus     @default(APPROVED)
-  phone         String?
-  managedShopId String?        @map("managed_shop_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  ownerProfile  OwnerProfile?
-  shops         Shop[]         @relation("UserOwnedShops")
-  reviews       Review[]
-  qna           QnA[]
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  name           String
+  role           UserRole
+  status         UserStatus      @default(APPROVED)
+  phone          String?
+  managedShopId  String?         @map("managed_shop_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  ownerProfile   OwnerProfile?
+  shops          Shop[]          @relation("UserOwnedShops")
+  reviews        Review[]
+  qna            QnA[]
+  qnaComments    QnAComment[]
   pageViewEvents PageViewEvent[]
-  createdNotices Notice[]      @relation("NoticeCreatedBy")
-  auditLogs     AuditLog[]     @relation("AuditActor")
+  createdNotices Notice[]        @relation("NoticeCreatedBy")
+  auditLogs      AuditLog[]      @relation("AuditActor")
 
   @@index([role, createdAt(sort: Desc)])
   @@index([status, role])
@@ -68,31 +74,31 @@ model OwnerProfile {
 }
 
 model Shop {
-  id             String      @id @default(cuid())
-  ownerId        String?     @map("owner_id")
+  id             String          @id @default(cuid())
+  ownerId        String?         @map("owner_id")
   name           String
-  slug           String      @unique
+  slug           String          @unique
   region         String
-  subRegion      String?     @map("sub_region")
+  subRegion      String?         @map("sub_region")
   theme          String
   tagline        String
   description    String
   address        String
   phone          String
   hours          String
-  isVisible      Boolean     @default(true) @map("is_visible")
-  isPremium      Boolean     @default(false) @map("is_premium")
-  premiumOrder   Int?        @map("premium_order")
-  thumbnailUrl   String?     @map("thumbnail_url")
-  bannerUrl      String?     @map("banner_url")
-  regionLabel    String      @map("region_label")
-  subRegionLabel String?     @map("sub_region_label")
-  themeLabel     String      @map("theme_label")
-  rating         Float       @default(0)
+  isVisible      Boolean         @default(true) @map("is_visible")
+  isPremium      Boolean         @default(false) @map("is_premium")
+  premiumOrder   Int?            @map("premium_order")
+  thumbnailUrl   String?         @map("thumbnail_url")
+  bannerUrl      String?         @map("banner_url")
+  regionLabel    String          @map("region_label")
+  subRegionLabel String?         @map("sub_region_label")
+  themeLabel     String          @map("theme_label")
+  rating         Float           @default(0)
   tags           String[]
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
-  owner          User?       @relation("UserOwnedShops", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  owner          User?           @relation("UserOwnedShops", fields: [ownerId], references: [id], onDelete: SetNull)
   images         ShopImage[]
   courses        ShopCourse[]
   reviews        Review[]
@@ -147,22 +153,36 @@ model Review {
 }
 
 model QnA {
-  id         String     @id @default(cuid())
-  shopId     String?    @map("shop_id")
-  userId     String?    @map("user_id")
-  authorName String     @map("author_name")
+  id         String       @id @default(cuid())
+  shopId     String?      @map("shop_id")
+  userId     String?      @map("user_id")
+  authorName String       @map("author_name")
   question   String
-  answer     String?
-  answeredBy String?    @map("answered_by")
-  answeredAt DateTime?  @map("answered_at")
-  status     QnaStatus  @default(OPEN)
-  createdAt  DateTime   @default(now()) @map("created_at")
-  shop       Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status     QnaStatus    @default(OPEN)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  shop       Shop?        @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  comments   QnAComment[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([shopId, createdAt(sort: Desc)])
   @@map("qna")
+}
+
+model QnAComment {
+  id         String         @id @default(cuid())
+  qnaId      String         @map("qna_id")
+  userId     String?        @map("user_id")
+  authorName String         @map("author_name")
+  role       QnaCommentRole
+  content    String
+  createdAt  DateTime       @default(now()) @map("created_at")
+  qna        QnA            @relation(fields: [qnaId], references: [id], onDelete: Cascade)
+  user       User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([qnaId, createdAt(sort: Asc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("qna_comments")
 }
 
 model Notice {
@@ -213,38 +233,38 @@ model PartnershipInquiry {
 }
 
 model SiteSettings {
-  id              String   @id
-  siteName        String   @map("site_name")
-  siteTitle       String   @map("site_title")
-  siteDescription String   @map("site_description")
-  heroMainText    String   @map("hero_main_text")
-  heroSubText     String   @map("hero_sub_text")
-  contactPhone    String   @map("contact_phone")
-  footerInfo      String   @map("footer_info")
-  seoSection1Title   String @map("seo_section_1_title")
-  seoSection1Content String @map("seo_section_1_content")
-  seoSection2Title   String @map("seo_section_2_title")
-  seoSection2Content String @map("seo_section_2_content")
-  seoSection3Title   String @map("seo_section_3_title")
-  seoSection3Content String @map("seo_section_3_content")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                 String   @id
+  siteName           String   @map("site_name")
+  siteTitle          String   @map("site_title")
+  siteDescription    String   @map("site_description")
+  heroMainText       String   @map("hero_main_text")
+  heroSubText        String   @map("hero_sub_text")
+  contactPhone       String   @map("contact_phone")
+  footerInfo         String   @map("footer_info")
+  seoSection1Title   String   @map("seo_section_1_title")
+  seoSection1Content String   @map("seo_section_1_content")
+  seoSection2Title   String   @map("seo_section_2_title")
+  seoSection2Content String   @map("seo_section_2_content")
+  seoSection3Title   String   @map("seo_section_3_title")
+  seoSection3Content String   @map("seo_section_3_content")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
 }
 
 model PageViewEvent {
-  id         String   @id @default(cuid())
-  path       String
-  sessionId  String   @map("session_id")
-  userId     String?  @map("user_id")
-  shopId     String?  @map("shop_id")
-  ipHash     String?  @map("ip_hash")
-  userAgent  String?  @map("user_agent")
-  referrer   String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  shop       Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  id        String   @id @default(cuid())
+  path      String
+  sessionId String   @map("session_id")
+  userId    String?  @map("user_id")
+  shopId    String?  @map("shop_id")
+  ipHash    String?  @map("ip_hash")
+  userAgent String?  @map("user_agent")
+  referrer  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shop      Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
 
   @@index([sessionId, createdAt(sort: Desc)])
   @@index([path, createdAt(sort: Desc)])

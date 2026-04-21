@@ -1,11 +1,20 @@
-import { requireUser } from '@/lib/auth/guards';
+import { getSessionUser, requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { createQna, listQna } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const shopId = url.searchParams.get('shopId') ?? undefined;
-  return Response.json({ qna: await listQna(shopId) });
+  const search = url.searchParams.get('search') ?? undefined;
+  const viewer = await getSessionUser();
+
+  return Response.json({
+    qna: await listQna({
+      shopId,
+      search,
+      viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
+    }),
+  });
 }
 
 export async function POST(request: Request) {
@@ -22,12 +31,15 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        qna: await createQna({
-          question: body.question,
-          authorName: user.name,
-          userId: user.id,
-          shopId: body.shopId?.trim() || undefined,
-        }),
+        qna: await createQna(
+          {
+            question: body.question,
+            authorName: user.name,
+            userId: user.id,
+            shopId: body.shopId?.trim() || undefined,
+          },
+          { id: user.id, role: user.role },
+        ),
       },
       { status: 201 },
     );

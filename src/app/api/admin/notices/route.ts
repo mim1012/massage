@@ -2,10 +2,12 @@ import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { createNotice, listNotices } from '@/lib/server/communityStore';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireRole('ADMIN');
-    return Response.json({ notices: await listNotices() });
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search') ?? undefined;
+    return Response.json({ notices: await listNotices({ search: search?.trim() || undefined }) });
   } catch (error) {
     return errorResponse(error);
   }

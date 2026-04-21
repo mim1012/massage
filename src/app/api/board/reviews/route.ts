@@ -9,12 +9,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get('limit');
     const shopId = url.searchParams.get('shopId') ?? undefined;
+    const search = url.searchParams.get('search') ?? undefined;
     const limit = limitParam ? Number(limitParam) : undefined;
 
     return Response.json({
       reviews: await listReviews({
         limit: Number.isFinite(limit) ? limit : undefined,
         shopId: shopId?.trim() || undefined,
+        search: search?.trim() || undefined,
       }),
     });
   } catch (error) {

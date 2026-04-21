@@ -180,9 +180,6 @@ async function main() {
       userId: user.id,
       authorName: 'Seed User',
       question: 'Can I book on weekends?',
-      answer: 'Yes, weekend booking is available.',
-      answeredBy: admin.id,
-      answeredAt: new Date(),
       status: QnaStatus.ANSWERED,
     },
     create: {
@@ -191,10 +188,28 @@ async function main() {
       userId: user.id,
       authorName: 'Seed User',
       question: 'Can I book on weekends?',
-      answer: 'Yes, weekend booking is available.',
-      answeredBy: admin.id,
-      answeredAt: new Date(),
       status: QnaStatus.ANSWERED,
+    },
+  });
+
+  await prisma.qnAComment.upsert({
+    where: {
+      id: 'seed-qna-comment-001',
+    },
+    update: {
+      qnaId: 'seed-qna-001',
+      userId: admin.id,
+      authorName: 'Admin',
+      role: 'ADMIN',
+      content: 'Yes, weekend booking is available.',
+    },
+    create: {
+      id: 'seed-qna-comment-001',
+      qnaId: 'seed-qna-001',
+      userId: admin.id,
+      authorName: 'Admin',
+      role: 'ADMIN',
+      content: 'Yes, weekend booking is available.',
     },
   });
 

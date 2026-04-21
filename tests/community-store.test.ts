@@ -266,7 +266,7 @@ dbTest('notice lifecycle trims content and keeps pinned notices ahead of regular
   );
 });
 
-dbTest('Q&A creation and answering trim input and promote the newest matching entry', async () => {
+dbTest('Q&A creation and operator comments trim input and support multi-comment threads', async () => {
   const admin = await getAdminUser();
   const shop = await getSeedShop();
 
@@ -280,10 +280,17 @@ dbTest('Q&A creation and answering trim input and promote the newest matching en
   assert.equal(created.authorName, 'Test User');
   assert.equal((await listQna(shop.id))[0]?.id, created.id);
 
-  const answered = await answerQna(created.id, '  Yes, weekends are available.  ', admin.id);
+  const answered = await answerQna(created.id, '  Yes, weekends are available.  ', admin.id, admin.name);
+  const answeredAgain = await answerQna(created.id, '  We also accept same-day bookings.  ', admin.id, admin.name);
 
   assert.equal(answered?.answer, 'Yes, weekends are available.');
-  assert.equal(answered?.isAnswered, true);
+  assert.equal(answered?.commentCount, 1);
+  assert.equal(answered?.comments[0]?.content, 'Yes, weekends are available.');
+  assert.equal(answeredAgain?.answer, 'We also accept same-day bookings.');
+  assert.equal(answeredAgain?.isAnswered, true);
+  assert.equal(answeredAgain?.commentCount, 2);
+  assert.equal(answeredAgain?.comments[0]?.content, 'Yes, weekends are available.');
+  assert.equal(answeredAgain?.comments[1]?.content, 'We also accept same-day bookings.');
   assert.equal(
     await withMutedConsoleError(async () => answerQna('missing-qna', 'No', admin.id)),
     null,

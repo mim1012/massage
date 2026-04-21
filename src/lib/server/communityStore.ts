@@ -1,12 +1,23 @@
 import {
+  Prisma,
+  QnaCommentRole,
   QnaStatus,
   type Notice as DbNotice,
   type PartnershipInquiry as DbPartnershipInquiry,
-  type QnA as DbQnA,
   type Review as DbReview,
   type SiteSettings as DbSiteSettings,
 } from '@prisma/client';
-import type { HomeSeoContent, Notice, PartnershipInquiry, QnA, Review, Shop, SiteSettings, UserRole } from '@/lib/types';
+import type {
+  HomeSeoContent,
+  Notice,
+  PartnershipInquiry,
+  QnA,
+  QnAComment,
+  Review,
+  Shop,
+  SiteSettings,
+  UserRole,
+} from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
 import {
@@ -37,6 +48,33 @@ function mapShopForAdmin(shop: Shop): AdminShopListItem {
   };
 }
 
+type ViewerContext = {
+  id: string;
+  role: UserRole;
+};
+
+type QnaRecord = Prisma.QnAGetPayload<{
+  include: {
+    shop: {
+      select: {
+        ownerId: true;
+      };
+    };
+    comments: {
+      orderBy: {
+        createdAt: 'asc';
+      };
+    };
+  };
+}>;
+
+function buildContainsFilter(value: string) {
+  return {
+    contains: value,
+    mode: Prisma.QueryMode.insensitive,
+  } satisfies Prisma.StringFilter;
+}
+
 function mapNotice(notice: DbNotice): Notice {
   return {
     id: notice.id,
@@ -47,14 +85,46 @@ function mapNotice(notice: DbNotice): Notice {
   };
 }
 
-function mapQna(entry: DbQnA): QnA {
+function mapQnaComment(comment: QnaRecord['comments'][number]): QnAComment {
+  return {
+    id: comment.id,
+    qnaId: comment.qnaId,
+    userId: comment.userId ?? undefined,
+    authorName: comment.authorName,
+    role: comment.role,
+    content: comment.content,
+    createdAt: comment.createdAt.toISOString(),
+  };
+}
+
+function canCommentOnQna(entry: QnaRecord, viewer?: ViewerContext) {
+  if (!viewer) {
+    return false;
+  }
+
+  if (viewer.role === 'ADMIN') {
+    return true;
+  }
+
+  return viewer.role === 'OWNER' && Boolean(entry.shop?.ownerId) && entry.shop?.ownerId === viewer.id;
+}
+
+function mapQna(entry: QnaRecord, viewer?: ViewerContext): QnA {
+  const comments = entry.comments.map(mapQnaComment);
+  const latestComment = comments.at(-1);
+
   return {
     id: entry.id,
     shopId: entry.shopId ?? undefined,
     question: entry.question,
-    answer: entry.answer ?? undefined,
+    answer: latestComment?.content,
     authorName: entry.authorName,
-    isAnswered: entry.status === QnaStatus.ANSWERED || Boolean(entry.answer),
+    isAnswered: entry.status === QnaStatus.ANSWERED || comments.length > 0,
+    canComment: canCommentOnQna(entry, viewer),
+    commentCount: comments.length,
+    latestCommentAt: latestComment?.createdAt,
+    latestCommentPreview: latestComment?.content,
+    comments,
     createdAt: entry.createdAt.toISOString(),
   };
 }
@@ -216,8 +286,18 @@ export async function getPremiumBoardData(): Promise<PremiumBoardData> {
   };
 }
 
-export async function listNotices() {
+type NoticeListOptions = {
+  search?: string;
+};
+
+export async function listNotices(options: NoticeListOptions = {}) {
+  const search = options.search?.trim();
   const notices = await prisma.notice.findMany({
+    where: search
+      ? {
+          OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
+        }
+      : undefined,
     orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
   });
 
@@ -271,16 +351,60 @@ export async function deleteNotice(id: string) {
   return result.count > 0;
 }
 
-export async function listQna(shopId?: string) {
+type QnaListOptions = {
+  shopId?: string;
+  search?: string;
+  viewer?: ViewerContext;
+};
+
+const qnaInclude = {
+  shop: {
+    select: {
+      ownerId: true,
+    },
+  },
+  comments: {
+    orderBy: {
+      createdAt: 'asc',
+    },
+  },
+} satisfies Prisma.QnAInclude;
+
+export async function listQna(options: string | QnaListOptions = {}) {
+  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
+  const shopId = normalizedOptions.shopId?.trim();
+  const search = normalizedOptions.search?.trim();
+
   const entries = await prisma.qnA.findMany({
-    where: shopId ? { shopId } : undefined,
+    where: {
+      ...(shopId ? { shopId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { question: buildContainsFilter(search) },
+              { authorName: buildContainsFilter(search) },
+              { comments: { some: { content: buildContainsFilter(search) } } },
+            ],
+          }
+        : {}),
+    },
+    include: qnaInclude,
     orderBy: { createdAt: 'desc' },
   });
 
-  return entries.map(mapQna);
+  return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
 }
 
-export async function answerQna(id: string, answer: string, answeredBy?: string) {
+export async function createQnaComment(
+  id: string,
+  input: {
+    content: string;
+    authorName: string;
+    role: QnaCommentRole;
+    userId?: string;
+  },
+  viewer?: ViewerContext,
+) {
   const existingEntry = await prisma.qnA.findUnique({
     where: { id },
     select: { id: true },
@@ -290,21 +414,55 @@ export async function answerQna(id: string, answer: string, answeredBy?: string)
     return null;
   }
 
-  const entry = await prisma.qnA.update({
+  await prisma.$transaction([
+    prisma.qnAComment.create({
+      data: {
+        qnaId: id,
+        userId: input.userId ?? null,
+        authorName: input.authorName.trim(),
+        role: input.role,
+        content: input.content.trim(),
+      },
+    }),
+    prisma.qnA.update({
+      where: { id },
+      data: {
+        status: QnaStatus.ANSWERED,
+      },
+    }),
+  ]);
+
+  const entry = await prisma.qnA.findUnique({
     where: { id },
-    data: {
-      answer: answer.trim(),
-      answeredBy: answeredBy ?? null,
-      answeredAt: new Date(),
-      status: QnaStatus.ANSWERED,
-    },
+    include: qnaInclude,
   });
 
-  return mapQna(entry);
+  return entry ? mapQna(entry, viewer) : null;
+}
+
+export async function answerQna(
+  id: string,
+  answer: string,
+  answeredBy?: string,
+  answeredByName = '운영자',
+  role: QnaCommentRole = QnaCommentRole.ADMIN,
+  viewer?: ViewerContext,
+) {
+  return await createQnaComment(
+    id,
+    {
+      content: answer,
+      userId: answeredBy,
+      authorName: answeredByName,
+      role,
+    },
+    viewer,
+  );
 }
 
 export async function createQna(
   input: Pick<QnA, 'question' | 'authorName'> & { shopId?: string; userId?: string },
+  viewer?: ViewerContext,
 ) {
   const entry = await prisma.qnA.create({
     data: {
@@ -314,14 +472,16 @@ export async function createQna(
       userId: input.userId?.trim() || null,
       status: QnaStatus.OPEN,
     },
+    include: qnaInclude,
   });
 
-  return mapQna(entry);
+  return mapQna(entry, viewer);
 }
 
 type ReviewListOptions = {
   limit?: number;
   shopId?: string;
+  search?: string;
 };
 
 async function refreshShopReviewRating(shopId: string) {
@@ -363,11 +523,22 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
     typeof options === 'number'
       ? { limit: options }
       : options;
+  const shopId = normalizedOptions.shopId?.trim();
+  const search = normalizedOptions.search?.trim();
 
   const reviews = await prisma.review.findMany({
     where: {
       isHidden: false,
-      ...(normalizedOptions.shopId ? { shopId: normalizedOptions.shopId } : {}),
+      ...(shopId ? { shopId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { content: buildContainsFilter(search) },
+              { authorName: buildContainsFilter(search) },
+              { shop: { name: buildContainsFilter(search) } },
+            ],
+          }
+        : {}),
     },
     include: { shop: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
@@ -377,14 +548,34 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
   return reviews.map(mapReview);
 }
 
-export async function listManagedReviews(user: { id: string; role: UserRole }) {
+export async function listManagedReviews(user: { id: string; role: UserRole }, search?: string) {
+  const normalizedSearch = search?.trim();
   const reviewWhere =
     user.role === 'ADMIN'
-      ? undefined
+      ? {
+          ...(normalizedSearch
+            ? {
+                OR: [
+                  { content: buildContainsFilter(normalizedSearch) },
+                  { authorName: buildContainsFilter(normalizedSearch) },
+                  { shop: { name: buildContainsFilter(normalizedSearch) } },
+                ],
+              }
+            : {}),
+        }
       : {
           shop: {
             ownerId: user.id,
+            ...(normalizedSearch ? { name: buildContainsFilter(normalizedSearch) } : {}),
           },
+          ...(normalizedSearch
+            ? {
+                OR: [
+                  { content: buildContainsFilter(normalizedSearch) },
+                  { authorName: buildContainsFilter(normalizedSearch) },
+                ],
+              }
+            : {}),
         };
 
   const reviews = await prisma.review.findMany({

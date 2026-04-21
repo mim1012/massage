@@ -79,13 +79,30 @@ export interface Notice {
 }
 
 // ===== Q&A =====
+export type QnACommentRole = 'ADMIN' | 'OWNER';
+
+export interface QnAComment {
+  id: string;
+  qnaId: string;
+  userId?: string;
+  authorName: string;
+  role: QnACommentRole;
+  content: string;
+  createdAt: string;
+}
+
 export interface QnA {
   id: string;
   shopId?: string;
   question: string;
-  answer?: string;
+  answer?: string; // legacy convenience field: latest operator comment
   authorName: string;
   isAnswered: boolean;
+  canComment?: boolean;
+  commentCount: number;
+  latestCommentAt?: string;
+  latestCommentPreview?: string;
+  comments: QnAComment[];
   createdAt: string;
 }
 

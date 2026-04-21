@@ -364,6 +364,20 @@ export const MOCK_QNA: QnA[] = [
     answer: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
     authorName: '방문자',
     isAnswered: true,
+    canComment: false,
+    commentCount: 1,
+    latestCommentAt: '2024-06-03',
+    latestCommentPreview: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
+    comments: [
+      {
+        id: 'qna-001-comment-001',
+        qnaId: 'qna-001',
+        authorName: '운영자',
+        role: 'ADMIN',
+        content: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
+        createdAt: '2024-06-03',
+      },
+    ],
     createdAt: '2024-06-03',
   },
   {
@@ -372,6 +386,20 @@ export const MOCK_QNA: QnA[] = [
     answer: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
     authorName: '홍길동',
     isAnswered: true,
+    canComment: false,
+    commentCount: 1,
+    latestCommentAt: '2024-06-04',
+    latestCommentPreview: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
+    comments: [
+      {
+        id: 'qna-002-comment-001',
+        qnaId: 'qna-002',
+        authorName: '운영자',
+        role: 'ADMIN',
+        content: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
+        createdAt: '2024-06-04',
+      },
+    ],
     createdAt: '2024-06-04',
   },
   {
@@ -380,6 +408,9 @@ export const MOCK_QNA: QnA[] = [
     question: '강남 힐링스파 주말 예약 가능한가요?',
     authorName: '방문예정',
     isAnswered: false,
+    canComment: false,
+    commentCount: 0,
+    comments: [],
     createdAt: '2024-06-05',
   },
 ];
