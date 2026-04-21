@@ -33,9 +33,12 @@ function getThreadComments(qna: QnA): QnAComment[] {
     return [
       {
         id: `${qna.id}-legacy-answer`,
+        qnaId: qna.id,
         content: qna.answer,
         authorName: '운영진',
+        role: 'ADMIN',
         authorRole: 'ADMIN',
+        createdAt: qna.createdAt,
       },
     ];
   }

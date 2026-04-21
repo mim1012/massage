@@ -28,13 +28,6 @@ import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
 
-type DbQnAWithShop = DbQnA & {
-  shop?: {
-    name: string;
-    regionLabel: string;
-  } | null;
-};
-
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
     id: shop.id,
