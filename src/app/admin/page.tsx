@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AlertCircle, BarChart2, MessageCircle, Star, Store, TrendingUp } from 'lucide-react';
 import { getAdminDashboardData } from '@/lib/server/communityStore';
+import type { AdminDashboardData } from '@/lib/communityTypes';
 
 export const metadata: Metadata = {
   title: 'Admin Dashboard',
@@ -24,14 +25,14 @@ const colorMap = {
 } as const;
 
 export default async function AdminDashboardPage() {
-  const dashboard = await getAdminDashboardData();
+  const dashboard: AdminDashboardData = await getAdminDashboardData();
 
   return (
     <div className="max-w-[1000px] space-y-4">
       <h1 className="text-xl font-black text-gray-800">대시보드</h1>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {dashboard.summary.map((item) => {
+        {dashboard.summary.map((item: AdminDashboardData['summary'][number]) => {
           const Icon = iconMap[item.label as keyof typeof iconMap];
           const [iconColor, backgroundColor] = colorMap[item.label as keyof typeof colorMap].split(' ');
 
@@ -64,7 +65,7 @@ export default async function AdminDashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {dashboard.pendingQna.map((item) => (
+            {dashboard.pendingQna.map((item: AdminDashboardData['pendingQna'][number]) => (
               <div key={item.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="min-w-0 truncate pr-3 text-gray-700">{item.question}</span>
                 <Link href="/admin/qna" className="shrink-0 rounded bg-red-50 px-2 py-1 text-[11px] text-red-600">
@@ -86,7 +87,7 @@ export default async function AdminDashboardPage() {
             </h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {dashboard.recentReviews.map((review) => (
+            {dashboard.recentReviews.map((review: AdminDashboardData['recentReviews'][number]) => (
               <div key={review.id} className="py-2 text-sm">
                 <div className="mb-0.5 flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-gray-800">{review.shopName}</span>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight, Star } from 'lucide-react';
 import { listReviews } from '@/lib/server/communityStore';
+import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ export default async function ReviewPage() {
       </div>
       <h1 className="mb-3 text-lg font-black text-gray-800">업소 후기</h1>
       <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
-        {reviews.map((review) => (
+        {reviews.map((review: Review) => (
           <div key={review.id} className="p-3">
             <div className="mb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">

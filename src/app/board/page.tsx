@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getBoardSummary, listNotices, listQna, listReviews } from '@/lib/server/communityStore';
+import type { Notice, QnA, Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export default async function BoardPage() {
           { href: '/board/qna', label: '문의답변', count: summary.qna, badge: 'Q' },
           { href: '/board/review', label: '후기', count: summary.reviews, badge: 'R' },
           { href: '/board/partnership', label: '제휴문의', count: 0, badge: 'P' },
-        ].map((item) => (
+        ].map((item: { href: string; label: string; count: number; badge: string }) => (
           <Link
             key={item.href}
             href={item.href}
@@ -50,7 +51,7 @@ export default async function BoardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {notices.map((notice) => (
+          {notices.map((notice: Notice) => (
             <Link
               key={notice.id}
               href={`/board/notice/${notice.id}`}
@@ -78,7 +79,7 @@ export default async function BoardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {qnaEntries.slice(0, 3).map((entry) => (
+          {qnaEntries.slice(0, 3).map((entry: QnA) => (
             <div key={entry.id} className="py-2.5">
               <div className="mb-1 flex items-start gap-2">
                 <span
@@ -106,7 +107,7 @@ export default async function BoardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {reviews.map((review) => (
+          {reviews.map((review: Review) => (
             <div key={review.id} className="py-2.5">
               <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">

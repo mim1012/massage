@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { listNotices } from '@/lib/server/communityStore';
+import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ export default async function NoticePage() {
       </div>
       <h1 className="mb-3 text-lg font-black text-gray-800">공지사항</h1>
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
-        {notices.map((notice, index) => (
+        {notices.map((notice: Notice, index: number) => (
           <Link
             key={notice.id}
             href={`/board/notice/${notice.id}`}
