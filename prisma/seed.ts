@@ -1,11 +1,33 @@
 import crypto from 'node:crypto';
 import prismaClientPkg from '@prisma/client';
-import type { PrismaClient as PrismaClientType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
 const { PrismaClient } = prismaClientPkg as unknown as {
-  PrismaClient: typeof PrismaClientType;
+  PrismaClient: new (...args: unknown[]) => {
+    user: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    shop: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    review: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    qnA: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    notice: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    partnershipInquiry: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    siteSettings: {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+    };
+    $disconnect: () => Promise<void>;
+  };
 };
 
 const DATABASE_URL =
