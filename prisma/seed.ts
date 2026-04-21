@@ -1,34 +1,7 @@
 import crypto from 'node:crypto';
-import prismaClientPkg from '@prisma/client';
+import { PrismaClient, QnaStatus, UserRole, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-
-const { PrismaClient } = prismaClientPkg as unknown as {
-  PrismaClient: new (...args: unknown[]) => {
-    user: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    shop: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    review: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    qnA: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    notice: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    partnershipInquiry: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    siteSettings: {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-    };
-    $disconnect: () => Promise<void>;
-  };
-};
 
 const DATABASE_URL =
   process.env.DATABASE_URL ??
@@ -54,38 +27,38 @@ function hashPassword(password: string) {
 }
 
 async function main() {
-  const admin = (await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@massage.local' },
     update: {
       passwordHash: hashPassword(ADMIN_PASSWORD),
       name: 'Admin',
-      role: 'ADMIN',
-      status: 'APPROVED',
+      role: UserRole.ADMIN,
+      status: UserStatus.APPROVED,
     },
     create: {
       email: 'admin@massage.local',
       passwordHash: hashPassword(ADMIN_PASSWORD),
       name: 'Admin',
-      role: 'ADMIN',
-      status: 'APPROVED',
+      role: UserRole.ADMIN,
+      status: UserStatus.APPROVED,
     },
-  })) as { id: string };
+  });
 
-  const owner = (await prisma.user.upsert({
+  const owner = await prisma.user.upsert({
     where: { email: 'owner@massage.local' },
     update: {
       passwordHash: hashPassword(OWNER_PASSWORD),
       name: 'Owner',
-      role: 'OWNER',
-      status: 'APPROVED',
+      role: UserRole.OWNER,
+      status: UserStatus.APPROVED,
       phone: '010-1111-2222',
     },
     create: {
       email: 'owner@massage.local',
       passwordHash: hashPassword(OWNER_PASSWORD),
       name: 'Owner',
-      role: 'OWNER',
-      status: 'APPROVED',
+      role: UserRole.OWNER,
+      status: UserStatus.APPROVED,
       phone: '010-1111-2222',
       ownerProfile: {
         create: {
@@ -94,26 +67,26 @@ async function main() {
         },
       },
     },
-  })) as { id: string };
+  });
 
-  const user = (await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { email: 'user@massage.local' },
     update: {
       passwordHash: hashPassword(USER_PASSWORD),
       name: 'User',
-      role: 'USER',
-      status: 'APPROVED',
+      role: UserRole.USER,
+      status: UserStatus.APPROVED,
     },
     create: {
       email: 'user@massage.local',
       passwordHash: hashPassword(USER_PASSWORD),
       name: 'User',
-      role: 'USER',
-      status: 'APPROVED',
+      role: UserRole.USER,
+      status: UserStatus.APPROVED,
     },
-  })) as { id: string };
+  });
 
-  const shop = (await prisma.shop.upsert({
+  const shop = await prisma.shop.upsert({
     where: { slug: 'healing-spa-seoul' },
     update: {
       ownerId: owner.id,
@@ -172,7 +145,7 @@ async function main() {
         ],
       },
     },
-  })) as { id: string };
+  });
 
   await prisma.review.upsert({
     where: {
@@ -209,7 +182,7 @@ async function main() {
       answer: 'Yes, weekend booking is available.',
       answeredBy: admin.id,
       answeredAt: new Date(),
-      status: 'ANSWERED',
+      status: QnaStatus.ANSWERED,
     },
     create: {
       id: 'seed-qna-001',
@@ -220,7 +193,7 @@ async function main() {
       answer: 'Yes, weekend booking is available.',
       answeredBy: admin.id,
       answeredAt: new Date(),
-      status: 'ANSWERED',
+      status: QnaStatus.ANSWERED,
     },
   });
 
