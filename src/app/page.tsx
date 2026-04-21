@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { Crown, RefreshCw, Shuffle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import { REGIONS, THEMES, DISTRICTS, type Shop } from '@/lib/types';
+import { REGIONS, type Shop } from '@/lib/types';
+import { useSiteContent } from '@/lib/use-site-content';
 
 type ShopListResponse = {
   allShops: Shop[];
@@ -36,6 +37,7 @@ function HomeContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const { siteSettings, homeSeo } = useSiteContent();
 
   const loadShops = useCallback(async (shuffleRegular = false) => {
     setIsLoading(true);
@@ -52,7 +54,7 @@ function HomeContent() {
       const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
 
       if (!response.ok) {
-        setError(result.error ?? 'Failed to load shops.');
+        setError(result.error ?? '업소 목록을 불러오지 못했습니다.');
         return;
       }
 
@@ -72,41 +74,23 @@ function HomeContent() {
     void loadShops(true);
   }, [loadShops]);
 
-  const regionLabel = REGIONS.find((region) => region.code === selectedRegion)?.label ?? 'All';
-  const subRegionLabel =
-    selectedRegion !== 'all' && selectedSubRegion !== 'all'
-      ? DISTRICTS[selectedRegion]?.find((district) => district.code === selectedSubRegion)?.label ?? ''
-      : '';
-  const themeLabel = THEMES.find((theme) => theme.code === selectedTheme)?.label;
-
   return (
     <div className="max-w-[1400px] mx-auto px-3 py-3">
       <div className="flex gap-3">
         <Sidebar />
         <div className="flex-1 min-w-0">
-          <div className="bg-gradient-to-r from-red-600 to-rose-500 rounded mb-3 p-3 flex items-center justify-between text-white">
+          <div className="mb-3 flex items-center justify-between rounded bg-gradient-to-r from-red-600 to-rose-500 p-3 text-white">
             <div>
-              <p className="font-black text-sm">
-                {regionLabel}
-                {' '}
-                {subRegionLabel}
-                {' '}
-                curated shops
-                {themeLabel && ` · ${themeLabel}`}
-              </p>
-              <p className="text-[11px] text-white/80 mt-0.5">
-                {total}
-                {' '}
-                visible shops
-              </p>
+              <p className="text-sm font-black">{siteSettings.heroMainText}</p>
+              <p className="mt-0.5 text-[11px] text-white/80">{siteSettings.heroSubText}</p>
             </div>
             <button
               onClick={() => void loadShops(true)}
               disabled={isLoading}
-              className="flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded font-bold transition-all disabled:opacity-50"
+              className="flex items-center gap-1 rounded bg-white/20 px-3 py-1.5 text-xs font-bold transition-all hover:bg-white/30 disabled:opacity-50"
             >
-              <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+              새로고침
             </button>
           </div>
 
@@ -119,7 +103,7 @@ function HomeContent() {
                   : 'border-gray-300 text-gray-600 bg-white'
               }`}
             >
-              All
+              전체
             </Link>
             {REGIONS.filter((region) => region.code !== 'all').map((region) => (
               <Link
@@ -136,13 +120,13 @@ function HomeContent() {
             ))}
           </div>
 
-          {premiumShops.length > 0 && (
+          {premiumShops.length > 0 ? (
             <div className="premium-box mb-3 p-2.5">
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-black text-amber-700">Premium spots</span>
-                <div className="flex-1 h-px bg-amber-200" />
-                <span className="text-[10px] text-amber-500">ad</span>
+              <div className="mb-2 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-amber-500" />
+                <span className="text-xs font-black text-amber-700">프리미엄 추천 업소</span>
+                <div className="h-px flex-1 bg-amber-200" />
+                <span className="text-[10px] text-amber-500">광고</span>
               </div>
 
               <div className="space-y-2">
@@ -150,21 +134,21 @@ function HomeContent() {
                   <Link
                     key={shop.id}
                     href={`/shop/${shop.slug}`}
-                    className="banner-item flex bg-white border border-amber-200 rounded overflow-hidden hover:border-red-500"
+                    className="banner-item flex overflow-hidden rounded border border-amber-200 bg-white hover:border-red-500"
                   >
-                    <div className="w-24 sm:w-32 shrink-0 bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center">
+                    <div className="flex w-24 shrink-0 items-center justify-center bg-gradient-to-br from-amber-100 to-orange-50 sm:w-32">
                       <span className="text-sm font-bold text-amber-700">{shop.themeLabel}</span>
                     </div>
-                    <div className="flex-1 p-2 sm:p-3 min-w-0">
+                    <div className="min-w-0 flex-1 p-2 sm:p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                              AD
+                          <div className="mb-0.5 flex items-center gap-1.5">
+                            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                              광고
                             </span>
-                            <h3 className="text-sm font-bold text-gray-900 truncate">{shop.name}</h3>
+                            <h3 className="truncate text-sm font-bold text-gray-900">{shop.name}</h3>
                           </div>
-                          <p className="text-xs text-gray-500 line-clamp-1">{shop.tagline}</p>
+                          <p className="line-clamp-1 text-xs text-gray-500">{shop.tagline}</p>
                         </div>
                         <span className="text-xs font-bold text-gray-700">{shop.rating.toFixed(1)}</span>
                       </div>
@@ -173,31 +157,31 @@ function HomeContent() {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
-          <div className="bg-white border border-gray-200 rounded p-2.5">
-            <div className="flex items-center justify-between mb-2">
+          <div className="rounded border border-gray-200 bg-white p-2.5">
+            <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-gray-800">Visible shops</span>
-                <span className="text-[10px] text-gray-400">({regularShops.length})</span>
+                <span className="text-xs font-black text-gray-800">노출 업소</span>
+                <span className="text-[10px] text-gray-400">({regularShops.length}/{total})</span>
               </div>
               <button
                 onClick={() => setRegularShops((current) => shuffleRegularShops(current))}
                 disabled={isLoading}
-                className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 text-[10px] text-gray-500 transition-colors hover:text-red-600 disabled:opacity-50"
               >
-                <Shuffle className="w-3 h-3" />
-                Shuffle
+                <Shuffle className="h-3 w-3" />
+                셔플
               </button>
             </div>
 
             {error ? (
-              <div className="text-center py-12 text-red-500 text-sm">{error}</div>
+              <div className="py-12 text-center text-sm text-red-500">{error}</div>
             ) : regularShops.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-sm">No shops match this filter.</div>
+              <div className="py-12 text-center text-sm text-gray-400">조건에 맞는 업소가 없습니다.</div>
             ) : (
               <div
-                className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 transition-opacity duration-200 ${
+                className={`grid grid-cols-2 gap-2 transition-opacity duration-200 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 ${
                   isLoading ? 'opacity-30' : 'opacity-100'
                 }`}
               >
@@ -206,6 +190,15 @@ function HomeContent() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="seo-content mt-4 rounded border border-gray-200 bg-white p-4">
+            <h1>{homeSeo.section1Title}</h1>
+            <p>{homeSeo.section1Content}</p>
+            <h2>{homeSeo.section2Title}</h2>
+            <p>{homeSeo.section2Content}</p>
+            <h2>{homeSeo.section3Title}</h2>
+            <p>{homeSeo.section3Content}</p>
           </div>
         </div>
       </div>

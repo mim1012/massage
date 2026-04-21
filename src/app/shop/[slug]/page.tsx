@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { getShopBySlug, listShops } from '@/lib/server/shop-store';
+import { getShopBySlug } from '@/lib/server/shop-store';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -23,10 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export async function generateStaticParams() {
-  const data = await listShops();
-  return data.allShops.map((shop) => ({ slug: shop.slug }));
-}
+export const dynamic = 'force-dynamic';
 
 const bgColors = [
   'from-rose-200 to-pink-100',

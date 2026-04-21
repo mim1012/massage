@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import { prisma } from '@/lib/db/prisma';
 import {
   answerQna,
@@ -7,17 +7,27 @@ import {
   createNotice,
   createQna,
   deleteNotice,
+  deleteManagedReview,
+  deletePartnershipInquiry,
   getAdminShopById,
   getAdminDashboardData,
   getBoardSummary,
   getNoticeById,
   getQnaShopOwnerId,
+  getSiteContent,
+  listManagedReviews,
   listAdminShops,
   listNotices,
+  listPartnershipInquiries,
   listQna,
   updateNotice,
   updateAdminShop,
   updatePremiumOrder,
+  updatePartnershipInquiryStatus,
+  createPartnershipInquiry,
+  listReviews,
+  setReviewHiddenState,
+  upsertSiteContent,
 } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 import { sleep } from './helpers/reset-store';
@@ -26,7 +36,9 @@ function uniqueSuffix() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
-function dbTest(name: Parameters<typeof test>[0], fn: Parameters<typeof test>[1]) {
+type DbTestFn = (context: TestContext) => Promise<void> | void;
+
+function dbTest(name: string, fn: DbTestFn) {
   return test(name, { concurrency: false }, fn);
 }
 
@@ -96,6 +108,23 @@ async function createTempShop(partial: Partial<Shop> = {}) {
   });
 }
 
+async function createTempReview() {
+  const owner = await getSeedOwner();
+  const shop = await getSeedShop();
+  const suffix = uniqueSuffix();
+
+  return prisma.review.create({
+    data: {
+      shopId: shop.id,
+      userId: owner.id,
+      authorName: `Temp Reviewer ${suffix}`,
+      rating: 4,
+      content: `Temporary review ${suffix}`,
+      isHidden: false,
+    },
+  });
+}
+
 function buildShopInput(overrides: Partial<Shop> = {}): Shop {
   const suffix = uniqueSuffix();
   return {
@@ -157,7 +186,7 @@ dbTest('getBoardSummary and getAdminDashboardData reflect database counts', asyn
   assert.ok(dashboard.recentReviews.length <= 4);
 });
 
-dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t) => {
+dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t: TestContext) => {
   const tempShopA = await createTempShop({ isPremium: true, premiumOrder: 10 });
   const tempShopB = await createTempShop({ isPremium: false });
 
@@ -285,7 +314,7 @@ dbTest('store ownership lookups resolve shop and Q&A ownership for authorization
   });
 });
 
-dbTest('createAdminShop and updateAdminShop persist and replace nested shop data', async (t) => {
+dbTest('createAdminShop and updateAdminShop persist and replace nested shop data', async (t: TestContext) => {
   const owner = await getSeedOwner();
   const shopInput = buildShopInput({ ownerId: owner.id });
   const createdShop = await createAdminShop(shopInput);
@@ -320,4 +349,62 @@ dbTest('createAdminShop and updateAdminShop persist and replace nested shop data
   assert.deepEqual(updatedShop?.courses, [
     { name: 'Express', duration: '30 min', price: '40000', description: 'Quick' },
   ]);
+});
+
+dbTest('site settings can be loaded and updated', async () => {
+  const current = await getSiteContent();
+  assert.ok(current, 'expected seeded site settings');
+
+  const nextName = `Healing Finder ${uniqueSuffix()}`;
+  const updated = await upsertSiteContent({
+    ...current.siteSettings,
+    ...current.homeSeo,
+    siteName: nextName,
+  });
+
+  assert.equal(updated.siteSettings.siteName, nextName);
+
+  const reloaded = await getSiteContent();
+  assert.equal(reloaded?.siteSettings.siteName, nextName);
+});
+
+dbTest('partnership inquiries can be created, listed, updated, and deleted', async () => {
+  const created = await createPartnershipInquiry({
+    shopName: `Partnership ${uniqueSuffix()}`,
+    region: 'Seoul',
+    subRegion: 'Gangnam',
+    theme: 'Swedish',
+    contactName: 'Partner',
+    phone: '010-1111-2222',
+    kakaoId: 'partner_seed',
+    message: 'Need listing support',
+  });
+
+  const listed = await listPartnershipInquiries();
+  assert.equal(listed.some((entry) => entry.id === created.id), true);
+
+  const updated = await updatePartnershipInquiryStatus(created.id, 'contacted');
+  assert.equal(updated?.status, 'contacted');
+
+  assert.equal(await deletePartnershipInquiry(created.id), true);
+});
+
+dbTest('hidden reviews stay in admin moderation lists but disappear from public review queries', async () => {
+  const admin = await getAdminUser();
+  const targetReview = await createTempReview();
+
+  const hidden = await setReviewHiddenState(admin, targetReview.id, true);
+  assert.equal(hidden?.isHidden, true);
+
+  const publicReviewsAfter = await listReviews();
+  assert.equal(publicReviewsAfter.some((review) => review.id === targetReview.id), false);
+
+  const managedReviews = await listManagedReviews(admin);
+  assert.equal(managedReviews.some((review) => review.id === targetReview.id && review.isHidden), true);
+
+  const restored = await setReviewHiddenState(admin, targetReview.id, false);
+  assert.equal(restored?.isHidden, false);
+
+  const owner = await getSeedOwner();
+  assert.equal(await deleteManagedReview({ id: owner.id, role: 'OWNER' }, targetReview.id), true);
 });

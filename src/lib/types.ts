@@ -29,6 +29,25 @@ export interface Shop {
   updatedAt: string;
 }
 
+export interface SiteSettings {
+  siteName: string;
+  siteTitle: string;
+  siteDescription: string;
+  heroMainText: string;
+  heroSubText: string;
+  contactPhone: string;
+  footerInfo: string;
+}
+
+export interface HomeSeoContent {
+  section1Title: string;
+  section1Content: string;
+  section2Title: string;
+  section2Content: string;
+  section3Title: string;
+  section3Content: string;
+}
+
 export interface Course {
   name: string;
   duration: string;
@@ -44,6 +63,7 @@ export interface Review {
   authorName: string;
   rating: number;
   content: string;
+  isHidden?: boolean;
   createdAt: string;
 }
 
@@ -64,6 +84,20 @@ export interface QnA {
   answer?: string;
   authorName: string;
   isAnswered: boolean;
+  createdAt: string;
+}
+
+export interface PartnershipInquiry {
+  id: string;
+  shopName: string;
+  region: string;
+  subRegion: string;
+  theme: string;
+  contactName: string;
+  phone: string;
+  kakaoId?: string;
+  message: string;
+  status: 'pending' | 'contacted' | 'completed';
   createdAt: string;
 }
 

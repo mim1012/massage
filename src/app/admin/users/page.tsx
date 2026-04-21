@@ -3,6 +3,7 @@ import { Shield, Store, UserCheck, Users } from 'lucide-react';
 import { listUsers } from '@/lib/server/auth-store';
 
 export const metadata: Metadata = { title: 'Users | Admin' };
+export const dynamic = 'force-dynamic';
 
 const roleMap = {
   ADMIN: { label: 'Admin', bg: 'bg-purple-100', text: 'text-purple-700', icon: Shield },

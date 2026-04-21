@@ -76,3 +76,43 @@ body { font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; }
 }
 
 ::selection { background: rgba(220, 38, 38, 0.15); }
+
+.shop-grid.card-view {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1024px) {
+  .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+
+.shop-grid.list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seo-content h1 {
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.seo-content h2 {
+  margin: 16px 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.seo-content p {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #6b7280;
+}

@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  MessageSquare,
   Settings,
   Store,
   UserCheck,
@@ -20,11 +21,13 @@ import {
 
 const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
-  { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck },
+  { href: '/admin/approvals', label: '승인 관리', icon: UserCheck },
+  { href: '/admin/partnerships', label: '제휴 문의', icon: MessageSquare },
   { href: '/admin/shops', label: '업소 관리', icon: Store },
-  { href: '/admin/premium', label: '프리미엄 배너', icon: Crown },
-  { href: '/admin/notice', label: '공지 관리', icon: Bell },
-  { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle },
+  { href: '/admin/reviews', label: '리뷰 관리', icon: MessageSquare },
+  { href: '/admin/premium', label: '프리미엄', icon: Crown },
+  { href: '/admin/notice', label: '공지사항', icon: Bell },
+  { href: '/admin/qna', label: 'Q&A', icon: MessageCircle },
   { href: '/admin/stats', label: '통계', icon: BarChart2 },
   { href: '/admin/users', label: '회원 관리', icon: Users },
   { href: '/admin/settings', label: '사이트 설정', icon: Settings },
@@ -63,12 +66,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {sidebarOpen && (
+      {sidebarOpen ? (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
-      )}
+      ) : null}
 
       <aside
         className={`fixed left-0 top-0 z-50 flex h-full w-[200px] flex-col border-r border-gray-200 bg-white transition-transform duration-200 ${
@@ -79,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex h-6 w-6 items-center justify-center rounded bg-red-600">
             <span className="text-xs font-black text-white">M</span>
           </div>
-          <span className="text-sm font-bold text-gray-800">마사지 관리자</span>
+          <span className="text-sm font-bold text-gray-800">관리자</span>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
@@ -121,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
           <div className="text-sm font-bold text-gray-800">관리자 모드</div>
           <div className="ml-auto text-xs text-gray-500">
-            {currentUser ? `${currentUser.name} (${currentUser.email})` : '로그인 정보 없음'}
+            {currentUser ? `${currentUser.name} (${currentUser.email})` : '활성 세션 없음'}
           </div>
         </header>
         <main className="flex-1 p-4">{children}</main>

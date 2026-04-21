@@ -24,6 +24,12 @@ enum QnaStatus {
   ANSWERED
 }
 
+enum PartnershipInquiryStatus {
+  PENDING
+  CONTACTED
+  COMPLETED
+}
+
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
@@ -129,6 +135,7 @@ model Review {
   authorName String   @map("author_name")
   rating     Int
   content    String
+  isHidden   Boolean  @default(false) @map("is_hidden")
   createdAt  DateTime @default(now()) @map("created_at")
   shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -183,4 +190,43 @@ model AuditLog {
   @@index([actorUserId, createdAt(sort: Desc)])
   @@index([targetType, targetId, createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+model PartnershipInquiry {
+  id          String                   @id @default(cuid())
+  shopName    String                   @map("shop_name")
+  region      String
+  subRegion   String                   @map("sub_region")
+  theme       String
+  contactName String                   @map("contact_name")
+  phone       String
+  kakaoId     String?                  @map("kakao_id")
+  message     String
+  status      PartnershipInquiryStatus @default(PENDING)
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("partnership_inquiries")
+}
+
+model SiteSettings {
+  id              String   @id
+  siteName        String   @map("site_name")
+  siteTitle       String   @map("site_title")
+  siteDescription String   @map("site_description")
+  heroMainText    String   @map("hero_main_text")
+  heroSubText     String   @map("hero_sub_text")
+  contactPhone    String   @map("contact_phone")
+  footerInfo      String   @map("footer_info")
+  seoSection1Title   String @map("seo_section_1_title")
+  seoSection1Content String @map("seo_section_1_content")
+  seoSection2Title   String @map("seo_section_2_title")
+  seoSection2Content String @map("seo_section_2_content")
+  seoSection3Title   String @map("seo_section_3_title")
+  seoSection3Content String @map("seo_section_3_content")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
 }

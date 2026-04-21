@@ -32,22 +32,33 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-const result = spawnSync(
-  process.execPath,
-  [
-    '--disable-warning=ExperimentalWarning',
-    '--disable-warning=DeprecationWarning',
-    '--experimental-transform-types',
-    '--import',
-    pathToFileURL(path.join(projectRoot, 'scripts', 'register-alias.mjs')).href,
-    '--test',
-    ...testFiles.map((filePath) => path.relative(projectRoot, filePath).split(path.sep).join('/')),
-  ],
-  {
-    cwd: projectRoot,
-    stdio: 'inherit',
-    env: process.env,
-  },
-);
+let failed = false;
 
-process.exit(result.status ?? 1);
+for (const filePath of testFiles) {
+  const relativePath = path.relative(projectRoot, filePath).split(path.sep).join('/');
+  console.log(`\n=== Running ${relativePath} ===`);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--disable-warning=ExperimentalWarning',
+      '--disable-warning=DeprecationWarning',
+      '--experimental-transform-types',
+      '--import',
+      pathToFileURL(path.join(projectRoot, 'scripts', 'register-alias.mjs')).href,
+      '--test',
+      relativePath,
+    ],
+    {
+      cwd: projectRoot,
+      stdio: 'inherit',
+      env: process.env,
+    },
+  );
+
+  if ((result.status ?? 1) !== 0) {
+    failed = true;
+  }
+}
+
+process.exit(failed ? 1 : 0);

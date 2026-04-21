@@ -1,8 +1,17 @@
-import { QnaStatus, type Notice as DbNotice, type QnA as DbQnA, type Review as DbReview } from '@prisma/client';
-import type { Notice, QnA, Review, Shop } from '@/lib/types';
+import {
+  QnaStatus,
+  type Notice as DbNotice,
+  type PartnershipInquiry as DbPartnershipInquiry,
+  type QnA as DbQnA,
+  type Review as DbReview,
+  type SiteSettings as DbSiteSettings,
+} from '@prisma/client';
+import type { HomeSeoContent, Notice, PartnershipInquiry, QnA, Review, Shop, SiteSettings, UserRole } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
 import { mapShop, shopInclude } from '@/lib/server/shop-store';
+
+const SITE_SETTINGS_ID = 'default';
 
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
@@ -54,8 +63,66 @@ function mapReview(review: DbReview & { shop: { name: string } }): Review {
     authorName: review.authorName,
     rating: review.rating,
     content: review.content,
+    isHidden: review.isHidden,
     createdAt: review.createdAt.toISOString(),
   };
+}
+
+function mapPartnershipInquiry(entry: DbPartnershipInquiry): PartnershipInquiry {
+  const statusMap = {
+    PENDING: 'pending',
+    CONTACTED: 'contacted',
+    COMPLETED: 'completed',
+  } as const;
+
+  return {
+    id: entry.id,
+    shopName: entry.shopName,
+    region: entry.region,
+    subRegion: entry.subRegion,
+    theme: entry.theme,
+    contactName: entry.contactName,
+    phone: entry.phone,
+    kakaoId: entry.kakaoId ?? undefined,
+    message: entry.message,
+    status: statusMap[entry.status],
+    createdAt: entry.createdAt.toISOString(),
+  };
+}
+
+function mapPartnershipStatus(status: PartnershipInquiry['status']) {
+  switch (status) {
+    case 'contacted':
+      return 'CONTACTED';
+    case 'completed':
+      return 'COMPLETED';
+    case 'pending':
+    default:
+      return 'PENDING';
+  }
+}
+
+function mapSiteSettings(record: DbSiteSettings) {
+  const siteSettings: SiteSettings = {
+    siteName: record.siteName,
+    siteTitle: record.siteTitle,
+    siteDescription: record.siteDescription,
+    heroMainText: record.heroMainText,
+    heroSubText: record.heroSubText,
+    contactPhone: record.contactPhone,
+    footerInfo: record.footerInfo,
+  };
+
+  const homeSeo: HomeSeoContent = {
+    section1Title: record.seoSection1Title,
+    section1Content: record.seoSection1Content,
+    section2Title: record.seoSection2Title,
+    section2Content: record.seoSection2Content,
+    section3Title: record.seoSection3Title,
+    section3Content: record.seoSection3Content,
+  };
+
+  return { siteSettings, homeSeo };
 }
 
 function parseInteger(value: string) {
@@ -250,12 +317,92 @@ export async function createQna(
 
 export async function listReviews(limit?: number) {
   const reviews = await prisma.review.findMany({
+    where: { isHidden: false },
     include: { shop: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
     ...(typeof limit === 'number' ? { take: limit } : {}),
   });
 
   return reviews.map(mapReview);
+}
+
+export async function listManagedReviews(user: { id: string; role: UserRole }) {
+  const reviewWhere =
+    user.role === 'ADMIN'
+      ? undefined
+      : {
+          shop: {
+            ownerId: user.id,
+          },
+        };
+
+  const reviews = await prisma.review.findMany({
+    where: reviewWhere,
+    include: { shop: { select: { name: true, regionLabel: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return reviews.map((review) => ({
+    ...mapReview(review),
+    shopRegionLabel: review.shop.regionLabel,
+  }));
+}
+
+export async function setReviewHiddenState(
+  user: { id: string; role: UserRole },
+  reviewId: string,
+  isHidden: boolean,
+) {
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    include: {
+      shop: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
+
+  if (!review) {
+    return null;
+  }
+
+  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+    return null;
+  }
+
+  const updated = await prisma.review.update({
+    where: { id: reviewId },
+    data: { isHidden },
+    include: { shop: { select: { name: true } } },
+  });
+
+  return mapReview(updated);
+}
+
+export async function deleteManagedReview(user: { id: string; role: UserRole }, reviewId: string) {
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    include: {
+      shop: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
+
+  if (!review) {
+    return false;
+  }
+
+  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+    return false;
+  }
+
+  await prisma.review.delete({ where: { id: reviewId } });
+  return true;
 }
 
 export async function getAdminShopById(id: string) {
@@ -334,7 +481,7 @@ export async function getBoardSummary() {
   const [notices, qna, reviews] = await Promise.all([
     prisma.notice.count(),
     prisma.qnA.count(),
-    prisma.review.count(),
+    prisma.review.count({ where: { isHidden: false } }),
   ]);
 
   return {
@@ -342,6 +489,109 @@ export async function getBoardSummary() {
     qna,
     reviews,
   };
+}
+
+export async function listPartnershipInquiries() {
+  const entries = await prisma.partnershipInquiry.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return entries.map(mapPartnershipInquiry);
+}
+
+export async function createPartnershipInquiry(
+  input: Omit<PartnershipInquiry, 'id' | 'createdAt' | 'status'> & { status?: PartnershipInquiry['status'] },
+) {
+  const entry = await prisma.partnershipInquiry.create({
+    data: {
+      shopName: input.shopName.trim(),
+      region: input.region.trim(),
+      subRegion: input.subRegion.trim(),
+      theme: input.theme.trim(),
+      contactName: input.contactName.trim(),
+      phone: input.phone.trim(),
+      kakaoId: input.kakaoId?.trim() || null,
+      message: input.message.trim(),
+      status: mapPartnershipStatus(input.status ?? 'pending'),
+    },
+  });
+
+  return mapPartnershipInquiry(entry);
+}
+
+export async function updatePartnershipInquiryStatus(
+  id: string,
+  status: PartnershipInquiry['status'],
+) {
+  try {
+    const entry = await prisma.partnershipInquiry.update({
+      where: { id },
+      data: { status: mapPartnershipStatus(status) },
+    });
+
+    return mapPartnershipInquiry(entry);
+  } catch {
+    return null;
+  }
+}
+
+export async function deletePartnershipInquiry(id: string) {
+  const result = await prisma.partnershipInquiry.deleteMany({
+    where: { id },
+  });
+
+  return result.count > 0;
+}
+
+export async function getSiteContent() {
+  const record = await prisma.siteSettings.findUnique({
+    where: { id: SITE_SETTINGS_ID },
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  return mapSiteSettings(record);
+}
+
+export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
+  const record = await prisma.siteSettings.upsert({
+    where: { id: SITE_SETTINGS_ID },
+    update: {
+      siteName: input.siteName.trim(),
+      siteTitle: input.siteTitle.trim(),
+      siteDescription: input.siteDescription.trim(),
+      heroMainText: input.heroMainText.trim(),
+      heroSubText: input.heroSubText.trim(),
+      contactPhone: input.contactPhone.trim(),
+      footerInfo: input.footerInfo.trim(),
+      seoSection1Title: input.section1Title.trim(),
+      seoSection1Content: input.section1Content.trim(),
+      seoSection2Title: input.section2Title.trim(),
+      seoSection2Content: input.section2Content.trim(),
+      seoSection3Title: input.section3Title.trim(),
+      seoSection3Content: input.section3Content.trim(),
+    },
+    create: {
+      id: SITE_SETTINGS_ID,
+      siteName: input.siteName.trim(),
+      siteTitle: input.siteTitle.trim(),
+      siteDescription: input.siteDescription.trim(),
+      heroMainText: input.heroMainText.trim(),
+      heroSubText: input.heroSubText.trim(),
+      contactPhone: input.contactPhone.trim(),
+      footerInfo: input.footerInfo.trim(),
+      seoSection1Title: input.section1Title.trim(),
+      seoSection1Content: input.section1Content.trim(),
+      seoSection2Title: input.section2Title.trim(),
+      seoSection2Content: input.section2Content.trim(),
+      seoSection3Title: input.section3Title.trim(),
+      seoSection3Content: input.section3Content.trim(),
+    },
+  });
+
+  return mapSiteSettings(record);
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {

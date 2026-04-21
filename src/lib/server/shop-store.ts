@@ -22,6 +22,8 @@ export const shopInclude = {
 } satisfies Prisma.ShopInclude;
 
 export function mapShop(record: ShopRecord): Shop {
+  const visibleReviews = record.reviews.filter((review) => !review.isHidden);
+
   return {
     id: record.id,
     name: record.name,
@@ -45,7 +47,7 @@ export function mapShop(record: ShopRecord): Shop {
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount: record.reviews.length,
+    reviewCount: visibleReviews.length,
     courses: [...record.courses]
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((course) => ({
@@ -129,7 +131,8 @@ export async function getShopBySlug(slug: string) {
 
   return {
     shop: mapShop(shop),
-    reviews: [...shop.reviews]
+    reviews: shop.reviews
+      .filter((review) => !review.isHidden)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
       .map((review) => mapReview(review, shop.name)),
   };

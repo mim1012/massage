@@ -1,4 +1,13 @@
-import { Shop, Review, Notice, QnA, User } from './types';
+import {
+  Shop,
+  Review,
+  Notice,
+  QnA,
+  User,
+  PartnershipInquiry,
+  SiteSettings,
+  HomeSeoContent,
+} from './types';
 
 // ===== 모의 사용자 데이터 =====
 export const MOCK_USERS: User[] = [
@@ -373,3 +382,53 @@ export const MOCK_QNA: QnA[] = [
     createdAt: '2024-06-05',
   },
 ];
+
+export const MOCK_PARTNERSHIPS: PartnershipInquiry[] = [
+  {
+    id: 'partnership-001',
+    shopName: 'Gangnam Aroma Lounge',
+    region: 'Seoul',
+    subRegion: 'Gangnam',
+    theme: 'Aroma',
+    contactName: 'Kim Chulsoo',
+    phone: '010-1234-5678',
+    kakaoId: 'healing_partner',
+    message: 'We want to list the shop and ask about premium exposure options.',
+    status: 'pending',
+    createdAt: '2024-03-21T10:00:00Z',
+  },
+  {
+    id: 'partnership-002',
+    shopName: 'Bundang Swedish House',
+    region: 'Gyeonggi',
+    subRegion: 'Bundang',
+    theme: 'Swedish',
+    contactName: 'Lee Younghee',
+    phone: '010-9876-5432',
+    message: 'Please share listing costs and the owner onboarding process.',
+    status: 'contacted',
+    createdAt: '2024-03-20T16:20:00Z',
+  },
+];
+
+export const MOCK_SITE_SETTINGS: SiteSettings = {
+  siteName: 'Healing Finder',
+  siteTitle: 'Massage Directory',
+  siteDescription: 'Verified wellness listings',
+  heroMainText: 'Find a trusted massage spot near you',
+  heroSubText: 'Verified listings, curated by area and theme',
+  contactPhone: '1588-0000',
+  footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
+};
+
+export const MOCK_HOME_SEO: HomeSeoContent = {
+  section1Title: 'Healing Finder: discover massage and wellness shops',
+  section1Content:
+    'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
+  section2Title: 'Filter by district and service type',
+  section2Content:
+    'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
+  section3Title: 'Track premium and trending listings',
+  section3Content:
+    'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
+};

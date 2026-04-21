@@ -18,6 +18,7 @@ const KEY_LENGTH = 64;
 const ADMIN_PASSWORD = 'admin1234';
 const OWNER_PASSWORD = 'owner1234';
 const USER_PASSWORD = 'user1234';
+const SITE_SETTINGS_ID = 'default';
 
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -156,6 +157,7 @@ async function main() {
       authorName: 'Seed User',
       rating: 5,
       content: 'Seed review for backend integration.',
+      isHidden: false,
     },
     create: {
       id: 'seed-review-001',
@@ -164,6 +166,7 @@ async function main() {
       authorName: 'Seed User',
       rating: 5,
       content: 'Seed review for backend integration.',
+      isHidden: false,
     },
   });
 
@@ -210,6 +213,74 @@ async function main() {
       content: 'Initial seeded notice for the project.',
       isPinned: true,
       createdBy: admin.id,
+    },
+  });
+
+  await prisma.partnershipInquiry.upsert({
+    where: { id: 'seed-partnership-001' },
+    update: {
+      shopName: 'Seed Partnership Shop',
+      region: 'Seoul',
+      subRegion: 'Gangnam',
+      theme: 'Swedish',
+      contactName: 'Seed Contact',
+      phone: '010-9999-0000',
+      kakaoId: 'seed_partner',
+      message: 'Initial seeded partnership inquiry.',
+      status: 'PENDING',
+    },
+    create: {
+      id: 'seed-partnership-001',
+      shopName: 'Seed Partnership Shop',
+      region: 'Seoul',
+      subRegion: 'Gangnam',
+      theme: 'Swedish',
+      contactName: 'Seed Contact',
+      phone: '010-9999-0000',
+      kakaoId: 'seed_partner',
+      message: 'Initial seeded partnership inquiry.',
+      status: 'PENDING',
+    },
+  });
+
+  await prisma.siteSettings.upsert({
+    where: { id: SITE_SETTINGS_ID },
+    update: {
+      siteName: 'Healing Finder',
+      siteTitle: 'Massage Directory',
+      siteDescription: 'Verified wellness listings',
+      heroMainText: 'Find a trusted massage spot near you',
+      heroSubText: 'Verified listings, curated by area and theme',
+      contactPhone: '1588-0000',
+      footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
+      seoSection1Title: 'Healing Finder: discover massage and wellness shops',
+      seoSection1Content:
+        'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
+      seoSection2Title: 'Filter by district and service type',
+      seoSection2Content:
+        'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
+      seoSection3Title: 'Track premium and trending listings',
+      seoSection3Content:
+        'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
+    },
+    create: {
+      id: SITE_SETTINGS_ID,
+      siteName: 'Healing Finder',
+      siteTitle: 'Massage Directory',
+      siteDescription: 'Verified wellness listings',
+      heroMainText: 'Find a trusted massage spot near you',
+      heroSubText: 'Verified listings, curated by area and theme',
+      contactPhone: '1588-0000',
+      footerInfo: 'Healing Finder | Wellness directory team | Business info placeholder',
+      seoSection1Title: 'Healing Finder: discover massage and wellness shops',
+      seoSection1Content:
+        'Browse verified massage and wellness listings by area, theme, and popularity. Compare options quickly and move into each shop page for details.',
+      seoSection2Title: 'Filter by district and service type',
+      seoSection2Content:
+        'Use region, district, and theme filters to narrow down Swedish, aroma, Thai, sports, or deep-tissue options across major cities.',
+      seoSection3Title: 'Track premium and trending listings',
+      seoSection3Content:
+        'Premium placements and ranking pages make it easier to scan top-performing shops while keeping the core directory searchable.',
     },
   });
 }
