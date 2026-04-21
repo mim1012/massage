@@ -5,16 +5,16 @@ import { getAdminDashboardData } from '@/lib/server/communityStore';
 import type { AdminDashboardData } from '@/lib/communityTypes';
 
 export const metadata: Metadata = {
-  title: '??? ????',
+  title: '대시보드 | 관리자',
 };
 
 export const dynamic = 'force-dynamic';
 
 const summaryCards = [
-  { label: '?? ??', icon: Store, colors: 'text-blue-600 bg-blue-50' },
-  { label: '???? ??', icon: Star, colors: 'text-amber-500 bg-amber-50' },
-  { label: '??? Q&A', icon: MessageCircle, colors: 'text-red-500 bg-red-50' },
-  { label: '?? ?', icon: BarChart2, colors: 'text-green-600 bg-green-50' },
+  { label: '전체 업소', icon: Store, colors: 'text-blue-600 bg-blue-50' },
+  { label: '프리미엄(AD)', icon: Star, colors: 'text-amber-500 bg-amber-50' },
+  { label: '미답변 Q&A', icon: MessageCircle, colors: 'text-red-500 bg-red-50' },
+  { label: '오늘 페이지뷰', icon: BarChart2, colors: 'text-green-600 bg-green-50' },
 ] as const;
 
 export default async function AdminDashboardPage() {
@@ -30,14 +30,14 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="max-w-[1000px] space-y-4">
-      <h1 className="text-xl font-black text-gray-800">????</h1>
+      <h1 className="text-xl font-black text-gray-800">대시보드</h1>
 
       {loadError ? (
         <div className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <p className="font-bold">???? ???? ???? ?????.</p>
-            <p className="mt-1 text-xs text-amber-700">DB ?? ?? ?? ??? ??? ???.</p>
+            <p className="font-bold">대시보드 데이터를 불러오지 못했습니다.</p>
+            <p className="mt-1 text-xs text-amber-700">DB 연결 상태를 확인한 뒤 다시 시도해 주세요.</p>
           </div>
         </div>
       ) : null}
@@ -70,23 +70,21 @@ export default async function AdminDashboardPage() {
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
               <AlertCircle className="h-4 w-4 text-red-500" />
-              ?? ?? Q&amp;A
+              처리 필요 Q&amp;A
             </h2>
-            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-red-600">
-              ?? ??
-            </Link>
+            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-red-600">더보기</Link>
           </div>
           <div className="divide-y divide-gray-100">
             {(dashboard?.pendingQna ?? []).map((item) => (
               <div key={item.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="min-w-0 truncate pr-3 text-gray-700">{item.question}</span>
                 <Link href="/admin/qna" className="shrink-0 rounded bg-red-50 px-2 py-1 text-[11px] text-red-600">
-                  ????
+                  답변하기
                 </Link>
               </div>
             ))}
             {!loadError && (dashboard?.pendingQna?.length ?? 0) === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">?? ?? ??? ????.</p>
+              <p className="py-4 text-center text-xs text-gray-400">새로운 문의가 없습니다.</p>
             ) : null}
           </div>
         </section>
@@ -95,7 +93,7 @@ export default async function AdminDashboardPage() {
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
               <TrendingUp className="h-4 w-4 text-blue-500" />
-              ?? ?? ??
+              최근 작성된 후기
             </h2>
           </div>
           <div className="divide-y divide-gray-100">
@@ -112,7 +110,7 @@ export default async function AdminDashboardPage() {
               </div>
             ))}
             {!loadError && (dashboard?.recentReviews?.length ?? 0) === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">??? ??? ????.</p>
+              <p className="py-4 text-center text-xs text-gray-400">최근 등록된 후기가 없습니다.</p>
             ) : null}
           </div>
         </section>

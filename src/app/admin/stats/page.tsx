@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AlertTriangle, BarChart2, TrendingUp } from 'lucide-react';
 import { getAdminStatsData } from '@/lib/server/admin-stats';
 
-export const metadata: Metadata = { title: '?? | ???' };
+export const metadata: Metadata = { title: '통계 | 관리자' };
 
 export const dynamic = 'force-dynamic';
 
@@ -23,15 +23,15 @@ export default async function AdminStatsPage() {
     <div className="max-w-[1000px] space-y-4">
       <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
         <BarChart2 className="h-5 w-5 text-red-600" />
-        ?? ???
+        통계 보고서
       </h1>
 
       {loadError ? (
         <div className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <p className="font-bold">?? ???? ???? ?????.</p>
-            <p className="mt-1 text-xs text-amber-700">page_view_events ? ?? ?? ???? ??? ???.</p>
+            <p className="font-bold">통계 데이터를 불러오지 못했습니다.</p>
+            <p className="mt-1 text-xs text-amber-700">page_view_events 테이블과 집계 로직을 다시 확인해 주세요.</p>
           </div>
         </div>
       ) : null}
@@ -49,7 +49,7 @@ export default async function AdminStatsPage() {
       <div className="rounded border border-gray-200 bg-white p-4">
         <h2 className="mb-4 flex items-center gap-1.5 border-b border-gray-100 pb-2 text-sm font-bold text-gray-800">
           <TrendingUp className="h-4 w-4 text-blue-500" />
-          ?? ?? ?? TOP 5
+          인기 조회 업소 TOP 5
         </h2>
         <div className="space-y-3">
           {(stats?.topShops ?? []).map((shop, index) => (
@@ -61,7 +61,7 @@ export default async function AdminStatsPage() {
                     {shop.name}
                     <span className="ml-1 font-normal text-gray-400">({shop.regionLabel})</span>
                   </span>
-                  <span className="text-gray-500">{shop.viewCount.toLocaleString()}?</span>
+                  <span className="text-gray-500">{shop.viewCount.toLocaleString()}</span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
                   <div
@@ -73,7 +73,7 @@ export default async function AdminStatsPage() {
             </div>
           ))}
           {!loadError && (stats?.topShops?.length ?? 0) === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">??? ?? ???? ????.</div>
+            <div className="py-8 text-center text-sm text-gray-400">조회할 업소 데이터가 없습니다.</div>
           ) : null}
         </div>
       </div>

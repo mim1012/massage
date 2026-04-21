@@ -21,17 +21,17 @@ import {
 import type { User } from '@/lib/types';
 
 const navItems = [
-  { href: '/admin', label: '????', icon: LayoutDashboard },
-  { href: '/admin/approvals', label: '?? ??', icon: UserCheck },
-  { href: '/admin/partnerships', label: '?? ??', icon: MessageSquare },
-  { href: '/admin/shops', label: '?? ??', icon: Store },
-  { href: '/admin/reviews', label: '?? ??', icon: MessageSquare },
-  { href: '/admin/premium', label: '????', icon: Crown },
-  { href: '/admin/notice', label: '????', icon: Bell },
-  { href: '/admin/qna', label: 'Q&A', icon: MessageCircle },
-  { href: '/admin/stats', label: '??', icon: BarChart2 },
-  { href: '/admin/users', label: '?? ??', icon: Users },
-  { href: '/admin/settings', label: '??? ??', icon: Settings },
+  { href: '/admin', label: '대시보드', icon: LayoutDashboard },
+  { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck },
+  { href: '/admin/partnerships', label: '입점 문의 관리', icon: MessageSquare },
+  { href: '/admin/shops', label: '업소 관리', icon: Store },
+  { href: '/admin/reviews', label: '후기 관리', icon: MessageSquare },
+  { href: '/admin/premium', label: '프리미엄 배너', icon: Crown },
+  { href: '/admin/notice', label: '공지 관리', icon: Bell },
+  { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle },
+  { href: '/admin/stats', label: '통계', icon: BarChart2 },
+  { href: '/admin/users', label: '회원 관리', icon: Users },
+  { href: '/admin/settings', label: '사이트 설정', icon: Settings },
 ];
 
 type AdminLayoutUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
@@ -75,9 +75,9 @@ export default function AdminShell({
       >
         <div className="flex items-center gap-2 border-b border-gray-200 p-4">
           <div className="flex h-6 w-6 items-center justify-center rounded bg-red-600">
-            <span className="text-xs font-black text-white">M</span>
+            <span className="text-xs font-black text-white">힐</span>
           </div>
-          <span className="text-sm font-bold text-gray-800">???</span>
+          <span className="text-sm font-bold text-gray-800">힐링 관리자</span>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
@@ -102,7 +102,7 @@ export default function AdminShell({
         <div className="space-y-1 border-t border-gray-200 p-3">
           <Link href="/" className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">
             <Eye className="h-4 w-4" />
-            ??? ??
+            사이트 보기
           </Link>
           <button
             type="button"
@@ -111,7 +111,7 @@ export default function AdminShell({
             className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" />
-            {isLoggingOut ? '???? ?...' : '????'}
+            {isLoggingOut ? '로그아웃 중...' : '로그아웃'}
           </button>
         </div>
       </aside>
@@ -121,7 +121,7 @@ export default function AdminShell({
           <button type="button" onClick={() => setSidebarOpen(true)} className="text-gray-600 md:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="text-sm font-bold text-gray-800">??? ??</div>
+          <div className="text-sm font-bold text-gray-800">{currentUser.role === 'ADMIN' ? '어드민 모드' : '내 업소 관리 모드'}</div>
           <div className="ml-auto text-xs text-gray-500">{`${currentUser.name} (${currentUser.email})`}</div>
         </header>
         <main className="flex-1 p-4">{children}</main>
