@@ -54,7 +54,7 @@ function hashPassword(password: string) {
 }
 
 async function main() {
-  const admin = await prisma.user.upsert({
+  const admin = (await prisma.user.upsert({
     where: { email: 'admin@massage.local' },
     update: {
       passwordHash: hashPassword(ADMIN_PASSWORD),
@@ -69,9 +69,9 @@ async function main() {
       role: 'ADMIN',
       status: 'APPROVED',
     },
-  });
+  })) as { id: string };
 
-  const owner = await prisma.user.upsert({
+  const owner = (await prisma.user.upsert({
     where: { email: 'owner@massage.local' },
     update: {
       passwordHash: hashPassword(OWNER_PASSWORD),
@@ -94,9 +94,9 @@ async function main() {
         },
       },
     },
-  });
+  })) as { id: string };
 
-  const user = await prisma.user.upsert({
+  const user = (await prisma.user.upsert({
     where: { email: 'user@massage.local' },
     update: {
       passwordHash: hashPassword(USER_PASSWORD),
@@ -111,9 +111,9 @@ async function main() {
       role: 'USER',
       status: 'APPROVED',
     },
-  });
+  })) as { id: string };
 
-  const shop = await prisma.shop.upsert({
+  const shop = (await prisma.shop.upsert({
     where: { slug: 'healing-spa-seoul' },
     update: {
       ownerId: owner.id,
@@ -172,7 +172,7 @@ async function main() {
         ],
       },
     },
-  });
+  })) as { id: string };
 
   await prisma.review.upsert({
     where: {
