@@ -6,7 +6,10 @@ import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/db/prisma';
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-const SESSION_SECRET = getSessionSecret();
+
+function getSigningSecret() {
+  return getSessionSecret();
+}
 
 type UserWithProfile = DbUser & {
   ownerProfile: OwnerProfile | null;
@@ -43,18 +46,20 @@ function sanitizeUser(user: UserWithProfile): User {
 }
 
 function signSessionPayload(userId: string, expiresAt: number) {
+  const sessionSecret = getSigningSecret();
   const payload = Buffer.from(JSON.stringify({ userId, expiresAt })).toString('base64url');
-  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
 function readSessionPayload(token: string) {
+  const sessionSecret = getSigningSecret();
   const [payload, signature] = token.split('.');
   if (!payload || !signature) {
     return null;
   }
 
-  const expectedSignature = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  const expectedSignature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   if (signature.length !== expectedSignature.length) {
     return null;
   }
