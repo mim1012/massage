@@ -95,6 +95,8 @@ export interface QnAComment {
 export interface QnA {
   id: string;
   shopId?: string;
+  shopName?: string;
+  shopRegionLabel?: string;
   question: string;
   answer?: string; // legacy convenience field: latest operator comment
   authorName: string;

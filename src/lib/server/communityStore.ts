@@ -28,6 +28,13 @@ import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
 
+type DbQnAWithShop = DbQnA & {
+  shop?: {
+    name: string;
+    regionLabel: string;
+  } | null;
+};
+
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
     id: shop.id,
@@ -58,6 +65,8 @@ type QnaRecord = Prisma.QnAGetPayload<{
     shop: {
       select: {
         ownerId: true;
+        name: true;
+        regionLabel: true;
       };
     };
     comments: {
@@ -92,6 +101,7 @@ function mapQnaComment(comment: QnaRecord['comments'][number]): QnAComment {
     userId: comment.userId ?? undefined,
     authorName: comment.authorName,
     role: comment.role,
+    authorRole: comment.role,
     content: comment.content,
     createdAt: comment.createdAt.toISOString(),
   };
@@ -116,6 +126,8 @@ function mapQna(entry: QnaRecord, viewer?: ViewerContext): QnA {
   return {
     id: entry.id,
     shopId: entry.shopId ?? undefined,
+    shopName: entry.shop?.name ?? undefined,
+    shopRegionLabel: entry.shop?.regionLabel ?? undefined,
     question: entry.question,
     answer: latestComment?.content,
     authorName: entry.authorName,
@@ -256,6 +268,20 @@ export async function listAdminShops() {
   return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
 }
 
+export async function listManagedShops(user: { id: string; role: UserRole }) {
+  if (user.role === 'ADMIN') {
+    return listAdminShops();
+  }
+
+  const shops = await prisma.shop.findMany({
+    where: { ownerId: user.id },
+    include: shopInclude,
+    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+  });
+
+  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
+}
+
 export async function updatePremiumOrder(orderedIds: string[]) {
   const existingShops = await prisma.shop.findMany({ select: { id: true } });
   const existingIds = new Set(existingShops.map((shop) => shop.id));
@@ -361,6 +387,8 @@ const qnaInclude = {
   shop: {
     select: {
       ownerId: true,
+      name: true,
+      regionLabel: true,
     },
   },
   comments: {

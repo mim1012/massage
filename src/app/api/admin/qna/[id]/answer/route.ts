@@ -9,9 +9,10 @@ export async function PATCH(
   try {
     const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
-    const body = (await request.json()) as { answer?: string };
+    const body = (await request.json()) as { answer?: string; comment?: string };
+    const nextComment = body.comment?.trim() || body.answer?.trim();
 
-    if (!body.answer?.trim()) {
+    if (!nextComment) {
       return Response.json({ error: '답변 내용은 필수입니다.' }, { status: 400 });
     }
 
@@ -24,7 +25,7 @@ export async function PATCH(
 
     const qna = await answerQna(
       id,
-      body.answer,
+      nextComment,
       user.id,
       user.name,
       user.role === 'OWNER' ? 'OWNER' : 'ADMIN',

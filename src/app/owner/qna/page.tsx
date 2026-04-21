@@ -1,1 +1,5 @@
-export { default } from '../../admin/qna/page';
+import QnaManagementPage from '@/components/admin/QnaManagementPage';
+
+export default function OwnerQnaPage() {
+  return <QnaManagementPage scope="owner" />;
+}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Bell, Edit2, Pin, Plus, Save, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bell, Edit2, Pin, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
@@ -10,6 +10,8 @@ export default function AdminNoticePage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Notice | null>(null);
   const [form, setForm] = useState({ title: '', content: '', isPinned: false });
+  const [search, setSearch] = useState('');
+  const [pinnedFilter, setPinnedFilter] = useState<'all' | 'pinned' | 'normal'>('all');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,20 +100,38 @@ export default function AdminNoticePage() {
     }
   }
 
+  const filteredNotices = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return notices.filter((notice) => {
+      const matchesPinned =
+        pinnedFilter === 'all' || (pinnedFilter === 'pinned' ? notice.isPinned : !notice.isPinned);
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        notice.title.toLowerCase().includes(normalizedSearch) ||
+        notice.content.toLowerCase().includes(normalizedSearch);
+
+      return matchesPinned && matchesSearch;
+    });
+  }, [notices, pinnedFilter, search]);
+
   return (
     <div className="max-w-[800px] space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
           <Bell className="h-5 w-5 text-red-600" />
           공지사항 관리
         </h1>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-red-700"
-        >
-          <Plus className="h-4 w-4" />
-          공지 작성
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filteredNotices.length}건 / 전체 {notices.length}건</div>
+          <button
+            onClick={openNew}
+            className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-red-700"
+          >
+            <Plus className="h-4 w-4" />
+            공지 작성
+          </button>
+        </div>
       </div>
 
       {showForm ? (
@@ -163,6 +183,28 @@ export default function AdminNoticePage() {
         </form>
       ) : null}
 
+      <div className="flex flex-col gap-2 rounded border border-gray-200 bg-white p-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="공지 제목 또는 내용 검색"
+            className="w-full rounded border border-gray-300 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-red-500"
+          />
+        </div>
+        <select
+          value={pinnedFilter}
+          onChange={(event) => setPinnedFilter(event.target.value as 'all' | 'pinned' | 'normal')}
+          className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
+        >
+          <option value="all">전체 공지</option>
+          <option value="pinned">고정 공지</option>
+          <option value="normal">일반 공지</option>
+        </select>
+      </div>
+
       {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
@@ -170,7 +212,7 @@ export default function AdminNoticePage() {
           <div className="p-6 text-center text-sm text-gray-400">공지 목록을 불러오는 중입니다.</div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {notices.map((notice) => (
+            {filteredNotices.map((notice) => (
               <div key={notice.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
                 <div className="flex min-w-0 items-center gap-2">
                   {notice.isPinned ? (
@@ -197,7 +239,11 @@ export default function AdminNoticePage() {
                 </div>
               </div>
             ))}
-            {notices.length === 0 ? <div className="p-6 text-center text-sm text-gray-400">등록된 공지가 없습니다.</div> : null}
+            {filteredNotices.length === 0 ? (
+              <div className="p-6 text-center text-sm text-gray-400">
+                {notices.length === 0 ? '등록된 공지가 없습니다.' : '검색 조건에 맞는 공지가 없습니다.'}
+              </div>
+            ) : null}
           </div>
         )}
       </div>
