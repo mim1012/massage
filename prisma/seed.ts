@@ -1,9 +1,12 @@
 import crypto from 'node:crypto';
 import prismaClientPkg from '@prisma/client';
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
-const { PrismaClient, QnaStatus, UserRole, UserStatus } = prismaClientPkg;
+const { PrismaClient } = prismaClientPkg as unknown as {
+  PrismaClient: typeof PrismaClientType;
+};
 
 const DATABASE_URL =
   process.env.DATABASE_URL ??
@@ -34,15 +37,15 @@ async function main() {
     update: {
       passwordHash: hashPassword(ADMIN_PASSWORD),
       name: 'Admin',
-      role: UserRole.ADMIN,
-      status: UserStatus.APPROVED,
+      role: 'ADMIN',
+      status: 'APPROVED',
     },
     create: {
       email: 'admin@massage.local',
       passwordHash: hashPassword(ADMIN_PASSWORD),
       name: 'Admin',
-      role: UserRole.ADMIN,
-      status: UserStatus.APPROVED,
+      role: 'ADMIN',
+      status: 'APPROVED',
     },
   });
 
@@ -51,16 +54,16 @@ async function main() {
     update: {
       passwordHash: hashPassword(OWNER_PASSWORD),
       name: 'Owner',
-      role: UserRole.OWNER,
-      status: UserStatus.APPROVED,
+      role: 'OWNER',
+      status: 'APPROVED',
       phone: '010-1111-2222',
     },
     create: {
       email: 'owner@massage.local',
       passwordHash: hashPassword(OWNER_PASSWORD),
       name: 'Owner',
-      role: UserRole.OWNER,
-      status: UserStatus.APPROVED,
+      role: 'OWNER',
+      status: 'APPROVED',
       phone: '010-1111-2222',
       ownerProfile: {
         create: {
@@ -76,15 +79,15 @@ async function main() {
     update: {
       passwordHash: hashPassword(USER_PASSWORD),
       name: 'User',
-      role: UserRole.USER,
-      status: UserStatus.APPROVED,
+      role: 'USER',
+      status: 'APPROVED',
     },
     create: {
       email: 'user@massage.local',
       passwordHash: hashPassword(USER_PASSWORD),
       name: 'User',
-      role: UserRole.USER,
-      status: UserStatus.APPROVED,
+      role: 'USER',
+      status: 'APPROVED',
     },
   });
 
@@ -184,7 +187,7 @@ async function main() {
       answer: 'Yes, weekend booking is available.',
       answeredBy: admin.id,
       answeredAt: new Date(),
-      status: QnaStatus.ANSWERED,
+      status: 'ANSWERED',
     },
     create: {
       id: 'seed-qna-001',
@@ -195,7 +198,7 @@ async function main() {
       answer: 'Yes, weekend booking is available.',
       answeredBy: admin.id,
       answeredAt: new Date(),
-      status: QnaStatus.ANSWERED,
+      status: 'ANSWERED',
     },
   });
 
