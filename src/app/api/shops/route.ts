@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
       subRegion: searchParams.get('subRegion') ?? undefined,
       theme: searchParams.get('theme') ?? undefined,
       query: searchParams.get('q') ?? undefined,
+      sort: searchParams.get('sort') ?? undefined,
     }),
   );
 }

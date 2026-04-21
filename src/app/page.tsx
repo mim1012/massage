@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Crown, RefreshCw, Shuffle } from 'lucide-react';
-import Sidebar from '@/components/Sidebar';
+import Sidebar, { RightAdRail } from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import type { Shop } from '@/lib/types';
 import { REGIONS } from '@/lib/catalog';
@@ -32,6 +32,7 @@ function HomeContent() {
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
+  const selectedSort = searchParams.get('sort') ?? '';
 
   const [premiumShops, setPremiumShops] = useState<Shop[]>([]);
   const [regularShops, setRegularShops] = useState<Shop[]>([]);
@@ -49,6 +50,7 @@ function HomeContent() {
     if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
     if (selectedTheme !== 'all') params.set('theme', selectedTheme);
     if (searchQuery) params.set('q', searchQuery);
+    if (selectedSort) params.set('sort', selectedSort);
 
     try {
       const response = await fetch(`/api/shops?${params.toString()}`);
@@ -69,14 +71,14 @@ function HomeContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedRegion, selectedSubRegion, selectedTheme]);
+  }, [searchQuery, selectedRegion, selectedSort, selectedSubRegion, selectedTheme]);
 
   useEffect(() => {
     void loadShops(true);
   }, [loadShops]);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-3 py-3">
+    <div className="mx-auto max-w-[1400px] px-3 py-3">
       <div className="flex flex-col gap-3 md:flex-row">
         <Sidebar />
         <div className="flex-1 min-w-0">
@@ -95,13 +97,13 @@ function HomeContent() {
             </button>
           </div>
 
-          <div className="md:hidden flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-1.5 overflow-x-auto pb-2 md:hidden scrollbar-hide">
             <Link
               href="/"
-              className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${
                 !searchParams.get('region') && !searchParams.get('theme')
-                  ? 'bg-red-600 text-white border-red-600'
-                  : 'border-gray-300 text-gray-600 bg-white'
+                  ? 'border-red-600 bg-red-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-600'
               }`}
             >
               전체
@@ -110,10 +112,10 @@ function HomeContent() {
               <Link
                 key={region.code}
                 href={`/?region=${region.code}`}
-                className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${
                   selectedRegion === region.code
-                    ? 'bg-red-600 text-white border-red-600'
-                    : 'border-gray-300 text-gray-600 bg-white'
+                    ? 'border-red-600 bg-red-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-600'
                 }`}
               >
                 {region.label}
@@ -163,7 +165,9 @@ function HomeContent() {
           <div className="rounded border border-gray-200 bg-white p-2.5">
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-gray-800">노출 업소</span>
+                <span className="text-xs font-black text-gray-800">
+                  {selectedSort === 'new' ? '신규 등록 업소' : '프리미엄 업소'}
+                </span>
                 <span className="text-[10px] text-gray-400">({regularShops.length}/{total})</span>
               </div>
               <button
@@ -202,6 +206,7 @@ function HomeContent() {
             <p>{homeSeo.section3Content}</p>
           </div>
         </div>
+        <RightAdRail />
       </div>
     </div>
   );

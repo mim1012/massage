@@ -7,6 +7,7 @@ interface ShopFilters {
   subRegion?: string;
   theme?: string;
   query?: string;
+  sort?: string;
 }
 
 export type ShopRecord = DbShop & {
@@ -106,16 +107,28 @@ export async function listShops(filters: ShopFilters = {}) {
   });
 
   const allShops = shops.map(mapShop);
-  const premiumShops = allShops
+  const sortedShops = [...allShops];
+
+  if (filters.sort === 'popular') {
+    sortedShops.sort((left, right) => {
+      if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
+      if (right.rating !== left.rating) return right.rating - left.rating;
+      return right.createdAt.localeCompare(left.createdAt);
+    });
+  } else if (filters.sort === 'new') {
+    sortedShops.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  const premiumShops = sortedShops
     .filter((shop) => shop.isPremium)
     .sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
-  const regularShops = allShops.filter((shop) => !shop.isPremium);
+  const regularShops = sortedShops.filter((shop) => !shop.isPremium);
 
   return {
-    allShops,
+    allShops: sortedShops,
     premiumShops,
     regularShops,
-    total: allShops.length,
+    total: sortedShops.length,
   };
 }
 

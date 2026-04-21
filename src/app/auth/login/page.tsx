@@ -45,7 +45,7 @@ export default function LoginPage() {
       if (result.user.role === 'ADMIN') {
         router.push('/admin');
       } else if (result.user.role === 'OWNER') {
-        router.push('/admin/shops');
+        router.push('/owner/shops');
       } else {
         router.push('/');
       }

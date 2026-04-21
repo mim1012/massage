@@ -2,9 +2,9 @@
 
 import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import PageViewTracker from '@/components/PageViewTracker';
+import Header from './Header';
+import Footer from './Footer';
+import PageViewTracker from './PageViewTracker';
 import { SiteContentProvider } from '@/lib/use-site-content';
 
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {

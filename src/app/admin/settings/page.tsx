@@ -191,6 +191,7 @@ export default function AdminSettingsPage() {
                   onChange={(event) => setSiteForm((current) => ({ ...current, contactPhone: event.target.value }))}
                   className={inputClassName}
                 />
+                <p className="mt-1 text-[11px] text-gray-500">푸터 고객센터 번호로 그대로 노출됩니다.</p>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-gray-700">푸터 정보</label>
@@ -199,7 +200,11 @@ export default function AdminSettingsPage() {
                   value={siteForm.footerInfo}
                   onChange={(event) => setSiteForm((current) => ({ ...current, footerInfo: event.target.value }))}
                   className={inputClassName}
+                  placeholder="사업자 정보, 운영 시간, 이메일 등을 줄바꿈 또는 | 로 구분해 입력하세요."
                 />
+                <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+                  입력한 문구가 공개 푸터에 그대로 표시됩니다. 기존 구분자(|)와 줄바꿈 모두 지원합니다.
+                </p>
               </div>
             </div>
           </div>

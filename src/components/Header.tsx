@@ -11,21 +11,40 @@ import { useSessionUser } from '@/lib/use-session-user';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState('all');
   const searchParams = useSearchParams();
   const router = useRouter();
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
+  const currentQuery = searchParams.get('q') ?? '';
   const { siteSettings } = useSiteContent();
   const currentUser = useSessionUser();
   const isAdmin = currentUser?.role === 'ADMIN';
 
-  function handleSearch(event: React.FormEvent) {
+  function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const params = new URLSearchParams();
-    if (selectedRegion !== 'all') params.set('region', selectedRegion);
-    if (searchQuery.trim()) params.set('q', searchQuery.trim());
+
+    const formData = new FormData(event.currentTarget);
+    const nextRegion = String(formData.get('region') ?? 'all');
+    const nextQuery = String(formData.get('q') ?? '').trim();
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextRegion === 'all') {
+      params.delete('region');
+      params.delete('subRegion');
+    } else {
+      params.set('region', nextRegion);
+
+      if (currentRegion !== nextRegion) {
+        params.delete('subRegion');
+      }
+    }
+
+    if (nextQuery) {
+      params.set('q', nextQuery);
+    } else {
+      params.delete('q');
+    }
+
     router.push(`/?${params.toString()}`);
     setMobileMenuOpen(false);
   }
@@ -48,11 +67,11 @@ export default function Header() {
             </div>
           </Link>
 
-          <form onSubmit={handleSearch} className="mx-auto flex-1 md:max-w-xl">
+          <form key={`desktop-${searchParams.toString()}`} onSubmit={handleSearch} className="mx-auto flex-1 md:max-w-xl">
             <div className="flex overflow-hidden rounded-lg border border-gray-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500/30">
               <select
-                value={selectedRegion}
-                onChange={(event) => setSelectedRegion(event.target.value)}
+                name="region"
+                defaultValue={currentRegion ?? 'all'}
                 className="shrink-0 border-r border-gray-200 bg-gray-50 px-2.5 py-2 text-sm text-gray-700 focus:outline-none"
               >
                 <option value="all">전체 지역</option>
@@ -64,9 +83,9 @@ export default function Header() {
               </select>
               <input
                 type="text"
+                name="q"
                 placeholder="업소명 또는 테마 검색"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                defaultValue={currentQuery}
                 className="min-w-0 flex-1 bg-white py-2 pl-3 pr-2 text-sm focus:outline-none"
               />
               <button type="submit" className="bg-red-600 px-3 text-white hover:bg-red-700">
@@ -99,11 +118,31 @@ export default function Header() {
       <div className="hidden border-t border-blue-800 bg-[#3b5998] md:block">
         <div className="mx-auto max-w-[1400px] px-3">
           <ul className="flex items-center text-base font-bold text-white">
-            <li><Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">지역별 업소</Link></li>
-            <li><Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">테마별 업소</Link></li>
-            <li><Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-blue-800 hover:text-yellow-300">TOP 100</Link></li>
-            <li><Link href="/board" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">커뮤니티</Link></li>
-            <li><Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">Q&amp;A</Link></li>
+            <li>
+              <Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                지역별 업소
+              </Link>
+            </li>
+            <li>
+              <Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                테마별 업소
+              </Link>
+            </li>
+            <li>
+              <Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                TOP 100
+              </Link>
+            </li>
+            <li>
+              <Link href="/board" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                커뮤니티
+              </Link>
+            </li>
+            <li>
+              <Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                고객센터
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
@@ -160,10 +199,10 @@ export default function Header() {
 
       {mobileMenuOpen ? (
         <div className="border-t border-gray-200 bg-white shadow-lg md:hidden">
-          <form onSubmit={handleSearch} className="space-y-2 border-b border-gray-100 p-3">
+          <form key={`mobile-${searchParams.toString()}`} onSubmit={handleSearch} className="space-y-2 border-b border-gray-100 p-3">
             <select
-              value={selectedRegion}
-              onChange={(event) => setSelectedRegion(event.target.value)}
+              name="region"
+              defaultValue={currentRegion ?? 'all'}
               className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
             >
               <option value="all">전체 지역</option>
@@ -175,9 +214,9 @@ export default function Header() {
             </select>
             <input
               type="text"
+              name="q"
               placeholder="검색어 입력"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              defaultValue={currentQuery}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
             />
           </form>
@@ -194,6 +233,23 @@ export default function Header() {
               </Link>
               <Link href="/board" onClick={() => setMobileMenuOpen(false)} className="rounded border border-gray-200 px-3 py-2 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
                 커뮤니티
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-4">
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded border border-gray-300 px-3 py-2 text-center text-sm text-gray-700 hover:bg-gray-50"
+              >
+                로그인
+              </Link>
+              <Link
+                href="/auth/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded bg-red-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-red-700"
+              >
+                회원가입
               </Link>
             </div>
 
@@ -250,6 +306,23 @@ export default function Header() {
           </div>
         </div>
       ) : null}
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
+        <div className="flex items-center justify-around py-1.5">
+          {[
+            { href: '/', label: '홈', emoji: '🏠' },
+            { href: '/top100', label: 'TOP100', emoji: '🏆' },
+            { href: '/board', label: '게시판', emoji: '💬' },
+            { href: '/board/qna', label: '고객센터', emoji: '📞' },
+            { href: '/auth/login', label: 'MY', emoji: '👤' },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
+              <span className="text-base">{item.emoji}</span>
+              <span className="text-[10px] text-gray-500">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
     </header>
   );
 }
