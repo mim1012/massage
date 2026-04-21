@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Shield, Store, UserCheck, Users } from 'lucide-react';
 import { listUsers } from '@/lib/server/auth-store';
+import type { User } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Users | Admin' };
 export const dynamic = 'force-dynamic';
@@ -32,7 +33,7 @@ export default async function AdminUsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
-            {users.map((user) => {
+            {users.map((user: User) => {
               const role = roleMap[user.role];
               const Icon = role.icon;
               return (
