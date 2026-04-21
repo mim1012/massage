@@ -50,7 +50,7 @@ export default async function BoardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {notices.slice(0, 2).map((notice: Notice) => (
+          {notices.map((notice: Notice) => (
             <Link
               key={notice.id}
               href={`/board/notice/${notice.id}`}

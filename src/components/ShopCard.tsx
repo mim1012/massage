@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Star, MapPin, Crown } from 'lucide-react';
-import type { Shop } from '@/lib/types';
+import { Star, MapPin } from 'lucide-react';
+import { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
 
@@ -17,14 +17,8 @@ const themeEmoji: Record<string, string> = {
 };
 
 const gradients = [
-  'from-rose-100 to-pink-50',
-  'from-purple-100 to-violet-50',
-  'from-blue-100 to-sky-50',
-  'from-emerald-100 to-teal-50',
-  'from-amber-100 to-yellow-50',
-  'from-cyan-100 to-blue-50',
-  'from-fuchsia-100 to-pink-50',
-  'from-lime-100 to-green-50',
+  'from-rose-100 to-pink-50', 'from-purple-100 to-violet-50', 'from-blue-100 to-sky-50', 'from-emerald-100 to-teal-50',
+  'from-amber-100 to-yellow-50', 'from-cyan-100 to-blue-50', 'from-fuchsia-100 to-pink-50', 'from-lime-100 to-green-50',
 ];
 
 export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
@@ -35,51 +29,42 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
     <Link
       href={`/shop/${shop.slug}`}
       className={clsx(
-        'banner-item block bg-white border rounded overflow-hidden',
-        isPremium ? 'border-amber-400' : 'border-gray-200'
+        'shop-card group flex flex-col bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-transform duration-300 hover:-translate-y-1',
+        isPremium ? 'border-amber-400' : 'border-gray-200 border-opacity-70'
       )}
     >
-      {/* 썸네일 */}
-      <div className={clsx(
-        'relative aspect-[4/3] bg-gradient-to-br flex items-center justify-center',
-        gradients[gIdx]
-      )}>
-        <span className="text-3xl opacity-60">
+      <div className={clsx('relative shop-card-img shrink-0 flex items-center justify-center bg-gradient-to-br', gradients[gIdx])}>
+        <span className="text-5xl opacity-50 group-hover:scale-110 transition-transform duration-300">
           {themeEmoji[shop.theme] ?? '✨'}
         </span>
-        {isPremium && (
-          <div className="absolute top-0 left-0 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-br flex items-center gap-0.5">
-            <Crown className="w-2.5 h-2.5" />AD
-          </div>
-        )}
-        {/* 평점 */}
-        <div className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5">
-          <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-          {formatRating(shop.rating)}
-        </div>
       </div>
-
-      {/* 정보 */}
-      <div className="p-1.5">
-        <h3 className="text-xs font-bold text-gray-900 line-clamp-1 leading-tight mb-0.5">
-          {shop.name}
-        </h3>
-        <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mb-1">
-          {shop.tagline}
-        </p>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-red-600 flex items-center gap-0.5">
-            <MapPin className="w-2.5 h-2.5" />{shop.regionLabel}
-          </span>
-          <span className="text-[10px] text-gray-400">
-            #{shop.themeLabel}
-          </span>
+      <div className="p-3 flex flex-col flex-1 min-w-0">
+        <div className="flex justify-between items-start gap-1 mb-1">
+          <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{shop.name}</h3>
+          {isPremium && <span className="bg-amber-500 text-white text-[9px] font-black px-1 py-0.5 rounded shrink-0">AD</span>}
         </div>
-        {shop.courses.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-gray-100 text-right">
-            <span className="text-[11px] font-bold text-red-600">{shop.courses[0].price}~</span>
+        
+        <div className="flex items-center gap-1 mb-2 text-xs text-gray-500">
+          <MapPin className="w-3 h-3 text-red-500 flex-shrink-0" />
+          <span className="truncate">{shop.regionLabel} {shop.subRegionLabel}</span>
+        </div>
+
+        <div className="flex gap-1 flex-wrap mb-2 line-clamp-1 h-[20px] overflow-hidden">
+          <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded font-medium border border-red-100 shrink-0">#{shop.themeLabel}</span>
+          {shop.tags.slice(0, 2).map((tag, i) => (
+            <span key={i} className="text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-500 rounded shrink-0 border border-gray-100">{tag}</span>
+          ))}
+        </div>
+
+        <div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-1 text-xs">
+            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+            <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
           </div>
-        )}
+          {shop.courses[0] && (
+            <span className="text-xs font-bold text-red-600">{shop.courses[0].price}~</span>
+          )}
+        </div>
       </div>
     </Link>
   );
