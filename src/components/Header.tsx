@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import clsx from 'clsx';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/types';
 import { useSiteContent } from '@/lib/use-site-content';
+import { useSessionUser } from '@/lib/use-session-user';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -17,6 +18,8 @@ export default function Header() {
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
   const { siteSettings } = useSiteContent();
+  const currentUser = useSessionUser();
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -33,7 +36,7 @@ export default function Header() {
         제휴 업소 입점 문의 환영 &nbsp;|&nbsp; 고객센터 &nbsp;|&nbsp; ☎ {siteSettings.contactPhone}
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-3">
+      <div className="mx-auto max-w-[1400px] px-3">
         <div className="flex h-14 items-center gap-3">
           <Link href="/" className="flex shrink-0 items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-red-600">
@@ -45,7 +48,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <form onSubmit={handleSearch} className="mx-auto flex-1 max-w-xl">
+          <form onSubmit={handleSearch} className="mx-auto max-w-xl flex-1">
             <div className="flex overflow-hidden rounded-lg border border-gray-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500/30">
               <select
                 value={selectedRegion}
@@ -80,10 +83,12 @@ export default function Header() {
             <Link href="/auth/register" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
               회원가입
             </Link>
-            <span className="hidden text-gray-300 sm:block">|</span>
-            <Link href="/admin" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
-              관리자
-            </Link>
+            {isAdmin ? <span className="hidden text-gray-300 sm:block">|</span> : null}
+            {isAdmin ? (
+              <Link href="/admin" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-red-600 sm:block">
+                관리자
+              </Link>
+            ) : null}
             <button onClick={() => setMobileMenuOpen((current) => !current)} className="p-1.5 text-gray-600 md:hidden">
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -92,18 +97,38 @@ export default function Header() {
       </div>
 
       <div className="hidden border-t border-blue-800 bg-[#3b5998] md:block">
-        <div className="max-w-[1400px] mx-auto px-3">
+        <div className="mx-auto max-w-[1400px] px-3">
           <ul className="flex items-center text-base font-bold text-white">
-            <li><Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">지역별 업소</Link></li>
-            <li><Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">테마별 업소</Link></li>
-            <li><Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-blue-800 hover:text-yellow-300">TOP 100</Link></li>
-            <li><Link href="/board" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">커뮤니티</Link></li>
-            <li><Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">Q&amp;A</Link></li>
+            <li>
+              <Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                지역별 업소
+              </Link>
+            </li>
+            <li>
+              <Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                테마별 업소
+              </Link>
+            </li>
+            <li>
+              <Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                TOP 100
+              </Link>
+            </li>
+            <li>
+              <Link href="/board" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                커뮤니티
+              </Link>
+            </li>
+            <li>
+              <Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-blue-800 hover:text-yellow-300">
+                Q&amp;A
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-3">
+      <div className="mx-auto max-w-[1400px] px-3">
         <div className="hidden md:block">
           <nav className="-mx-3 flex items-center overflow-x-auto border-t border-gray-200 px-3 scrollbar-hide">
             {REGIONS.filter((region) => region.code !== 'all').map((region) => (
@@ -179,6 +204,17 @@ export default function Header() {
             />
           </form>
           <div className="p-3">
+            {isAdmin ? (
+              <div className="mb-3 border-b border-gray-100 pb-3">
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                >
+                  관리자
+                </Link>
+              </div>
+            ) : null}
             <p className="mb-2 text-xs font-bold text-gray-400">테마</p>
             <div className="mb-3 flex flex-wrap gap-1">
               {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
+import { Eye, EyeOff, Store, User } from 'lucide-react';
+import { useSessionUser } from '@/lib/use-session-user';
 
 type LoginResult = {
   user?: {
@@ -15,6 +16,8 @@ type LoginResult = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const currentUser = useSessionUser();
+  const isAdmin = currentUser?.role === 'ADMIN';
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
@@ -52,9 +55,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 py-8 bg-gray-50">
+    <div className="flex min-h-[70vh] items-center justify-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-sm">
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => {
@@ -64,13 +67,13 @@ export default function LoginPage() {
                 setError(null);
               }}
               className={clsx(
-                'flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors',
+                'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'user'
-                  ? 'text-red-600 border-b-2 border-red-600 bg-white'
-                  : 'text-gray-400 bg-gray-50 hover:bg-gray-100',
+                  ? 'border-b-2 border-red-600 bg-white text-red-600'
+                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
-              <User className="w-4 h-4" />
+              <User className="h-4 w-4" />
               일반 회원
             </button>
             <button
@@ -81,34 +84,25 @@ export default function LoginPage() {
                 setError(null);
               }}
               className={clsx(
-                'flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors',
+                'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'owner'
-                  ? 'text-red-600 border-b-2 border-red-600 bg-white'
-                  : 'text-gray-400 bg-gray-50 hover:bg-gray-100',
+                  ? 'border-b-2 border-red-600 bg-white text-red-600'
+                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
-              <Store className="w-4 h-4" />
+              <Store className="h-4 w-4" />
               업주 회원
             </button>
           </div>
 
           <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="w-10 h-10 rounded bg-red-600 flex items-center justify-center mx-auto mb-3">
-                <span className="text-white font-black text-lg">M</span>
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-red-600">
+                <span className="text-lg font-black text-white">M</span>
               </div>
-              <h1 className="text-lg font-black text-gray-800 mb-1">
+              <h1 className="mb-1 text-lg font-black text-gray-800">
                 {activeTab === 'user' ? '일반 회원 로그인' : '업주 회원 로그인'}
               </h1>
-              <p className="text-xs text-gray-400">
-                테스트 계정:
-                {' '}
-                <code>admin@massage.local / admin1234</code>
-                {' '}
-                또는
-                {' '}
-                <code>owner@massage.local / owner1234</code>
-              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -116,48 +110,48 @@ export default function LoginPage() {
                 type="email"
                 required
                 value={form.email}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, email: event.target.value }))
-                }
+                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                 placeholder="이메일"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
+                className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
               />
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   required
                   value={form.password}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, password: event.target.value }))
-                  }
+                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="비밀번호"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500 pr-10"
+                  className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-red-500 focus:outline-none"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPw(!showPw)}
+                  onClick={() => setShowPw((current) => !current)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                 >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-red-600 text-white font-bold text-sm rounded hover:bg-red-700 disabled:opacity-60 transition-colors"
+                className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
-              {error && <p className="text-xs text-red-600">{error}</p>}
+              {error ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 
-            <div className="mt-4 flex justify-between items-center text-xs">
-              <Link href="/auth/register" className="text-red-600 font-bold hover:underline">
+            <div className="mt-4 flex items-center justify-between text-xs">
+              <Link href="/auth/register" className="font-bold text-red-600 hover:underline">
                 회원가입
               </Link>
-              <Link href="/admin" className="text-gray-500 hover:text-red-600">
-                관리자
-              </Link>
+              {isAdmin ? (
+                <Link href="/admin" className="text-gray-500 hover:text-red-600">
+                  관리자
+                </Link>
+              ) : (
+                <span />
+              )}
             </div>
           </div>
         </div>
