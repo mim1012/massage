@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
 import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { DISTRICTS, REGIONS, THEMES, type Course, type Shop, type User } from '@/lib/types';
+import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import type { Course, Shop, User } from '@/lib/types';
 
 const DEFAULT_ADMIN: User = {
   id: 'admin',

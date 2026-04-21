@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Tag } from 'lucide-react';
-import { REGIONS, THEMES } from '@/lib/types';
+import { REGIONS, THEMES } from '@/lib/catalog';
 import clsx from 'clsx';
 
 interface FilterBarProps {

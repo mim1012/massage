@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { Crown, RefreshCw, Shuffle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import { REGIONS, type Shop } from '@/lib/types';
+import type { Shop } from '@/lib/types';
+import { REGIONS } from '@/lib/catalog';
 import { useSiteContent } from '@/lib/use-site-content';
 
 type ShopListResponse = {
@@ -76,7 +77,7 @@ function HomeContent() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-3 py-3">
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 md:flex-row">
         <Sidebar />
         <div className="flex-1 min-w-0">
           <div className="mb-3 flex items-center justify-between rounded bg-gradient-to-r from-red-600 to-rose-500 p-3 text-white">

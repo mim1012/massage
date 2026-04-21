@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Edit2, Plus, Search, Store } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
-import { REGIONS } from '@/lib/types';
+import { REGIONS } from '@/lib/catalog';
 
 export default function AdminShopsPage() {
   const [shops, setShops] = useState<AdminShopListItem[]>([]);

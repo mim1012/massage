@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageViewTracker from '@/components/PageViewTracker';
 import { SiteContentProvider } from '@/lib/use-site-content';
 
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,9 @@ export default function GlobalLayout({ children }: { children: React.ReactNode }
     <SiteContentProvider>
       <Suspense fallback={<div className="h-14 bg-white border-b-2 border-red-600"></div>}>
         <Header />
+      </Suspense>
+      <Suspense fallback={null}>
+        <PageViewTracker />
       </Suspense>
       <main className="flex-1">{children}</main>
       <Footer />

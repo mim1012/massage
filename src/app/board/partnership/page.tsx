@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Building2, CheckCircle2, ChevronRight, MapPin, Phone, Send, Tag } from 'lucide-react';
-import { DISTRICTS, REGIONS, THEMES } from '@/lib/types';
+import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 
 export default function PartnershipPage() {
   const [form, setForm] = useState({

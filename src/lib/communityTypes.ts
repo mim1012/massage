@@ -40,3 +40,17 @@ export interface PremiumBoardData {
   premiumShops: AdminShopListItem[];
   availableShops: AdminShopListItem[];
 }
+
+export interface AdminStatsData {
+  summary: Array<{
+    label: string;
+    value: number;
+    helperText: string;
+  }>;
+  topShops: Array<{
+    id: string;
+    name: string;
+    regionLabel: string;
+    viewCount: number;
+  }>;
+}

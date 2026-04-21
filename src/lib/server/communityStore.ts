@@ -7,7 +7,7 @@ import {
   type SiteSettings as DbSiteSettings,
 } from '@prisma/client';
 import type { HomeSeoContent, Notice, PartnershipInquiry, QnA, Review, Shop, SiteSettings, UserRole } from '@/lib/types';
-import type { AdminDashboardData, AdminShopListItem, PremiumBoardData } from '@/lib/communityTypes';
+import type { AdminDashboardData, AdminShopListItem, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
 import {
   normalizeHomeSeo,
@@ -671,6 +671,44 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       shopName: item.shop.name,
       rating: item.rating,
       content: item.content,
+    })),
+  };
+}
+
+export async function getAdminStatsData(): Promise<AdminStatsData> {
+  const [shopCount, premiumCount, unansweredCount, visibleReviewCount, topShops] = await Promise.all([
+    prisma.shop.count(),
+    prisma.shop.count({ where: { isPremium: true } }),
+    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
+    prisma.review.count({ where: { isHidden: false } }),
+    prisma.shop.findMany({
+      select: {
+        id: true,
+        name: true,
+        regionLabel: true,
+        _count: {
+          select: {
+            reviews: true,
+          },
+        },
+      },
+      orderBy: [{ reviews: { _count: 'desc' } }, { name: 'asc' }],
+      take: 5,
+    }),
+  ]);
+
+  return {
+    summary: [
+      { label: '전체 업소', value: shopCount, helperText: '등록된 전체 업소 수' },
+      { label: '프리미엄 업소', value: premiumCount, helperText: '상단 노출 중인 프리미엄 업소' },
+      { label: '미답변 Q&A', value: unansweredCount, helperText: '아직 답변이 필요한 문의' },
+      { label: '노출 중 리뷰', value: visibleReviewCount, helperText: '숨김 처리되지 않은 공개 리뷰' },
+    ],
+    topShops: topShops.map((shop) => ({
+      id: shop.id,
+      name: shop.name,
+      regionLabel: shop.regionLabel,
+      viewCount: shop._count.reviews,
     })),
   };
 }

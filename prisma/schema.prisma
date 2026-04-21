@@ -45,6 +45,7 @@ model User {
   shops         Shop[]         @relation("UserOwnedShops")
   reviews       Review[]
   qna           QnA[]
+  pageViewEvents PageViewEvent[]
   createdNotices Notice[]      @relation("NoticeCreatedBy")
   auditLogs     AuditLog[]     @relation("AuditActor")
 
@@ -96,6 +97,7 @@ model Shop {
   courses        ShopCourse[]
   reviews        Review[]
   qna            QnA[]
+  pageViewEvents PageViewEvent[]
 
   @@index([isVisible, isPremium, premiumOrder, createdAt(sort: Desc)])
   @@index([ownerId])
@@ -229,4 +231,24 @@ model SiteSettings {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
+}
+
+model PageViewEvent {
+  id         String   @id @default(cuid())
+  path       String
+  sessionId  String   @map("session_id")
+  userId     String?  @map("user_id")
+  shopId     String?  @map("shop_id")
+  ipHash     String?  @map("ip_hash")
+  userAgent  String?  @map("user_agent")
+  referrer   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shop       Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@index([path, createdAt(sort: Desc)])
+  @@index([shopId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("page_view_events")
 }
