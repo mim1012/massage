@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get('limit');
     const shopId = url.searchParams.get('shopId') ?? undefined;
-    const search = url.searchParams.get('search') ?? undefined;
+    const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
     const limit = limitParam ? Number(limitParam) : undefined;
 
     return Response.json({

@@ -70,6 +70,20 @@ type QnaRecord = Prisma.QnAGetPayload<{
   };
 }>;
 
+type LegacyQnaRecord = Prisma.QnAGetPayload<{
+  include: {
+    shop: {
+      select: {
+        ownerId: true;
+        name: true;
+        regionLabel: true;
+      };
+    };
+  };
+}> & {
+  comments: [];
+};
+
 function buildContainsFilter(value: string) {
   return {
     contains: value,
@@ -100,7 +114,34 @@ function mapQnaComment(comment: QnaRecord['comments'][number]): QnAComment {
   };
 }
 
-function canCommentOnQna(entry: QnaRecord, viewer?: ViewerContext) {
+function isQnaCommentStorageUnavailable(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes('qna_comments') || message.includes('comments') || message.includes('column') || message.includes('relation');
+}
+
+async function loadLegacyQnaRecords(where: Prisma.QnAWhereInput) {
+  const entries = await prisma.qnA.findMany({
+    where,
+    include: {
+      shop: {
+        select: {
+          ownerId: true,
+          name: true,
+          regionLabel: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return entries.map((entry) => ({ ...entry, comments: [] as [] })) satisfies LegacyQnaRecord[];
+}
+
+function canCommentOnQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext) {
   if (!viewer) {
     return false;
   }
@@ -112,7 +153,7 @@ function canCommentOnQna(entry: QnaRecord, viewer?: ViewerContext) {
   return viewer.role === 'OWNER' && Boolean(entry.shop?.ownerId) && entry.shop?.ownerId === viewer.id;
 }
 
-function mapQna(entry: QnaRecord, viewer?: ViewerContext): QnA {
+function mapQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext): QnA {
   const comments = entry.comments.map(mapQnaComment);
   const latestComment = comments.at(-1);
 
@@ -395,25 +436,47 @@ export async function listQna(options: string | QnaListOptions = {}) {
   const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
   const shopId = normalizedOptions.shopId?.trim();
   const search = normalizedOptions.search?.trim();
+  const where: Prisma.QnAWhereInput = {
+    ...(shopId ? { shopId } : {}),
+    ...(search
+      ? {
+          OR: [
+            { question: buildContainsFilter(search) },
+            { authorName: buildContainsFilter(search) },
+            { comments: { some: { content: buildContainsFilter(search) } } },
+          ],
+        }
+      : {}),
+  };
 
-  const entries = await prisma.qnA.findMany({
-    where: {
+  try {
+    const entries = await prisma.qnA.findMany({
+      where,
+      include: qnaInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+  } catch (error) {
+    if (!isQnaCommentStorageUnavailable(error)) {
+      throw error;
+    }
+
+    const legacyWhere: Prisma.QnAWhereInput = {
       ...(shopId ? { shopId } : {}),
       ...(search
         ? {
             OR: [
               { question: buildContainsFilter(search) },
               { authorName: buildContainsFilter(search) },
-              { comments: { some: { content: buildContainsFilter(search) } } },
             ],
           }
         : {}),
-    },
-    include: qnaInclude,
-    orderBy: { createdAt: 'desc' },
-  });
+    };
 
-  return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+    const entries = await loadLegacyQnaRecords(legacyWhere);
+    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+  }
 }
 
 export async function createQnaComment(
@@ -435,30 +498,38 @@ export async function createQnaComment(
     return null;
   }
 
-  await prisma.$transaction([
-    prisma.qnAComment.create({
-      data: {
-        qnaId: id,
-        userId: input.userId ?? null,
-        authorName: input.authorName.trim(),
-        role: input.role,
-        content: input.content.trim(),
-      },
-    }),
-    prisma.qnA.update({
+  try {
+    await prisma.$transaction([
+      prisma.qnAComment.create({
+        data: {
+          qnaId: id,
+          userId: input.userId ?? null,
+          authorName: input.authorName.trim(),
+          role: input.role,
+          content: input.content.trim(),
+        },
+      }),
+      prisma.qnA.update({
+        where: { id },
+        data: {
+          status: QnaStatus.ANSWERED,
+        },
+      }),
+    ]);
+
+    const entry = await prisma.qnA.findUnique({
       where: { id },
-      data: {
-        status: QnaStatus.ANSWERED,
-      },
-    }),
-  ]);
+      include: qnaInclude,
+    });
 
-  const entry = await prisma.qnA.findUnique({
-    where: { id },
-    include: qnaInclude,
-  });
+    return entry ? mapQna(entry, viewer) : null;
+  } catch (error) {
+    if (isQnaCommentStorageUnavailable(error)) {
+      throw new Error('Q&A 댓글 기능 배포가 아직 완료되지 않았습니다. 데이터베이스 마이그레이션을 먼저 적용해 주세요.');
+    }
 
-  return entry ? mapQna(entry, viewer) : null;
+    throw error;
+  }
 }
 
 export async function answerQna(
@@ -485,18 +556,45 @@ export async function createQna(
   input: Pick<QnA, 'question' | 'authorName'> & { shopId?: string; userId?: string },
   viewer?: ViewerContext,
 ) {
-  const entry = await prisma.qnA.create({
-    data: {
-      question: input.question.trim(),
-      authorName: input.authorName.trim(),
-      shopId: input.shopId?.trim() || null,
-      userId: input.userId?.trim() || null,
-      status: QnaStatus.OPEN,
-    },
-    include: qnaInclude,
-  });
+  try {
+    const entry = await prisma.qnA.create({
+      data: {
+        question: input.question.trim(),
+        authorName: input.authorName.trim(),
+        shopId: input.shopId?.trim() || null,
+        userId: input.userId?.trim() || null,
+        status: QnaStatus.OPEN,
+      },
+      include: qnaInclude,
+    });
 
-  return mapQna(entry, viewer);
+    return mapQna(entry, viewer);
+  } catch (error) {
+    if (!isQnaCommentStorageUnavailable(error)) {
+      throw error;
+    }
+
+    const entry = await prisma.qnA.create({
+      data: {
+        question: input.question.trim(),
+        authorName: input.authorName.trim(),
+        shopId: input.shopId?.trim() || null,
+        userId: input.userId?.trim() || null,
+        status: QnaStatus.OPEN,
+      },
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+            name: true,
+            regionLabel: true,
+          },
+        },
+      },
+    });
+
+    return mapQna({ ...entry, comments: [] }, viewer);
+  }
 }
 
 type ReviewListOptions = {

@@ -3,18 +3,22 @@ import { errorResponse } from '@/lib/auth/http';
 import { createQna, listQna } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const shopId = url.searchParams.get('shopId') ?? undefined;
-  const search = url.searchParams.get('search') ?? undefined;
-  const viewer = await getSessionUser();
+  try {
+    const url = new URL(request.url);
+    const shopId = url.searchParams.get('shopId') ?? undefined;
+    const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
+    const viewer = await getSessionUser();
 
-  return Response.json({
-    qna: await listQna({
-      shopId,
-      search,
-      viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
-    }),
-  });
+    return Response.json({
+      qna: await listQna({
+        shopId,
+        search: search?.trim() || undefined,
+        viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
+      }),
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
 }
 
 export async function POST(request: Request) {

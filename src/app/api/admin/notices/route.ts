@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     await requireRole('ADMIN');
     const url = new URL(request.url);
-    const search = url.searchParams.get('search') ?? undefined;
+    const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
     return Response.json({ notices: await listNotices({ search: search?.trim() || undefined }) });
   } catch (error) {
     return errorResponse(error);
