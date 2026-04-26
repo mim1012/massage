@@ -138,7 +138,7 @@ function HomeContent() {
         <Sidebar />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#A78B71] to-[#D4A373] p-4 text-white shadow-md">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] to-[var(--portal-brand)] p-4 text-white shadow-md">
             <div>
               <p className="text-base font-black">{siteSettings.heroMainText}</p>
               <p className="mt-0.5 text-sm text-white/80">{siteSettings.heroSubText}</p>
@@ -158,7 +158,7 @@ function HomeContent() {
               href="/"
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 !searchParams.get('region') && !searchParams.get('theme')
-                  ? 'border-[#D4A373] bg-[#D4A373] text-white'
+                  ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
                   : 'border-gray-300 bg-white text-gray-600'
               }`}
             >
@@ -170,7 +170,7 @@ function HomeContent() {
                 href={`/?region=${region.code}`}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   selectedRegion === region.code
-                    ? 'border-[#D4A373] bg-[#D4A373] text-white'
+                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
                     : 'border-gray-300 bg-white text-gray-600'
                 }`}
               >
@@ -214,10 +214,10 @@ function HomeContent() {
                       </div>
                       <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
                         <span className="flex items-center gap-0.5">
-                          <MapPin className="h-3.5 w-3.5 text-[#D4A373]" />
+                          <MapPin className="h-3.5 w-3.5 text-[var(--portal-brand)]" />
                           {shop.regionLabel}
                         </span>
-                        <span className="font-medium text-[#D4A373]">#{shop.themeLabel}</span>
+                        <span className="font-medium text-[var(--portal-brand)]">#{shop.themeLabel}</span>
                       </div>
                       <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-2">
                         <div className="flex flex-wrap gap-1.5">
@@ -228,7 +228,7 @@ function HomeContent() {
                           ))}
                         </div>
                         {shop.courses[0] ? (
-                          <span className="text-sm font-black text-[#D4A373] sm:text-base">{shop.courses[0].price}~</span>
+                          <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">{shop.courses[0].price}~</span>
                         ) : null}
                       </div>
                     </div>
@@ -250,7 +250,7 @@ function HomeContent() {
               </div>
               <div className="flex items-center gap-2">
                 {sortType === 'popular' && (
-                  <Link href="/" className="text-[11px] font-bold text-[#D4A373] hover:underline">
+                  <Link href="/" className="text-[11px] font-bold text-[var(--portal-brand)] hover:underline">
                     정렬 초기화
                   </Link>
                 )}
@@ -259,7 +259,7 @@ function HomeContent() {
                     onClick={() => setViewMode('card')}
                     className={`rounded-md p-1.5 transition-colors ${
                       viewMode === 'card'
-                        ? 'bg-white text-[#D4A373] shadow-sm'
+                        ? 'bg-white text-[var(--portal-brand)] shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
                     aria-label="카드형 보기"
@@ -270,7 +270,7 @@ function HomeContent() {
                     onClick={() => setViewMode('list')}
                     className={`rounded-md p-1.5 transition-colors ${
                       viewMode === 'list'
-                        ? 'bg-white text-[#D4A373] shadow-sm'
+                        ? 'bg-white text-[var(--portal-brand)] shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
                     aria-label="리스트형 보기"
@@ -285,7 +285,7 @@ function HomeContent() {
                     )
                   }
                   disabled={isLoading}
-                  className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[#FEFAE0] hover:text-[#D4A373] disabled:opacity-50"
+                  className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)] disabled:opacity-50"
                 >
                   <Shuffle className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                   랜덤
@@ -345,14 +345,14 @@ function HomeContent() {
               <div className="bg-gray-100 py-1.5 text-[11px] font-bold text-gray-700">QUICK MENU</div>
               <Link
                 href="/?view=list"
-                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[#FEFAE0] hover:text-[#D4A373]"
+                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
               >
                 <span className="text-xl transition-transform group-hover:-translate-y-0.5">📋</span>
                 <span className="text-[10px] font-bold">전체업소</span>
               </Link>
               <Link
                 href="/?sort=popular"
-                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[#FEFAE0] hover:text-[#D4A373]"
+                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
               >
                 <span className="text-xl transition-transform group-hover:-translate-y-0.5">🏆</span>
                 <span className="text-[10px] font-bold">인기순위</span>

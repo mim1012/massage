@@ -1,11 +1,30 @@
 @import "tailwindcss";
 
+:root {
+  --portal-bg: #FCF9F5;
+  --portal-text: #5F4B32;
+  --portal-brand: #D4A373;
+  --portal-brand-dark: #A78B71;
+  --portal-brand-hover: #C29262;
+  --portal-brand-soft: #FEFAE0;
+  --portal-gnb: #8B9A67;
+  --portal-gnb-hover: #7A8956;
+  --portal-blue-banner: #183b70;
+  --portal-blue-banner-border: #102a52;
+  --portal-blue-banner-hover: #1f4a8a;
+  --portal-premium-top: #fff9f0;
+  --portal-premium-border: #f59e0b;
+  --portal-rank: #eab308;
+  --portal-theme: #f97316;
+  --portal-support: #374151;
+}
+
 /* ===== 기본 설정 ===== */
 html { scroll-behavior: smooth; }
 body { 
   font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; 
-  background-color: #FCF9F5;
-  color: #5F4B32;
+  background-color: var(--portal-bg);
+  color: var(--portal-text);
 }
 
 /* ===== 스크롤바 ===== */
@@ -42,11 +61,11 @@ body {
   transition: background 0.15s;
 }
 .lnb-menu-item:hover {
-  background: #FEFAE0;
-  color: #D4A373;
+  background: var(--portal-brand-soft);
+  color: var(--portal-brand);
 }
 .lnb-menu-item.active {
-  background: #D4A373;
+  background: var(--portal-brand);
   color: #fff;
   font-weight: 700;
 }
@@ -65,8 +84,8 @@ body {
 
 /* 프리미엄 영역 */
 .premium-box {
-  background: linear-gradient(to bottom, #fff9f0, #ffffff);
-  border: 2px solid #f59e0b;
+  background: linear-gradient(to bottom, var(--portal-premium-top), #ffffff);
+  border: 2px solid var(--portal-premium-border);
   border-radius: 6px;
 }
 
@@ -76,11 +95,11 @@ body {
 }
 .banner-item:hover {
   box-shadow: 0 4px 16px rgba(180,120,60,0.08);
-  border-color: #D4A373;
+  border-color: var(--portal-brand);
   transform: translateY(-2px);
 }
 
-::selection { background: rgba(212, 163, 115, 0.2); }
+::selection { background: color-mix(in srgb, var(--portal-brand) 20%, transparent); }
 
 /* ===== 프리미엄 배너 고정 비율 (1200x600 → 2:1) ===== */
 .premium-banner-img {
@@ -155,7 +174,7 @@ body {
   font-weight: 600;
 }
 .step-item.active {
-  color: #D4A373;
+  color: var(--portal-brand);
 }
 .step-item .step-num {
   width: 28px;
@@ -170,7 +189,7 @@ body {
   color: #9ca3af;
 }
 .step-item.active .step-num {
-  background: #D4A373;
+  background: var(--portal-brand);
   color: #fff;
 }
 .step-item.completed .step-num {
@@ -184,7 +203,7 @@ body {
   margin: 0 8px;
 }
 .step-connector.active {
-  background: #D4A373;
+  background: var(--portal-brand);
 }
 
 /* ===== 드래그 가능 아이템 ===== */

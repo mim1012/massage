@@ -323,12 +323,6 @@ function ReviewContent() {
         </button>
       </div>
 
-      {authChecked && !user ? (
-        <div className="mb-3 rounded border border-gray-200 bg-white p-3 text-xs text-gray-500">
-          후기는 누구나 읽을 수 있으며, 작성은 로그인한 회원만 가능합니다.
-        </div>
-      ) : null}
-
       <div className="mb-3 flex gap-1.5">
         <select
           value={searchType}

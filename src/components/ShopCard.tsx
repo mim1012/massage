@@ -42,7 +42,7 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
       href={`/shop/${shop.slug}`}
       className={clsx(
         'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
-        isPremium ? 'border-amber-400' : 'border-gray-200 border-opacity-70',
+        isPremium ? 'border-[var(--portal-premium-border)]' : 'border-gray-200 border-opacity-70',
       )}
     >
       <div className={clsx('shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br', gradients[gIdx])}>
@@ -54,19 +54,19 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
         <div className="mb-1 flex items-start justify-between gap-1">
           <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{shop.name}</h3>
           {isPremium ? (
-            <span className="shrink-0 rounded bg-amber-500 px-1 py-0.5 text-[9px] font-black text-white">AD</span>
+            <span className="shrink-0 rounded bg-[var(--portal-premium-border)] px-1 py-0.5 text-[9px] font-black text-white">AD</span>
           ) : null}
         </div>
 
         <div className="mb-2 flex items-center gap-1 text-xs text-gray-500">
-          <MapPin className="h-3 w-3 flex-shrink-0 text-[#D4A373]" />
+          <MapPin className="h-3 w-3 flex-shrink-0 text-[var(--portal-brand)]" />
           <span className="truncate">
             {shop.regionLabel} {shop.subRegionLabel}
           </span>
         </div>
 
         <div className="mb-2 flex h-[20px] flex-wrap gap-1 overflow-hidden line-clamp-1">
-          <span className="shrink-0 rounded border border-[#D4A373]/20 bg-[#FEFAE0] px-1.5 py-0.5 text-[10px] font-medium text-[#D4A373]">
+          <span className="shrink-0 rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,transparent)] bg-[var(--portal-brand-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--portal-brand)]">
             #{shop.themeLabel}
           </span>
           {shop.tags.slice(0, 2).map((tag, index) => (
@@ -84,7 +84,7 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
             <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
           </div>
-          {shop.courses[0] ? <span className="text-xs font-bold text-[#D4A373]">{shop.courses[0].price}~</span> : null}
+          {shop.courses[0] ? <span className="text-xs font-bold text-[var(--portal-brand)]">{shop.courses[0].price}~</span> : null}
         </div>
       </div>
     </Link>
