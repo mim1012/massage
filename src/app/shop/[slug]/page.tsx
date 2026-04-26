@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
-import { getSessionUser } from '@/lib/auth/guards';
 import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
 import { getShopBySlug } from '@/lib/server/shop-store';
@@ -54,7 +53,6 @@ export default async function ShopDetailPage({ params }: Props) {
     notFound();
   }
 
-  const currentUser = await getSessionUser();
   const { shop, reviews } = data;
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
 
@@ -150,11 +148,7 @@ export default async function ShopDetailPage({ params }: Props) {
                 전체보기 &raquo;
               </Link>
             </div>
-            {!currentUser ? (
-              <div className="rounded border border-gray-100 bg-gray-50 p-4 text-center text-sm text-gray-500">
-                리뷰는 로그인한 회원만 확인할 수 있습니다.
-              </div>
-            ) : reviews.length === 0 ? (
+            {reviews.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
             ) : (
               <div className="divide-y divide-gray-100">

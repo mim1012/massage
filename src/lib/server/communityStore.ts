@@ -2,6 +2,8 @@ import {
   Prisma,
   QnaCommentRole,
   QnaStatus,
+  UserRole as PrismaUserRole,
+  UserStatus,
   type Notice as DbNotice,
   type PartnershipInquiry as DbPartnershipInquiry,
   type Review as DbReview,
@@ -603,6 +605,31 @@ type ReviewListOptions = {
   search?: string;
 };
 
+const PUBLIC_REVIEWER_EMAIL = 'public-reviewer@massage.local';
+const PUBLIC_REVIEWER_PASSWORD_HASH = 'public-reviewer';
+
+async function getPublicReviewerId() {
+  const reviewer = await prisma.user.upsert({
+    where: { email: PUBLIC_REVIEWER_EMAIL },
+    update: {
+      name: '공개 리뷰 작성자',
+      role: PrismaUserRole.USER,
+      status: UserStatus.APPROVED,
+      passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
+    },
+    create: {
+      email: PUBLIC_REVIEWER_EMAIL,
+      name: '공개 리뷰 작성자',
+      role: PrismaUserRole.USER,
+      status: UserStatus.APPROVED,
+      passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
+    },
+    select: { id: true },
+  });
+
+  return reviewer.id;
+}
+
 async function refreshShopReviewRating(shopId: string) {
   const aggregate = await prisma.review.aggregate({
     where: { shopId },
@@ -617,15 +644,17 @@ async function refreshShopReviewRating(shopId: string) {
 
 export async function createReview(input: {
   shopId: string;
-  userId: string;
+  userId?: string;
   authorName: string;
   rating: number;
   content: string;
 }) {
+  const userId = input.userId?.trim() || (await getPublicReviewerId());
+
   const review = await prisma.review.create({
     data: {
       shopId: input.shopId,
-      userId: input.userId,
+      userId,
       authorName: input.authorName.trim(),
       rating: input.rating,
       content: input.content.trim(),
