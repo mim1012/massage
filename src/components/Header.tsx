@@ -298,7 +298,7 @@ export default function Header() {
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },
           ].map((item) => (
-            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
+            <Link key={`${item.label}-${item.href}`} href={item.href} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
               <span className="text-base">{item.emoji}</span>
               <span className="text-[10px] text-gray-500">{item.label}</span>
             </Link>

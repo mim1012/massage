@@ -2,12 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
+import { DISTRICTS } from '@/lib/catalog';
+import { buildShopBrowseHref, getShopBrowseLabel } from '@/lib/browse-context';
 import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
 import { getShopBySlug } from '@/lib/server/shop-store';
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{
+    view?: string;
+    region?: string;
+    subRegion?: string;
+    theme?: string;
+  }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -45,8 +53,9 @@ const bgColors = [
   'from-yellow-200 to-amber-100',
 ];
 
-export default async function ShopDetailPage({ params }: Props) {
+export default async function ShopDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const currentSearchParams = searchParams ? await searchParams : undefined;
   const data = await getShopBySlug(slug);
 
   if (!data) {
@@ -55,6 +64,30 @@ export default async function ShopDetailPage({ params }: Props) {
 
   const { shop, reviews } = data;
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
+  const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
+  const preservedRegion = currentSearchParams?.region === shop.region ? currentSearchParams.region : shop.region;
+  const preservedSubRegion =
+    currentSearchParams?.subRegion && currentSearchParams.subRegion === shop.subRegion ? currentSearchParams.subRegion : undefined;
+  const preservedTheme =
+    currentSearchParams?.theme && currentSearchParams.theme === shop.theme ? currentSearchParams.theme : undefined;
+  const browseHref = buildShopBrowseHref({
+    mode: preservedMode,
+    region: preservedRegion,
+    subRegion: preservedSubRegion,
+    theme: preservedTheme,
+  });
+  const browseLabel = getShopBrowseLabel({
+    mode: preservedMode,
+    region: preservedRegion,
+    subRegion: preservedSubRegion,
+    theme: preservedTheme,
+    fallbackRegionLabel: shop.regionLabel,
+    fallbackThemeLabel: shop.themeLabel,
+    subRegionLabel:
+      currentSearchParams?.region && currentSearchParams?.subRegion
+        ? DISTRICTS[currentSearchParams.region]?.find((district) => district.code === currentSearchParams.subRegion)?.label
+        : undefined,
+  });
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-3">
@@ -63,8 +96,8 @@ export default async function ShopDetailPage({ params }: Props) {
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href={`/?region=${shop.region}`} className="hover:text-[#D4A373]">
-          {shop.regionLabel}
+        <Link href={browseHref} className="hover:text-[#D4A373]">
+          {browseLabel}
         </Link>
         <ChevronRight className="h-3 w-3" />
         <span className="font-medium text-gray-800">{shop.name}</span>

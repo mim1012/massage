@@ -6,6 +6,7 @@ import { LayoutGrid, List as ListIcon, RefreshCw, Trophy } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
 import type { Shop } from '@/lib/types';
 
 type ShopListResponse = {
@@ -84,7 +85,11 @@ function Top100Content() {
     [selectedTheme],
   );
 
-  const filterTitle = `${regionLabel}${subRegionLabel ? ` ${subRegionLabel}` : ''}${themeLabel ? ` ${themeLabel}` : ''}`;
+  const filterTitle = getTop100FilterTitle({
+    regionLabel,
+    subRegionLabel,
+    themeLabel,
+  });
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-3">
@@ -118,7 +123,7 @@ function Top100Content() {
             <div className="mb-3 flex items-center justify-between border-b border-gray-50 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-gray-800">
-                  🏆 {filterTitle === '전체' ? '전국' : filterTitle} 랭킹
+                  🏆 {getTop100RankingLabel(filterTitle)} 랭킹
                 </span>
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">({shops.length}개)</span>
               </div>

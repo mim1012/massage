@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
+import { buildShopDetailHref } from '@/lib/browse-context';
 import { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
@@ -34,12 +36,20 @@ const gradients = [
 ];
 
 export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
+  const searchParams = useSearchParams();
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
+  const detailHref = buildShopDetailHref(shop.slug, {
+    mode: searchParams.get('view') === 'theme' && searchParams.get('theme') === shop.theme ? 'theme' : 'region',
+    region: searchParams.get('region') === shop.region ? searchParams.get('region') ?? undefined : undefined,
+    subRegion:
+      shop.subRegion && searchParams.get('subRegion') === shop.subRegion ? searchParams.get('subRegion') ?? undefined : undefined,
+    theme: searchParams.get('theme') === shop.theme ? searchParams.get('theme') ?? undefined : undefined,
+  });
 
   return (
     <Link
-      href={`/shop/${shop.slug}`}
+      href={detailHref}
       className={clsx(
         'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
         isPremium ? 'border-[var(--portal-premium-border)]' : 'border-gray-200 border-opacity-70',
