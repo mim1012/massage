@@ -103,13 +103,17 @@ function ReviewContent() {
         const nextUser = meResponse.ok ? (meResult.user ?? null) : null;
         setUser(nextUser);
 
-        const shopResult = (await shopResponse.json()) as ShopListResponse;
-        const allShops = Array.isArray(shopResult.allShops) ? shopResult.allShops : [];
+        let allShops: Shop[] = [];
+        if (shopResponse.ok) {
+          const shopResult = (await shopResponse.json()) as ShopListResponse;
+          allShops = Array.isArray(shopResult.allShops) ? shopResult.allShops : [];
+        }
         const shopMap = new Map(allShops.map((entry) => [entry.id, entry]));
         setShops(allShops);
 
         if (!nextUser) {
           setReviews([]);
+          setError(null);
           return;
         }
 
