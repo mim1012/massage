@@ -10,7 +10,7 @@ export default function RegisterSelectionPage() {
             어떤 회원으로 가입하시겠어요?
           </h1>
           <p className="text-sm text-gray-500 md:text-base">
-            이용 목적에 맞는 회원 유형을 선택해 주세요.
+            목적에 맞는 회원가입 유형을 선택해 주세요.
           </p>
         </div>
 
@@ -23,15 +23,15 @@ export default function RegisterSelectionPage() {
               <User className="h-10 w-10 text-gray-400 transition-colors group-hover:text-red-500" />
             </div>
             <div>
-              <h2 className="mb-2 text-xl font-bold text-gray-800">일반 회원</h2>
+              <h2 className="mb-2 text-xl font-bold text-gray-800">일반 고객 회원</h2>
               <p className="text-sm text-gray-500">
-                마사지 찾기를 통해 나에게 맞는 업소를
+                힐링찾기를 통해 나와 맞는 테라피를
                 <br />
-                찾아보고 이용하려는 분
+                찾고 이용하고 싶으신 분
               </p>
             </div>
             <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-red-600 group-hover:text-white">
-              일반 회원 가입
+              일반 가입하기
             </div>
           </Link>
 
@@ -43,15 +43,15 @@ export default function RegisterSelectionPage() {
               <Store className="h-10 w-10 text-gray-400 transition-colors group-hover:text-blue-500" />
             </div>
             <div>
-              <h2 className="mb-2 text-xl font-bold text-gray-800">업주 회원</h2>
+              <h2 className="mb-2 text-xl font-bold text-gray-800">입점사 (사장님)</h2>
               <p className="text-sm text-gray-500">
-                운영 중인 업소를 등록하고
+                운영 중인 내 업소를 등록하고
                 <br />
-                더 많은 고객에게 소개하고 싶은 분
+                더 많은 고객과 만나고 싶으신 분
               </p>
             </div>
             <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-              업주 가입 요청
+              입점 신청하기
             </div>
           </Link>
         </div>

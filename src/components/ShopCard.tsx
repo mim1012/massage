@@ -29,7 +29,7 @@ const gradients = [
   'from-yellow-100 to-amber-50',
   'from-amber-100 to-orange-50',
   'from-[#FEFAE0] to-[#FCF9F5]',
-  'from-cyan-100 to-blue-50',
+  'from-peach-100 to-pink-50',
   'from-lime-100 to-green-50',
 ];
 
