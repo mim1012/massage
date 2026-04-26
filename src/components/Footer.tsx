@@ -34,12 +34,12 @@ export default function Footer() {
           <div className="flex-1 space-y-4">
             {/* 로고 대체 (원본 텍스트 기반) */}
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded bg-sky-600 flex items-center justify-center">
                 <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
               </div>
               <div className="leading-tight">
                 <span className="text-gray-900 font-black text-xl tracking-tight">{siteSettings.siteName}</span>
-                <span className="text-red-500 font-bold text-[10px] block -mt-1 ml-0.5">#마사지 커뮤니티</span>
+                <span className="text-sky-500 font-bold text-[10px] block -mt-1 ml-0.5">#마사지 커뮤니티</span>
               </div>
             </div>
 
