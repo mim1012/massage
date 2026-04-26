@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { PrismaClient, QnaStatus, UserRole, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { DEFAULT_HOME_SEO, DEFAULT_SITE_SETTINGS } from '../src/lib/site-content-defaults';
+import { DEFAULT_HOME_SEO, DEFAULT_SITE_SETTINGS } from '../src/lib/site-content-defaults.ts';
 
 const DATABASE_URL =
   process.env.DATABASE_URL ??
