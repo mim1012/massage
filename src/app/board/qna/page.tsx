@@ -205,9 +205,10 @@ function QnaContent() {
         {loading ? (
           <p className="py-8 text-center text-sm text-gray-400">Q&amp;A 목록을 불러오는 중입니다.</p>
         ) : filteredEntries.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">
-            {query ? '검색 조건에 맞는 Q&A가 없습니다.' : '등록된 Q&A가 없습니다.'}
-          </p>
+          <div className="py-8 text-center text-sm text-gray-400">
+            <p>{query ? '검색 조건에 맞는 Q&A가 없습니다.' : '등록된 Q&A가 없습니다.'}</p>
+            {!query ? <p className="mt-1 text-[11px] text-gray-300">첫 질문을 남기면 이곳에 순서대로 표시됩니다.</p> : null}
+          </div>
         ) : (
           filteredEntries.map((entry, idx) => {
             const answer = getPrimaryAnswer(entry);

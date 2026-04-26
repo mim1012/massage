@@ -51,7 +51,12 @@ export default async function NoticePage() {
           </Link>
         ))}
 
-        {notices.length === 0 ? <div className="py-10 text-center text-sm text-gray-400">등록된 공지사항이 없습니다.</div> : null}
+        {notices.length === 0 ? (
+          <div className="py-10 text-center text-sm text-gray-400">
+            <p>등록된 공지사항이 없습니다.</p>
+            <p className="mt-1 text-[11px] text-gray-300">새 공지가 등록되면 이곳에 표시됩니다.</p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

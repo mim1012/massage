@@ -404,7 +404,10 @@ function ReviewContent() {
         {loading ? (
           <div className="py-10 text-center text-sm text-gray-400">리뷰를 불러오는 중입니다.</div>
         ) : filteredReviews.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-400">해당 조건의 후기가 없습니다.</div>
+          <div className="py-10 text-center text-sm text-gray-400">
+            <p>해당 조건의 후기가 없습니다.</p>
+            <p className="mt-1 text-[11px] text-gray-300">다른 지역이나 업체를 선택해 후기를 확인해보세요.</p>
+          </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {filteredReviews.map((review) => (

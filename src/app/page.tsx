@@ -296,7 +296,10 @@ function HomeContent() {
             {error ? (
               <div className="py-16 text-center text-sm text-red-500">{error}</div>
             ) : regularShops.length === 0 ? (
-              <div className="py-16 text-center text-sm text-gray-400">해당 조건의 업소가 없습니다.</div>
+              <div className="py-16 text-center text-sm text-gray-400">
+                <p>해당 조건의 업소가 없습니다.</p>
+                <p className="mt-1 text-[11px] text-gray-300">지역이나 테마를 바꿔 다른 업소를 찾아보세요.</p>
+              </div>
             ) : (
               <div
                 className={`shop-grid transition-opacity duration-200 ${
