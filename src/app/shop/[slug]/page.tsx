@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
 import { getSessionUser } from '@/lib/auth/guards';
 import type { Review } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatRating } from '@/lib/utils';
 import { getShopBySlug } from '@/lib/server/shop-store';
 
 interface Props {
@@ -27,12 +27,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export const dynamic = 'force-dynamic';
 
+const themeEmoji: Record<string, string> = {
+  swedish: '🌿',
+  aroma: '🌸',
+  thai: '🙏',
+  sport: '💪',
+  deep: '🔥',
+  hot_stone: '💎',
+  foot: '🦶',
+  couple: '👫',
+};
+
 const bgColors = [
+  'from-orange-200 to-amber-100',
   'from-rose-200 to-pink-100',
-  'from-purple-200 to-violet-100',
-  'from-blue-200 to-sky-100',
-  'from-emerald-200 to-teal-100',
+  'from-[#FEFAE0] to-[#FCF9F5]',
   'from-amber-200 to-orange-100',
+  'from-yellow-200 to-amber-100',
 ];
 
 export default async function ShopDetailPage({ params }: Props) {
@@ -48,71 +59,73 @@ export default async function ShopDetailPage({ params }: Props) {
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
 
   return (
-    <div className="max-w-[1400px] mx-auto px-3 py-3">
-      <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-        <Link href="/" className="hover:text-red-600">
+    <div className="mx-auto max-w-[1400px] px-3 py-3">
+      <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
+        <Link href="/" className="hover:text-[#D4A373]">
           홈
         </Link>
-        <ChevronRight className="w-3 h-3" />
-        <Link href={`/?region=${shop.region}`} className="hover:text-red-600">
+        <ChevronRight className="h-3 w-3" />
+        <Link href={`/?region=${shop.region}`} className="hover:text-[#D4A373]">
           {shop.regionLabel}
         </Link>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-gray-800 font-medium">{shop.name}</span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="font-medium text-gray-800">{shop.name}</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_280px]">
         <div className="space-y-3">
-          <div className={`relative bg-gradient-to-br ${bgColor} rounded-lg overflow-hidden p-6 sm:p-8`}>
+          <div className={`relative overflow-hidden rounded-lg bg-gradient-to-br ${bgColor} p-6 sm:p-8`}>
+            <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 select-none text-[120px] opacity-10 sm:block">
+              {themeEmoji[shop.theme] ?? '✨'}
+            </div>
             <div className="relative">
-              {shop.isPremium && (
-                <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded mb-2">
-                  <Crown className="w-3 h-3" />
-                  프리미엄
+              {shop.isPremium ? (
+                <span className="mb-2 inline-flex items-center gap-1 rounded bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white">
+                  <Crown className="h-3 w-3" /> PREMIUM
                 </span>
-              )}
-              <h1 className="text-2xl font-black text-gray-900 mb-1">{shop.name}</h1>
-              <p className="text-sm text-gray-600 mb-3">{shop.tagline}</p>
+              ) : null}
+              <h1 className="mb-1 text-2xl font-black text-gray-900">{shop.name}</h1>
+              <p className="mb-3 text-sm text-gray-600">{shop.tagline}</p>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <Star
                     key={value}
-                    className={`w-4 h-4 ${
-                      value <= Math.round(shop.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300'
+                    className={`h-4 w-4 ${
+                      value <= Math.round(shop.rating) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
                     }`}
                   />
                 ))}
-                <span className="text-sm font-bold text-gray-700 ml-1">{shop.rating.toFixed(1)}</span>
-                <span className="text-xs text-gray-500">({reviews.length}개 리뷰)</span>
+                <span className="ml-1 text-sm font-bold text-gray-700">{formatRating(shop.rating)}</span>
+                <span className="text-xs text-gray-500">({shop.reviewCount}개 후기)</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">업소 소개</h2>
-            <p className="text-sm text-gray-600 leading-relaxed">{shop.description}</p>
-            {shop.tags.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>
+            <p className="text-sm leading-relaxed text-gray-600">{shop.description}</p>
+            {shop.tags.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1">
                 {shop.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200"
+                    className="rounded border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h2 className="text-sm font-black text-gray-800 mb-2 pb-2 border-b border-gray-200">코스 안내</h2>
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">💰 코스 & 요금표</h2>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-gray-500 border-b border-gray-100">
-                  <th className="text-left py-2 font-medium">코스</th>
-                  <th className="text-center py-2 font-medium">Time</th>
-                  <th className="text-right py-2 font-medium">가격</th>
+                <tr className="border-b border-gray-100 text-xs text-gray-500">
+                  <th className="py-2 text-left font-medium">코스명</th>
+                  <th className="py-2 text-center font-medium">시간</th>
+                  <th className="py-2 text-right font-medium">가격</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,23 +133,21 @@ export default async function ShopDetailPage({ params }: Props) {
                   <tr key={`${course.name}-${index}`} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-2.5">
                       <p className="font-semibold text-gray-800">{course.name}</p>
-                      {course.description && (
-                        <p className="text-[11px] text-gray-400 mt-0.5">{course.description}</p>
-                      )}
+                      {course.description ? <p className="mt-0.5 text-[11px] text-gray-400">{course.description}</p> : null}
                     </td>
                     <td className="text-center text-gray-500">{course.duration}</td>
-                    <td className="text-right font-bold text-red-600">{course.price}</td>
+                    <td className="text-right font-bold text-[#D4A373]">{course.price}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-              <h2 className="text-sm font-black text-gray-800">Recent reviews ({reviews.length})</h2>
-              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-red-600 hover:underline">
-                View all »
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
+              <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
+              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[#D4A373] hover:underline">
+                전체보기 &raquo;
               </Link>
             </div>
             {!currentUser ? (
@@ -144,20 +155,20 @@ export default async function ShopDetailPage({ params }: Props) {
                 리뷰는 로그인한 회원만 확인할 수 있습니다.
               </div>
             ) : reviews.length === 0 ? (
-              <p className="text-center py-6 text-gray-400 text-sm">등록된 리뷰가 아직 없습니다.</p>
+              <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
             ) : (
               <div className="divide-y divide-gray-100">
                 {reviews.map((review: Review) => (
                   <div key={review.id} className="py-3">
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="mb-1 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-gray-800">{review.authorName}</span>
+                        <span className="text-sm font-semibold text-gray-800">{review.authorName}</span>
                         <div className="flex gap-0.5">
                           {[1, 2, 3, 4, 5].map((value) => (
                             <Star
                               key={value}
-                              className={`w-3 h-3 ${
-                                value <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+                              className={`h-3 w-3 ${
+                                value <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'
                               }`}
                             />
                           ))}
@@ -165,7 +176,7 @@ export default async function ShopDetailPage({ params }: Props) {
                       </div>
                       <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
                     </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">{review.content}</p>
+                    <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
                   </div>
                 ))}
               </div>
@@ -176,35 +187,35 @@ export default async function ShopDetailPage({ params }: Props) {
         <div className="space-y-3">
           <a
             href={`tel:${shop.phone}`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4A373] py-3 text-sm font-bold text-white transition-colors active:scale-95 hover:bg-[#C29262]"
           >
-            <Phone className="w-4 h-4" />
-            전화 문의
+            <Phone className="h-4 w-4" />
+            지금 전화하기
           </a>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-black text-gray-800 mb-3 pb-2 border-b border-gray-200">업소 정보</h3>
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <h3 className="mb-3 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📌 영업 정보</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
-                <Phone className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">연락처</p>
-                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-red-600">
+                  <p className="mb-0.5 text-[11px] text-gray-400">전화번호</p>
+                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[#D4A373]">
                     {shop.phone}
                   </a>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Clock className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">운영 시간</p>
+                  <p className="mb-0.5 text-[11px] text-gray-400">영업시간</p>
                   <p className="text-gray-800">{shop.hours}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">Address</p>
+                  <p className="mb-0.5 text-[11px] text-gray-400">주소</p>
                   <p className="text-gray-800">{shop.address}</p>
                 </div>
               </div>
@@ -213,14 +224,22 @@ export default async function ShopDetailPage({ params }: Props) {
 
           <Link
             href={`/board/qna?shopId=${shop.id}`}
-            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-red-300 transition-all group"
+            className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:border-[#D4A373]"
           >
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-semibold text-gray-800 group-hover:text-red-600">Q&amp;A</span>
+              <MessageCircle className="h-4 w-4 text-[#D4A373]" />
+              <span className="text-sm font-semibold text-gray-800 group-hover:text-[#D4A373]">Q&A 문의</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="h-4 w-4 text-gray-400" />
           </Link>
+
+          <div className="ad-slot h-[200px] rounded">
+            <div className="text-center">
+              <span>광고 배너 영역</span>
+              <br />
+              <span className="text-[10px]">280×200</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
