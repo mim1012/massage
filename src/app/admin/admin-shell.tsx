@@ -132,7 +132,7 @@ export default function AdminShell({
           </button>
           <div className="text-sm font-bold text-gray-800">{currentUser.role === 'ADMIN' ? '어드민 모드' : '내 업소 관리 모드'}</div>
           <div className="ml-auto text-xs text-gray-500">
-            {currentUser.name} ({currentUser.email})
+            {currentUser.role === 'ADMIN' ? '최고관리자' : currentUser.name} ({currentUser.email})
           </div>
         </header>
         <main className="flex-1 p-4">{children}</main>

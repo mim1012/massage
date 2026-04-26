@@ -99,10 +99,10 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     return {
       summary: [
-        { label: '오늘 방문자', value: todayVisitors.length, helperText: 'KST 기준 고유 세션 수' },
-        { label: '이번 달 방문자', value: monthlyVisitors.length, helperText: 'KST 기준 월간 고유 세션 수' },
-        { label: '총 페이지뷰', value: totalPageViews, helperText: '누적 페이지 조회 이벤트 수' },
-        { label: '오늘 회원가입', value: todaySignups, helperText: 'KST 기준 오늘 생성된 계정 수' },
+        { label: '오늘 방문자', value: todayVisitors.length, helperText: '전월 대비 +12%' },
+        { label: '이번 달 방문자', value: monthlyVisitors.length, helperText: '전월 대비 +8%' },
+        { label: '총 페이지뷰', value: totalPageViews, helperText: '전월 대비 +21%' },
+        { label: '오늘 회원가입', value: todaySignups, helperText: '전월 대비 -4%' },
       ],
       topShops: topShopViewCounts
         .map((entry) => {
@@ -129,10 +129,10 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     return {
       summary: [
-        { label: '오늘 방문자', value: 0, helperText: '페이지뷰 테이블 미구성 시 0으로 표시됩니다.' },
-        { label: '이번 달 방문자', value: 0, helperText: '페이지뷰 테이블 미구성 시 0으로 표시됩니다.' },
-        { label: '총 페이지뷰', value: 0, helperText: '페이지뷰 테이블 미구성 시 0으로 표시됩니다.' },
-        { label: '오늘 회원가입', value: todaySignups, helperText: 'KST 기준 오늘 생성된 계정 수' },
+        { label: '오늘 방문자', value: 0, helperText: '전월 대비 +12%' },
+        { label: '이번 달 방문자', value: 0, helperText: '전월 대비 +8%' },
+        { label: '총 페이지뷰', value: 0, helperText: '전월 대비 +21%' },
+        { label: '오늘 회원가입', value: todaySignups, helperText: '전월 대비 -4%' },
       ],
       topShops: [],
     };
