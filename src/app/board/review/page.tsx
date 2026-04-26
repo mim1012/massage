@@ -94,21 +94,22 @@ function ReviewContent() {
       setError(null);
 
       try {
-        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
-        if (!meResponse.ok) {
-          setUser(null);
-          setReviews([]);
-          setShops([]);
-          return;
-        }
+        const [meResponse, shopResponse] = await Promise.all([
+          fetch('/api/auth/me', { cache: 'no-store' }),
+          fetch('/api/shops', { cache: 'no-store' }),
+        ]);
 
-        const meResult = (await meResponse.json()) as { user?: User };
-        const nextUser = meResult.user ?? null;
+        const meResult = (await meResponse.json()) as { user?: User | null };
+        const nextUser = meResponse.ok ? (meResult.user ?? null) : null;
         setUser(nextUser);
+
+        const shopResult = (await shopResponse.json()) as ShopListResponse;
+        const allShops = Array.isArray(shopResult.allShops) ? shopResult.allShops : [];
+        const shopMap = new Map(allShops.map((entry) => [entry.id, entry]));
+        setShops(allShops);
 
         if (!nextUser) {
           setReviews([]);
-          setShops([]);
           return;
         }
 
@@ -116,21 +117,15 @@ function ReviewContent() {
         if (shopId) reviewQuery.set('shopId', shopId);
         if (initialKeyword.trim()) reviewQuery.set('q', initialKeyword.trim());
 
-        const [reviewResponse, shopResponse] = await Promise.all([
-          fetch(`/api/board/reviews${reviewQuery.toString() ? `?${reviewQuery.toString()}` : ''}`, { cache: 'no-store' }),
-          fetch('/api/shops', { cache: 'no-store' }),
-        ]);
-
+        const reviewResponse = await fetch(`/api/board/reviews${reviewQuery.toString() ? `?${reviewQuery.toString()}` : ''}`, {
+          cache: 'no-store',
+        });
         const reviewResult = (await reviewResponse.json()) as { reviews?: Review[]; error?: string };
+
         if (!reviewResponse.ok || !reviewResult.reviews) {
           throw new Error(reviewResult.error ?? '리뷰 목록을 불러오지 못했습니다.');
         }
 
-        const shopResult = (await shopResponse.json()) as ShopListResponse;
-        const allShops = Array.isArray(shopResult.allShops) ? shopResult.allShops : [];
-        const shopMap = new Map(allShops.map((entry) => [entry.id, entry]));
-
-        setShops(allShops);
         setReviews(
           reviewResult.reviews.map((review) => {
             const matchedShop = shopMap.get(review.shopId);
@@ -153,12 +148,7 @@ function ReviewContent() {
   }, [initialKeyword, shopId]);
 
   useEffect(() => {
-    if (!shops.length) {
-      setRegionTab('all');
-      return;
-    }
-
-    if (!shopId) {
+    if (!shops.length || !shopId) {
       setRegionTab('all');
       return;
     }
@@ -170,10 +160,9 @@ function ReviewContent() {
   const regionList = useMemo(
     () => [
       { code: 'all', label: '전체' },
-      ...Array.from(new Map(shops.map((entry) => [entry.region, entry.regionLabel])).entries()).map(([code, label]) => ({
-        code,
-        label,
-      })),
+      ...Array.from(new Map(shops.map((entry) => [entry.region, entry.regionLabel])).entries())
+        .filter(([code, label]) => code && label)
+        .map(([code, label]) => ({ code, label })),
     ],
     [shops],
   );
@@ -326,6 +315,11 @@ function ReviewContent() {
   }
 
   const selectedShop = shopId ? shops.find((entry) => entry.id === shopId) ?? null : null;
+  const emptyMessage = !user
+    ? '로그인 후 실제 이용 후기를 확인할 수 있습니다.'
+    : initialKeyword
+      ? '검색 조건에 맞는 리뷰가 없습니다.'
+      : '해당 조건의 후기가 없습니다.';
 
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
@@ -346,8 +340,7 @@ function ReviewContent() {
         <button
           type="button"
           onClick={() => setShowModal(true)}
-          disabled={!user || !shopId}
-          className="flex shrink-0 items-center gap-1.5 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex shrink-0 items-center gap-1.5 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
         >
           <PenLine className="h-3.5 w-3.5" />
           후기 작성
@@ -357,22 +350,6 @@ function ReviewContent() {
       {!authChecked || loading ? (
         <div className="rounded border border-gray-200 bg-white py-10 text-center text-sm text-gray-400">
           리뷰를 불러오는 중입니다.
-        </div>
-      ) : !user ? (
-        <div className="space-y-3 rounded border border-gray-200 bg-white p-6 text-center">
-          <p className="text-sm font-bold text-gray-800">리뷰는 로그인한 회원만 읽고 작성할 수 있습니다.</p>
-          <p className="text-xs text-gray-500">로그인 후 이용 후기를 확인하고 직접 후기를 남겨보세요.</p>
-          <div className="flex justify-center gap-2">
-            <Link href="/auth/login" className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
-              로그인
-            </Link>
-            <Link
-              href="/auth/register"
-              className="rounded border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:text-red-600"
-            >
-              회원가입
-            </Link>
-          </div>
         </div>
       ) : (
         <>
@@ -452,7 +429,26 @@ function ReviewContent() {
             <div className="mb-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">리뷰가 등록되었습니다.</div>
           ) : null}
           {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div> : null}
-          {!shopId ? (
+
+          {!user ? (
+            <div className="mb-3 rounded border border-gray-200 bg-white p-4 text-center">
+              <p className="text-sm font-bold text-gray-800">리뷰 읽기와 작성은 로그인 후 이용할 수 있습니다.</p>
+              <p className="mt-1 text-xs text-gray-500">템플릿과 동일한 후기 화면 구성을 유지하면서, 실제 데이터는 로그인 후 안전하게 노출됩니다.</p>
+              <div className="mt-3 flex justify-center gap-2">
+                <Link href="/auth/login" className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
+                  로그인
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="rounded border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:text-red-600"
+                >
+                  회원가입
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
+          {user && !shopId ? (
             <div className="mb-3 rounded border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500">
               후기 작성은 업소 상세 페이지에서만 가능합니다.
             </div>
@@ -460,9 +456,7 @@ function ReviewContent() {
 
           <div className="overflow-hidden rounded border border-gray-200 bg-white">
             {filteredReviews.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">
-                {initialKeyword ? '검색 조건에 맞는 리뷰가 없습니다.' : '해당 조건의 후기가 없습니다.'}
-              </div>
+              <div className="py-10 text-center text-sm text-gray-400">{emptyMessage}</div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {filteredReviews.map((review) => (
@@ -486,7 +480,7 @@ function ReviewContent() {
           </div>
 
           <div className="mt-2 text-right text-xs text-gray-400">
-            총 {filteredReviews.length}개 후기
+            총 {user ? filteredReviews.length : 0}개 후기
             {initialKeyword ? <span> · “{initialKeyword}” 검색 결과</span> : null}
           </div>
 
@@ -500,62 +494,95 @@ function ReviewContent() {
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 p-5">
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-600">
-                      업체 선택 <span className="text-red-500">*</span>
-                    </p>
-                    <div className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                      {selectedShop?.name ?? '업소 상세 페이지에서 선택해 주세요.'}
+                {!user ? (
+                  <div className="space-y-4 p-5 text-center">
+                    <p className="text-sm font-bold text-gray-800">후기 작성은 로그인한 회원만 가능합니다.</p>
+                    <p className="text-xs leading-relaxed text-gray-500">로그인 후 실제 방문 후기를 남길 수 있습니다.</p>
+                    <div className="flex gap-2">
+                      <Link
+                        href="/auth/login"
+                        className="flex-1 rounded-lg bg-red-600 py-2.5 text-center text-sm font-bold text-white transition-colors hover:bg-red-700"
+                      >
+                        로그인
+                      </Link>
+                      <Link
+                        href="/auth/register"
+                        className="flex-1 rounded-lg bg-gray-100 py-2.5 text-center text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
+                      >
+                        회원가입
+                      </Link>
                     </div>
                   </div>
-
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-600">작성자</p>
-                    <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                      <span>{user.name}</span>
-                      <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
-                        {getRoleLabel(user.role)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-600">별점</p>
-                    <StarSelector value={form.rating} onChange={(value) => setForm((current) => ({ ...current, rating: value }))} />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-gray-600">
-                      후기 내용 <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      placeholder={shopId ? '방문 후기를 자유롭게 작성해주세요.' : '업소 상세 페이지에서 리뷰를 작성해주세요.'}
-                      value={form.content}
-                      onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
-                      className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
+                ) : !shopId ? (
+                  <div className="space-y-4 p-5 text-center">
+                    <p className="text-sm font-bold text-gray-800">업소 상세 페이지에서 후기를 작성해 주세요.</p>
+                    <p className="text-xs leading-relaxed text-gray-500">현재 화면에서는 업소 목록 후기만 볼 수 있고, 작성은 선택한 업소 상세 페이지에서 가능합니다.</p>
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
-                      className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
+                      className="w-full rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
                     >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting || !shopId}
-                      className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {submitting ? '등록 중' : '등록'}
+                      확인
                     </button>
                   </div>
-                </form>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-4 p-5">
+                    <div>
+                      <p className="mb-1 text-xs font-bold text-gray-600">
+                        업체 선택 <span className="text-red-500">*</span>
+                      </p>
+                      <div className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        {selectedShop?.name ?? '업소 상세 페이지에서 선택해 주세요.'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-xs font-bold text-gray-600">작성자</p>
+                      <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        <span>{user.name}</span>
+                        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
+                          {getRoleLabel(user.role)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-xs font-bold text-gray-600">별점</p>
+                      <StarSelector value={form.rating} onChange={(value) => setForm((current) => ({ ...current, rating: value }))} />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-gray-600">
+                        후기 내용 <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        placeholder="방문 후기를 자유롭게 작성해주세요."
+                        value={form.content}
+                        onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
+                        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {submitting ? '등록 중' : '등록'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
           ) : null}
