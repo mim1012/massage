@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
+import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import clsx from 'clsx';
 
 export default function Sidebar() {
@@ -12,6 +13,7 @@ export default function Sidebar() {
   const currentRegion = searchParams.get('region') ?? '';
   const currentSubRegion = searchParams.get('subRegion') ?? '';
   const currentTheme = searchParams.get('theme') ?? '';
+  const directoryMode = getDirectoryMode(searchParams.get('view'));
 
   // 기본 경로 결정 (/top100 이면 계속 /top100 유지, 그 외엔 /)
   const baseUrl = pathname.startsWith('/top100') ? '/top100' : '/';
@@ -21,40 +23,61 @@ export default function Sidebar() {
       <div className="sticky top-[110px] space-y-3">
         {/* 지역별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white">📍 지역별 업소</div>
+          <div className="bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white">
+            {directoryMode === 'theme' ? '🏷️ 테마별 업소' : '📍 지역별 업소'}
+          </div>
           <div>
-            <Link href="/" className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
-              전체보기
-            </Link>
-            {REGIONS.filter((r) => r.code !== 'all').map((r) => (
-              <div key={r.code}>
-                <Link
-                  href={`${baseUrl}?region=${r.code}`}
-                  className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
-                >
-                  &rsaquo; {r.label}
+            {directoryMode === 'theme' ? (
+              <>
+                <Link href={buildBrowseHref({ mode: 'theme', basePath: baseUrl })} className={clsx('lnb-menu-item', !currentTheme && 'active')}>
+                  전체보기
                 </Link>
-                {/* 해당 지역이 선택되었고 세부 구가 있다면 표시 */}
-                {currentRegion === r.code && DISTRICTS[r.code] && (
-                  <div className="bg-gray-50/80 border-b border-gray-100 pb-1">
-                    {DISTRICTS[r.code]
-                      .filter((d) => d.code !== 'all')
-                      .map((d) => (
-                        <Link
-                          key={d.code}
-                          href={`${baseUrl}?region=${r.code}&subRegion=${d.code}`}
-                          className={clsx(
-                            'block border-b border-white/50 px-3 py-1.5 pl-6 text-xs text-gray-500 last:border-0 hover:text-[var(--portal-brand)]',
-                            currentSubRegion === d.code && 'font-bold text-[var(--portal-brand)]',
-                          )}
-                        >
-                          - {d.label}
-                        </Link>
-                      ))}
+                {THEMES.filter((t) => t.code !== 'all').map((t) => (
+                  <Link
+                    key={t.code}
+                    href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}
+                    className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
+                  >
+                    &rsaquo; {t.label}
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <>
+                <Link href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
+                  전체보기
+                </Link>
+                {REGIONS.filter((r) => r.code !== 'all').map((r) => (
+                  <div key={r.code}>
+                    <Link
+                      href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code })}
+                      className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
+                    >
+                      &rsaquo; {r.label}
+                    </Link>
+                    {/* 해당 지역이 선택되었고 세부 구가 있다면 표시 */}
+                    {currentRegion === r.code && DISTRICTS[r.code] && (
+                      <div className="bg-gray-50/80 border-b border-gray-100 pb-1">
+                        {DISTRICTS[r.code]
+                          .filter((d) => d.code !== 'all')
+                          .map((d) => (
+                            <Link
+                              key={d.code}
+                              href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, subRegion: d.code })}
+                              className={clsx(
+                                'block border-b border-white/50 px-3 py-1.5 pl-6 text-xs text-gray-500 last:border-0 hover:text-[var(--portal-brand)]',
+                                currentSubRegion === d.code && 'font-bold text-[var(--portal-brand)]',
+                              )}
+                            >
+                              - {d.label}
+                            </Link>
+                          ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -81,17 +104,29 @@ export default function Sidebar() {
 
         {/* 테마별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white">🏷️ 테마별 업소</div>
+          <div className="bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white">
+            {directoryMode === 'theme' ? '📍 지역별 업소' : '🏷️ 테마별 업소'}
+          </div>
           <div>
-            {THEMES.filter((t) => t.code !== 'all').map((t) => (
-              <Link
-                key={t.code}
-                href={`${baseUrl}?theme=${t.code}`}
-                className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
-              >
-                &rsaquo; {t.label}
-              </Link>
-            ))}
+            {directoryMode === 'theme'
+              ? REGIONS.filter((r) => r.code !== 'all').map((r) => (
+                  <Link
+                    key={r.code}
+                    href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: currentTheme, region: r.code })}
+                    className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
+                  >
+                    &rsaquo; {r.label}
+                  </Link>
+                ))
+              : THEMES.filter((t) => t.code !== 'all').map((t) => (
+                  <Link
+                    key={t.code}
+                    href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}
+                    className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
+                  >
+                    &rsaquo; {t.label}
+                  </Link>
+                ))}
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, Menu, X } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
+import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
 import clsx from 'clsx';
 
@@ -16,14 +17,19 @@ export default function Header() {
   const router = useRouter();
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
+  const currentTheme = searchParams.get('theme');
+  const directoryMode = getDirectoryMode(searchParams.get('view'));
   const { siteSettings } = useSiteContent();
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    const params = new URLSearchParams();
-    if (selectedRegion !== 'all') params.set('region', selectedRegion);
-    if (searchQuery.trim()) params.set('q', searchQuery.trim());
-    router.push(`/?${params.toString()}`);
+    router.push(
+      buildBrowseHref({
+        mode: directoryMode,
+        region: selectedRegion,
+        q: searchQuery,
+      }),
+    );
     setMobileMenuOpen(false);
   };
 
@@ -95,12 +101,24 @@ export default function Header() {
         <div className="max-w-[1400px] mx-auto px-3">
           <ul className="flex items-center text-white text-base font-bold">
             <li>
-              <Link href="/?view=list" className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link
+                href="/?view=list"
+                className={clsx(
+                  'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
+                  directoryMode === 'region' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
+                )}
+              >
                 지역별업소
               </Link>
             </li>
             <li>
-              <Link href="/?view=theme" className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link
+                href="/?view=theme"
+                className={clsx(
+                  'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
+                  directoryMode === 'theme' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
+                )}
+              >
                 테마별업소
               </Link>
             </li>
@@ -126,30 +144,59 @@ export default function Header() {
       <div className="max-w-[1400px] mx-auto px-3">
         <div className="hidden md:block">
           <nav className="flex items-center border-t border-gray-200 -mx-3 px-3 overflow-x-auto scrollbar-hide bg-white">
-            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
-              <Link
-                key={region.code}
-                href={`/?region=${region.code}`}
-                className={clsx(
-                  'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
-                  currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
-                )}
-              >
-                {region.label}
-              </Link>
-            ))}
-            <div className="w-px h-4 bg-gray-300 mx-1 self-center" />
-            {THEMES.filter((theme) => theme.code !== 'all')
+            {directoryMode === 'theme'
+              ? THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                  <Link
+                    key={theme.code}
+                    href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
+                    className={clsx(
+                      'shrink-0 border-b-2 px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                      currentTheme === theme.code
+                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
+                        : 'border-transparent text-gray-700',
+                    )}
+                  >
+                    {theme.label}
+                  </Link>
+                ))
+              : REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                  <Link
+                    key={region.code}
+                    href={buildBrowseHref({ mode: 'region', region: region.code })}
+                    className={clsx(
+                      'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                      currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
+                    )}
+                  >
+                    {region.label}
+                  </Link>
+                ))}
+            <div className="mx-1 h-4 w-px self-center bg-gray-300" />
+            {(directoryMode === 'theme' ? REGIONS : THEMES)
+              .filter((item) => item.code !== 'all')
               .slice(0, 5)
-              .map((theme) => (
-                <Link
-                  key={theme.code}
-                  href={`/?theme=${theme.code}`}
-                  className="shrink-0 border-b-2 border-transparent px-3 py-2 text-sm text-gray-500 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
-                >
-                  {theme.label}
-                </Link>
-              ))}
+              .map((item) => {
+                const isThemeItem = directoryMode === 'region';
+                const href = isThemeItem
+                  ? buildBrowseHref({ mode: 'region', theme: item.code })
+                  : buildBrowseHref({ mode: 'theme', region: item.code });
+                const isActive = isThemeItem ? currentTheme === item.code : currentRegion === item.code;
+
+                return (
+                  <Link
+                    key={item.code}
+                    href={href}
+                    className={clsx(
+                      'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                      isActive
+                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
+                        : 'border-transparent text-gray-500',
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
           </nav>
 
           {currentRegion && DISTRICTS[currentRegion] && (
@@ -157,7 +204,12 @@ export default function Header() {
               {DISTRICTS[currentRegion].map((district) => (
                 <Link
                   key={district.code}
-                  href={`/?region=${currentRegion}&subRegion=${district.code}`}
+                  href={buildBrowseHref({
+                    mode: directoryMode,
+                    region: currentRegion,
+                    subRegion: district.code,
+                    theme: currentTheme,
+                  })}
                   className={clsx(
                     'text-[13px] text-center rounded py-1',
                     district.code === 'all' && (!currentSubRegion || currentSubRegion === 'all')
@@ -209,7 +261,7 @@ export default function Header() {
               {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
                 <Link
                   key={theme.code}
-                  href={`/?theme=${theme.code}`}
+                  href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
                   onClick={() => setMobileMenuOpen(false)}
                   className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-[var(--portal-brand)] hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
                 >

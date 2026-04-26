@@ -15,6 +15,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import type { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import { useSiteContent } from '@/lib/use-site-content';
@@ -72,7 +73,8 @@ function HomeContent() {
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
   const sortType: SortType = searchParams.get('sort') === 'popular' ? 'popular' : 'random';
-  const viewParam = searchParams.get('view') === 'list' ? 'list' : 'card';
+  const directoryMode = getDirectoryMode(searchParams.get('view'));
+  const viewParam = searchParams.get('viewMode') === 'list' ? 'list' : 'card';
 
   const [premiumShops, setPremiumShops] = useState<Shop[]>([]);
   const [regularShops, setRegularShops] = useState<Shop[]>([]);
@@ -154,29 +156,59 @@ function HomeContent() {
           </div>
 
           <div className="mb-3 flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-            <Link
-              href="/"
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                !searchParams.get('region') && !searchParams.get('theme')
-                  ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                  : 'border-gray-300 bg-white text-gray-600'
-              }`}
-            >
-              전체
-            </Link>
-            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
-              <Link
-                key={region.code}
-                href={`/?region=${region.code}`}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                  selectedRegion === region.code
-                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                    : 'border-gray-300 bg-white text-gray-600'
-                }`}
-              >
-                {region.label}
-              </Link>
-            ))}
+            {directoryMode === 'theme' ? (
+              <>
+                <Link
+                  href={buildBrowseHref({ mode: 'theme' })}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    selectedTheme === 'all'
+                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                      : 'border-gray-300 bg-white text-gray-600'
+                  }`}
+                >
+                  전체
+                </Link>
+                {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                  <Link
+                    key={theme.code}
+                    href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      selectedTheme === theme.code
+                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                        : 'border-gray-300 bg-white text-gray-600'
+                    }`}
+                  >
+                    {theme.label}
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/"
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    !searchParams.get('region') && !searchParams.get('theme')
+                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                      : 'border-gray-300 bg-white text-gray-600'
+                  }`}
+                >
+                  전체
+                </Link>
+                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                  <Link
+                    key={region.code}
+                    href={buildBrowseHref({ mode: 'region', region: region.code })}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      selectedRegion === region.code
+                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                        : 'border-gray-300 bg-white text-gray-600'
+                    }`}
+                  >
+                    {region.label}
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
 
           {premiumShops.length > 0 && (
@@ -242,7 +274,7 @@ function HomeContent() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-gray-800">
-                  📋 {sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}
+                  🏷️ {sortType === 'popular' ? '인기 추천 업소' : directoryMode === 'theme' ? '테마별 업소' : '전체 업소'}
                   {regionLabel !== '전체' && ` · ${regionLabel} ${subRegionLabel}`}
                   {themeLabel && ` · ${themeLabel}`}
                 </span>
@@ -250,7 +282,15 @@ function HomeContent() {
               </div>
               <div className="flex items-center gap-2">
                 {sortType === 'popular' && (
-                  <Link href="/" className="text-[11px] font-bold text-[var(--portal-brand)] hover:underline">
+                  <Link
+                    href={buildBrowseHref({
+                      mode: directoryMode,
+                      region: selectedRegion,
+                      subRegion: selectedSubRegion,
+                      theme: selectedTheme,
+                    })}
+                    className="text-[11px] font-bold text-[var(--portal-brand)] hover:underline"
+                  >
                     정렬 초기화
                   </Link>
                 )}
