@@ -59,11 +59,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center bg-gray-50 px-4 py-8">
+    <div className="min-h-[70vh] flex items-center justify-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="flex border-b border-gray-200">
             <button
+              type="button"
               onClick={() => resetFormState('user')}
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
@@ -75,6 +76,7 @@ export default function LoginPage() {
               <User className="h-4 w-4" /> 일반 고객
             </button>
             <button
+              type="button"
               onClick={() => resetFormState('owner')}
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
