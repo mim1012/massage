@@ -25,7 +25,7 @@ const CLOSED_MODAL: ModalState = {
 
 export default function RegisterUserPage() {
   const [showPw, setShowPw] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ nickname: '', id: '', password: '' });
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
@@ -51,7 +51,7 @@ export default function RegisterUserPage() {
       open: true,
       title: '개인정보 수집 및 이용 동의',
       content:
-        '[개인정보 수집 및 이용 동의]\n\n■ 수집항목: 이름, 이메일, 비밀번호\n■ 목적: 회원관리 및 서비스 제공\n■ 보관기간: 회원 탈퇴 시 즉시 파기',
+        '[개인정보 수집 및 이용 동의]\n\n■ 수집항목: 닉네임, 아이디, 비밀번호\n■ 목적: 회원관리 및 서비스 제공\n■ 보관기간: 회원 탈퇴 시 즉시 파기',
     });
   };
 
@@ -73,8 +73,8 @@ export default function RegisterUserPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
+          name: form.nickname,
+          email: form.id,
           password: form.password,
         }),
       });
@@ -100,7 +100,7 @@ export default function RegisterUserPage() {
           <p className="mb-6 text-sm text-gray-500">힐링찾기 일반 회원이 되신 것을 환영합니다.</p>
           <Link
             href="/auth/login"
-            className="rounded bg-red-600 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700"
+            className="rounded bg-sky-600 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-sky-700"
           >
             로그인하기
           </Link>
@@ -126,17 +126,17 @@ export default function RegisterUserPage() {
             <input
               type="text"
               required
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="이름"
+              value={form.nickname}
+              onChange={(event) => setForm((current) => ({ ...current, nickname: event.target.value }))}
+              placeholder="닉네임"
               className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[#D4A373] focus:outline-none"
             />
             <input
-              type="email"
+              type="text"
               required
-              value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="이메일"
+              value={form.id}
+              onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
+              placeholder="아이디"
               className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[#D4A373] focus:outline-none"
             />
             <div className="relative">

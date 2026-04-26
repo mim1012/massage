@@ -17,13 +17,13 @@ export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resetFormState = (tab: 'user' | 'owner') => {
     setActiveTab(tab);
-    setForm({ email: '', password: '' });
+    setForm({ id: '', password: '' });
     setShowPw(false);
     setError(null);
   };
@@ -37,7 +37,10 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          email: form.id,
+          password: form.password,
+        }),
       });
       const result = (await response.json()) as LoginResult;
 
@@ -106,11 +109,11 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <input
-                type="email"
+                type="text"
                 required
-                value={form.email}
-                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                placeholder={activeTab === 'user' ? '이메일' : '가입하신 대표 이메일'}
+                value={form.id}
+                onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
+                placeholder={activeTab === 'user' ? '아이디' : '가입하신 대표 아이디'}
                 className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
               />
               <div className="relative">
