@@ -2,15 +2,19 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
-import type { Review, Shop } from '@/lib/types';
+import type { Review, Shop, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 type ReviewWithRegion = Review & { region: string; regionLabel: string };
 
 type ShopListResponse = {
   allShops?: Shop[];
+};
+
+type SessionResponse = {
+  user?: User | null;
 };
 
 function StarRow({ rating, className = 'h-3 w-3' }: { rating: number; className?: string }) {
@@ -51,11 +55,14 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
 
 function ReviewContent() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [reviews, setReviews] = useState<ReviewWithRegion[]>([]);
@@ -79,10 +86,18 @@ function ReviewContent() {
       setError(null);
 
       try {
-        const [reviewResponse, shopResponse] = await Promise.all([
+        const [meResponse, reviewResponse, shopResponse] = await Promise.all([
+          fetch('/api/auth/me', { cache: 'no-store' }),
           fetch('/api/board/reviews', { cache: 'no-store' }),
           fetch('/api/shops', { cache: 'no-store' }),
         ]);
+
+        if (meResponse.ok) {
+          const meResult = (await meResponse.json()) as SessionResponse;
+          setUser(meResult.user ?? null);
+        } else {
+          setUser(null);
+        }
 
         const reviewResult = (await reviewResponse.json()) as { reviews?: Review[]; error?: string };
         const shopResult = (await shopResponse.json()) as ShopListResponse;
@@ -106,8 +121,10 @@ function ReviewContent() {
           }),
         );
       } catch (loadError) {
+        setUser(null);
         setError(loadError instanceof Error ? loadError.message : '리뷰 목록을 불러오지 못했습니다.');
       } finally {
+        setAuthChecked(true);
         setLoading(false);
       }
     };
@@ -209,9 +226,15 @@ function ReviewContent() {
   function handleOpenModal() {
     setSubmitted(false);
     setError(null);
+    if (!user) {
+      setShowModal(true);
+      return;
+    }
+
     setForm((current) => ({
       ...current,
       shopId: current.shopId || (shopTab !== 'all' ? shopTab : initialShopId),
+      authorName: user.name,
     }));
     setShowModal(true);
   }
@@ -224,8 +247,8 @@ function ReviewContent() {
       return;
     }
 
-    if (!form.authorName.trim()) {
-      setError('작성자 이름을 입력해주세요.');
+    if (!user) {
+      setError('로그인한 회원만 후기를 작성할 수 있습니다.');
       return;
     }
 
@@ -244,7 +267,6 @@ function ReviewContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shopId: form.shopId,
-          authorName: form.authorName,
           rating: form.rating,
           content: form.content,
         }),
@@ -265,7 +287,7 @@ function ReviewContent() {
         },
         ...current,
       ]);
-      setForm({ shopId: initialShopId || '', authorName: '', rating: 5, content: '' });
+      setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
       setSubmitted(true);
       setShowModal(false);
     } catch (submitError) {
@@ -300,6 +322,12 @@ function ReviewContent() {
           후기 작성
         </button>
       </div>
+
+      {authChecked && !user ? (
+        <div className="mb-3 rounded border border-gray-200 bg-white p-3 text-xs text-gray-500">
+          후기는 누구나 읽을 수 있으며, 작성은 로그인한 회원만 가능합니다.
+        </div>
+      ) : null}
 
       <div className="mb-3 flex gap-1.5">
         <select
@@ -411,78 +439,100 @@ function ReviewContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <h2 className="font-black text-gray-800">후기 작성</h2>
+              <h2 className="font-black text-gray-800">{user ? '후기 작성' : '로그인 안내'}</h2>
               <button type="button" onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 p-5">
-              <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">
-                  업체 선택 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={form.shopId}
-                  onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-                >
-                  {shopSelectList.map((shop) => (
-                    <option key={shop.id} value={shop.id} disabled={shop.id === ''}>
-                      {shop.label}
-                    </option>
-                  ))}
-                </select>
+            {!authChecked ? null : !user ? (
+              <div className="space-y-4 p-5 text-center">
+                <p className="text-sm font-bold text-gray-800">후기 작성은 로그인한 회원만 가능합니다.</p>
+                <p className="text-xs leading-relaxed text-gray-500">
+                  기존 후기 목록은 계속 둘러볼 수 있고, 로그인 후 같은 화면에서 바로 후기를 남길 수 있습니다.
+                </p>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/auth/login?redirect=${encodeURIComponent(`${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)}`}
+                    className="flex-1 rounded-lg bg-red-600 py-2.5 text-center text-sm font-bold text-white transition-colors hover:bg-red-700"
+                  >
+                    로그인
+                  </Link>
+                  <Link
+                    href="/auth/register"
+                    className="flex-1 rounded-lg border border-gray-300 py-2.5 text-center text-sm font-bold text-gray-700 transition-colors hover:border-red-300 hover:text-red-600"
+                  >
+                    회원가입
+                  </Link>
+                </div>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 p-5">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">
+                    업체 선택 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.shopId}
+                    onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                  >
+                    {shopSelectList.map((shop) => (
+                      <option key={shop.id} value={shop.id} disabled={shop.id === ''}>
+                        {shop.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">
-                  작성자 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="홍**"
-                  value={form.authorName}
-                  onChange={(event) => setForm((current) => ({ ...current, authorName: event.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">
+                    작성자 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={user.name}
+                    readOnly
+                    className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <p className="mb-1 text-xs font-bold text-gray-600">별점</p>
-                <StarSelector value={form.rating} onChange={(value) => setForm((current) => ({ ...current, rating: value }))} />
-              </div>
+                <div>
+                  <p className="mb-1 text-xs font-bold text-gray-600">별점</p>
+                  <StarSelector value={form.rating} onChange={(value) => setForm((current) => ({ ...current, rating: value }))} />
+                </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">
-                  후기 내용 <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="방문 후기를 자유롭게 작성해주세요."
-                  value={form.content}
-                  onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">
+                    후기 내용 <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="방문 후기를 자유롭게 작성해주세요."
+                    value={form.content}
+                    onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
+                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                  />
+                </div>
 
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {submitting ? '등록 중' : '등록'}
-                </button>
-              </div>
-            </form>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {submitting ? '등록 중' : '등록'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       ) : null}

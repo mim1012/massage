@@ -4,6 +4,8 @@ const errorMessageMap: Record<string, string> = {
   EMAIL_IN_USE: '이미 사용 중인 이메일입니다.',
   INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않습니다.',
   OWNER_NOT_APPROVED: '업주 계정은 관리자 승인 후 로그인할 수 있습니다.',
+  'Authentication required.': '로그인한 회원만 이용할 수 있습니다.',
+  'Forbidden.': '접근 권한이 없습니다.',
 };
 
 export function errorResponse(error: unknown, fallbackMessage = '예상하지 못한 서버 오류가 발생했습니다.') {

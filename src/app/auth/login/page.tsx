@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -13,8 +13,13 @@ type LoginResult = {
   error?: string;
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = useMemo(() => {
+    const target = searchParams.get('redirect');
+    return target && target.startsWith('/') ? target : null;
+  }, [searchParams]);
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ id: '', password: '' });
@@ -49,7 +54,9 @@ export default function LoginPage() {
         return;
       }
 
-      if (result.user.role === 'ADMIN') {
+      if (redirectTo && result.user.role === 'USER') {
+        router.push(redirectTo);
+      } else if (result.user.role === 'ADMIN') {
         router.push('/admin');
       } else if (result.user.role === 'OWNER') {
         router.push('/admin/shops');
@@ -166,5 +173,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh] bg-gray-50" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

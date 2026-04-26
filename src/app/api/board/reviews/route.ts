@@ -1,4 +1,4 @@
-import { getSessionUser } from '@/lib/auth/guards';
+import { requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { createReview, listReviews } from '@/lib/server/communityStore';
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getSessionUser();
+    const user = await requireUser();
     const body = (await request.json()) as {
       shopId?: string;
       authorName?: string;
@@ -32,8 +32,8 @@ export async function POST(request: Request) {
       content?: string;
     };
 
-    if (!body.shopId?.trim() || !body.authorName?.trim() || !body.content?.trim() || typeof body.rating !== 'number') {
-      return Response.json({ error: '업소, 작성자, 평점, 리뷰 내용은 필수입니다.' }, { status: 400 });
+    if (!body.shopId?.trim() || !body.content?.trim() || typeof body.rating !== 'number') {
+      return Response.json({ error: '업소, 평점, 리뷰 내용은 필수입니다.' }, { status: 400 });
     }
 
     if (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
       {
         review: await createReview({
           shopId: body.shopId.trim(),
-          userId: user?.id,
-          authorName: body.authorName,
+          userId: user.id,
+          authorName: user.name,
           rating: body.rating,
           content: body.content,
         }),
