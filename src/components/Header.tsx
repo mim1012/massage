@@ -293,7 +293,7 @@ export default function Header() {
         <div className="flex items-center justify-around py-1.5">
           {[
             { href: '/', label: '홈', emoji: '🏠' },
-            { href: '/?view=list', label: '업소', emoji: '📋' },
+            { href: buildBrowseHref({ mode: 'region' }), label: '업소', emoji: '📋' },
             { href: '/board', label: '게시판', emoji: '💬' },
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },

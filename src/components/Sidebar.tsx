@@ -96,7 +96,7 @@ export default function Sidebar() {
             >
               &rsaquo; 주간 인기 추천업소
             </Link>
-            <Link href="/?sort=new" className="lnb-menu-item font-bold text-gray-700 hover:text-[var(--portal-brand)]">
+            <Link href={buildBrowseHref({ mode: directoryMode, sort: 'new' })} className="lnb-menu-item font-bold text-gray-700 hover:text-[var(--portal-brand)]">
               &rsaquo; 신규 등록 업소
             </Link>
           </div>

@@ -16,6 +16,7 @@ import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
+import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import { useSiteContent } from '@/lib/use-site-content';
@@ -28,7 +29,6 @@ type ShopListResponse = {
 };
 
 type ViewMode = 'card' | 'list';
-type SortType = 'random' | 'popular';
 
 const themeEmoji: Record<string, string> = {
   swedish: '🌿',
@@ -41,38 +41,13 @@ const themeEmoji: Record<string, string> = {
   couple: '👫',
 };
 
-function shuffleRegularShops(shops: Shop[]) {
-  const copy = [...shops];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
-  }
-  return copy;
-}
-
-function sortRegularShops(shops: Shop[], sortType: SortType) {
-  if (sortType !== 'popular') {
-    return shuffleRegularShops(shops);
-  }
-
-  return [...shops].sort((left, right) => {
-    if (right.reviewCount !== left.reviewCount) {
-      return right.reviewCount - left.reviewCount;
-    }
-    if (right.rating !== left.rating) {
-      return right.rating - left.rating;
-    }
-    return right.createdAt.localeCompare(left.createdAt);
-  });
-}
-
 function HomeContent() {
   const searchParams = useSearchParams();
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
-  const sortType: SortType = searchParams.get('sort') === 'popular' ? 'popular' : 'random';
+  const sortType = getDirectorySortType(searchParams.get('sort'));
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const viewParam = searchParams.get('viewMode') === 'list' ? 'list' : 'card';
 
@@ -319,11 +294,7 @@ function HomeContent() {
                   </button>
                 </div>
                 <button
-                  onClick={() =>
-                    setRegularShops((current) =>
-                      sortType === 'popular' ? sortRegularShops(current, 'popular') : shuffleRegularShops(current),
-                    )
-                  }
+                  onClick={() => setRegularShops((current) => sortRegularShops(current, sortType))}
                   disabled={isLoading}
                   className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)] disabled:opacity-50"
                 >
@@ -387,14 +358,14 @@ function HomeContent() {
             <div className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white text-center shadow-sm">
               <div className="bg-gray-100 py-1.5 text-[11px] font-bold text-gray-700">QUICK MENU</div>
               <Link
-                href="/?view=list"
+                href={buildBrowseHref({ mode: 'region' })}
                 className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
               >
                 <span className="text-xl transition-transform group-hover:-translate-y-0.5">📋</span>
                 <span className="text-[10px] font-bold">전체업소</span>
               </Link>
               <Link
-                href="/?sort=popular"
+                href={buildBrowseHref({ mode: directoryMode, sort: 'popular' })}
                 className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
               >
                 <span className="text-xl transition-transform group-hover:-translate-y-0.5">🏆</span>
