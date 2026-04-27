@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLegalDocumentBody, DEFAULT_LEGAL_DOCUMENTS, parseLegalDocumentBody, resolveLegalDocument } from '@/lib/legal-documents';
+import { createCachedLegalDocumentGetter } from '@/lib/server/public-legal-documents';
 
 
 test('parseLegalDocumentBody parses headings, paragraphs, and bullet items', () => {
@@ -75,4 +76,27 @@ test('resolveLegalDocument preserves updatedAt metadata when stored content exis
   assert.equal(document.title, '맞춤 개인정보처리방침');
   assert.equal(document.updatedAt, '2026-04-26T12:34:56.000Z');
   assert.equal(document.sections[0]?.title, '기본 안내');
+});
+
+test('createCachedLegalDocumentGetter reuses the same in-flight lookup for identical public page requests', async () => {
+  let callCount = 0;
+  const loadDocument = createCachedLegalDocumentGetter(async (slug) => {
+    callCount += 1;
+    return resolveLegalDocument(slug);
+  });
+
+  const [first, second, third] = await Promise.all([
+    loadDocument('privacy'),
+    loadDocument('privacy'),
+    loadDocument('privacy'),
+  ]);
+
+  assert.equal(callCount, 1);
+  assert.equal(first.slug, 'privacy');
+  assert.equal(second.title, first.title);
+  assert.equal(third.description, first.description);
+
+  loadDocument.clear('privacy');
+  await loadDocument('privacy');
+  assert.equal(callCount, 2);
 });

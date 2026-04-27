@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import PublicInfoPage from '@/components/PublicInfoPage';
-import { getLegalDocument } from '@/lib/server/legal-documents';
+import { getPublicLegalDocument } from '@/lib/server/public-legal-documents';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const document = await getLegalDocument('youth');
+  const document = await getPublicLegalDocument('youth');
   return {
     title: document.title,
     description: document.description,
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function YouthPage() {
-  const document = await getLegalDocument('youth');
+  const document = await getPublicLegalDocument('youth');
 
   return (
     <PublicInfoPage

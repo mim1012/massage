@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { DEFAULT_LEGAL_DOCUMENTS, type EditableLegalDocument, type LegalDocumentSlug } from '@/lib/legal-documents';
 import { getAllLegalDocuments, upsertLegalDocument } from '@/lib/server/legal-documents';
+import { invalidatePublicLegalDocument } from '@/lib/server/public-legal-documents';
 
 type LegalDocumentsPayload = {
   slug?: LegalDocumentSlug;
@@ -38,7 +39,9 @@ export async function PATCH(request: Request) {
       return Response.json({ error: '문서 제목, 설명, 본문은 비워둘 수 없습니다.' }, { status: 400 });
     }
 
-    return Response.json(await upsertLegalDocument(body.slug, payload));
+    const document = await upsertLegalDocument(body.slug, payload);
+    invalidatePublicLegalDocument(body.slug);
+    return Response.json(document);
   } catch (error) {
     return errorResponse(error);
   }
