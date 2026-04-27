@@ -26,5 +26,5 @@ export default async function OwnerQnaPage() {
     ? initialQnaList.filter((entry) => Boolean(entry.shopId && ownedShopIds.has(entry.shopId)))
     : initialQnaList;
 
-  return <QnaManagementPage scope="owner" initialQnaList={scopedQna} initialShops={initialShops} />;
+  return <QnaManagementPage scope="owner" initialQnaList={scopedQna} initialShops={initialShops} initialDataLoaded />;
 }

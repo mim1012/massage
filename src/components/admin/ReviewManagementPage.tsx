@@ -10,6 +10,7 @@ type ManagedReview = Review & { shopRegionLabel?: string };
 type Props = {
   scope: 'admin' | 'owner';
   initialReviews?: ManagedReview[];
+  initialDataLoaded?: boolean;
 };
 
 const RATING_OPTIONS = [
@@ -21,16 +22,16 @@ const RATING_OPTIONS = [
   { value: '1', label: '1점' },
 ] as const;
 
-export default function ReviewManagementPage({ scope, initialReviews = [] }: Props) {
+export default function ReviewManagementPage({ scope, initialReviews = [], initialDataLoaded = false }: Props) {
   const [reviews, setReviews] = useState<ManagedReview[]>(initialReviews);
   const [search, setSearch] = useState('');
   const [ratingFilter, setRatingFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(initialReviews.length === 0);
+  const [loading, setLoading] = useState(!initialDataLoaded && initialReviews.length === 0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialReviews.length > 0) {
+    if (initialDataLoaded || initialReviews.length > 0) {
       return;
     }
 
@@ -54,7 +55,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [] }: Pro
     };
 
     void load();
-  }, [initialReviews]);
+  }, [initialDataLoaded, initialReviews]);
 
   async function removeReview(id: string) {
     setDeletingId(id);

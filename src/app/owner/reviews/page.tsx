@@ -16,5 +16,5 @@ export default async function OwnerReviewsPage() {
     redirect('/');
   }
 
-  return <ReviewManagementPage scope="owner" initialReviews={await listManagedReviews(user)} />;
+  return <ReviewManagementPage scope="owner" initialReviews={await listManagedReviews(user)} initialDataLoaded />;
 }
