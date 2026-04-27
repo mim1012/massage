@@ -31,6 +31,7 @@ type LegalDocumentRow = {
   description: string;
   note: string;
   body: string;
+  updated_at: string;
 };
 
 function normalizeEditableLegalDocument(input: EditableLegalDocument) {
@@ -47,11 +48,24 @@ export async function getLegalDocument(slug: LegalDocumentSlug): Promise<Resolve
   try {
     await ensureLegalDocumentsTable();
     const result = await getPgPool().query<LegalDocumentRow>(
-      `SELECT slug, eyebrow, title, description, note, body FROM ${TABLE_NAME} WHERE slug = $1 LIMIT 1`,
+      `SELECT slug, eyebrow, title, description, note, body, updated_at FROM ${TABLE_NAME} WHERE slug = $1 LIMIT 1`,
       [slug],
     );
 
-    return resolveLegalDocument(slug, result.rows[0] ?? null);
+    const row = result.rows[0];
+    return resolveLegalDocument(
+      slug,
+      row
+        ? {
+            eyebrow: row.eyebrow,
+            title: row.title,
+            description: row.description,
+            note: row.note,
+            body: row.body,
+            updatedAt: row.updated_at,
+          }
+        : null,
+    );
   } catch {
     return resolveLegalDocument(slug);
   }
@@ -84,10 +98,23 @@ export async function upsertLegalDocument(slug: LegalDocumentSlug, input: Editab
         note = EXCLUDED.note,
         body = EXCLUDED.body,
         updated_at = NOW()
-      RETURNING slug, eyebrow, title, description, note, body
+      RETURNING slug, eyebrow, title, description, note, body, updated_at
     `,
     [slug, normalized.eyebrow, normalized.title, normalized.description, normalized.note, normalized.body],
   );
 
-  return resolveLegalDocument(slug, result.rows[0] ?? DEFAULT_LEGAL_DOCUMENTS[slug]);
+  const row = result.rows[0];
+  return resolveLegalDocument(
+    slug,
+    row
+      ? {
+          eyebrow: row.eyebrow,
+          title: row.title,
+          description: row.description,
+          note: row.note,
+          body: row.body,
+          updatedAt: row.updated_at,
+        }
+      : DEFAULT_LEGAL_DOCUMENTS[slug],
+  );
 }

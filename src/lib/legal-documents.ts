@@ -16,6 +16,7 @@ export type EditableLegalDocument = {
 
 export type ResolvedLegalDocument = EditableLegalDocument & {
   slug: LegalDocumentSlug;
+  updatedAt?: string | null;
   sections: LegalSection[];
 };
 
@@ -302,7 +303,10 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
   },
 };
 
-export function resolveLegalDocument(slug: LegalDocumentSlug, stored?: Partial<EditableLegalDocument> | null): ResolvedLegalDocument {
+export function resolveLegalDocument(
+  slug: LegalDocumentSlug,
+  stored?: (Partial<EditableLegalDocument> & { updatedAt?: string | null }) | null,
+): ResolvedLegalDocument {
   const fallback = DEFAULT_LEGAL_DOCUMENTS[slug];
   const eyebrow = stored?.eyebrow?.trim() || fallback.eyebrow;
   const title = stored?.title?.trim() || fallback.title;
@@ -317,6 +321,7 @@ export function resolveLegalDocument(slug: LegalDocumentSlug, stored?: Partial<E
     description,
     note,
     body,
+    updatedAt: stored?.updatedAt ?? null,
     sections: parseLegalDocumentBody(body),
   };
 }

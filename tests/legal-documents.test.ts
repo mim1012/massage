@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLegalDocumentBody, DEFAULT_LEGAL_DOCUMENTS, parseLegalDocumentBody, resolveLegalDocument } from '@/lib/legal-documents';
 
+
 test('parseLegalDocumentBody parses headings, paragraphs, and bullet items', () => {
   const body = [
     '## 수집하는 정보',
@@ -60,4 +61,18 @@ test('default legal documents include youth, ad, and mobile pages and resolve fa
   assert.equal(mobile.slug, 'mobile');
   assert.equal(mobile.title, '모바일웹 안내');
   assert.ok(mobile.sections.length > 0);
+});
+
+
+test('resolveLegalDocument preserves updatedAt metadata when stored content exists', () => {
+  const document = resolveLegalDocument('privacy', {
+    title: '맞춤 개인정보처리방침',
+    description: '설명',
+    body: '## 기본 안내\n본문',
+    updatedAt: '2026-04-26T12:34:56.000Z',
+  });
+
+  assert.equal(document.title, '맞춤 개인정보처리방침');
+  assert.equal(document.updatedAt, '2026-04-26T12:34:56.000Z');
+  assert.equal(document.sections[0]?.title, '기본 안내');
 });

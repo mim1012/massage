@@ -1,18 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { FileText, Globe, Info, Layout, Save, Settings, Shield, Type } from 'lucide-react';
-import { DEFAULT_LEGAL_DOCUMENTS, type EditableLegalDocument, type LegalDocumentSlug } from '@/lib/legal-documents';
+import { CheckCircle2, Eye, FileText, Globe, Info, Layout, Save, Settings, Shield, Type } from 'lucide-react';
+import {
+  DEFAULT_LEGAL_DOCUMENTS,
+  parseLegalDocumentBody,
+  type EditableLegalDocument,
+  type LegalDocumentSlug,
+  type ResolvedLegalDocument,
+} from '@/lib/legal-documents';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
+
+type AdminLegalDocument = EditableLegalDocument & {
+  updatedAt?: string | null;
+};
+
+function formatUpdatedAt(value?: string | null) {
+  if (!value) return '아직 저장 기록 없음';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '저장 시각 확인 불가';
+
+  return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
 
 export default function AdminSettingsPage() {
   const [siteForm, setSiteForm] = useState<SiteSettings>(MOCK_SITE_SETTINGS);
   const [seoForm, setSeoForm] = useState<HomeSeoContent>(MOCK_HOME_SEO);
-  const [legalDocs, setLegalDocs] = useState<Record<LegalDocumentSlug, EditableLegalDocument>>(DEFAULT_LEGAL_DOCUMENTS);
+  const [legalDocs, setLegalDocs] = useState<Record<LegalDocumentSlug, AdminLegalDocument>>(DEFAULT_LEGAL_DOCUMENTS);
   const [isSaving, setIsSaving] = useState(false);
   const [isLegalSaving, setIsLegalSaving] = useState<LegalDocumentSlug | null>(null);
+  const [legalSaveMessage, setLegalSaveMessage] = useState<string | null>(null);
+  const [previewSlug, setPreviewSlug] = useState<LegalDocumentSlug | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const ipt =
@@ -36,7 +57,7 @@ export default function AdminSettingsPage() {
         }
 
         if (legalResponse.ok) {
-          const result = (await legalResponse.json()) as Partial<Record<LegalDocumentSlug, EditableLegalDocument>>;
+          const result = (await legalResponse.json()) as Partial<Record<LegalDocumentSlug, ResolvedLegalDocument>>;
           setLegalDocs((current) => ({
             privacy: { ...current.privacy, ...result.privacy },
             terms: { ...current.terms, ...result.terms },
@@ -81,6 +102,7 @@ export default function AdminSettingsPage() {
   async function handleSaveLegalDocument(slug: LegalDocumentSlug) {
     setIsLegalSaving(slug);
     setError(null);
+    setLegalSaveMessage(null);
 
     try {
       const response = await fetch('/api/admin/legal-documents', {
@@ -94,7 +116,7 @@ export default function AdminSettingsPage() {
         throw new Error(result.error ?? '법률 문서를 저장하지 못했습니다.');
       }
 
-      const result = (await response.json()) as EditableLegalDocument;
+      const result = (await response.json()) as ResolvedLegalDocument;
       setLegalDocs((current) => ({
         ...current,
         [slug]: {
@@ -103,8 +125,10 @@ export default function AdminSettingsPage() {
           description: result.description,
           note: result.note,
           body: result.body,
+          updatedAt: result.updatedAt ?? new Date().toISOString(),
         },
       }));
+      setLegalSaveMessage(`${result.title} 저장 완료`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '법률 문서를 저장하지 못했습니다.');
     } finally {
@@ -142,6 +166,9 @@ export default function AdminSettingsPage() {
     },
   ];
 
+  const previewDocument = previewSlug ? legalDocs[previewSlug] : null;
+  const previewSections = useMemo(() => (previewDocument ? parseLegalDocumentBody(previewDocument.body) : []), [previewDocument]);
+
   const legalDocCards: Array<{
     slug: LegalDocumentSlug;
     label: string;
@@ -174,7 +201,15 @@ export default function AdminSettingsPage() {
         </button>
       </div>
 
-      {error ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div> : null}
+      <div className="space-y-3">
+        {legalSaveMessage ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" />
+            {legalSaveMessage}
+          </div>
+        ) : null}
+        {error ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div> : null}
+      </div>
 
       <section className="space-y-6">
         <div className="flex items-center gap-2 border-l-4 border-sky-600 pl-3">
@@ -329,20 +364,38 @@ export default function AdminSettingsPage() {
                     <Icon className={`h-4 w-4 ${doc.accent}`} />
                     <span className="text-sm font-bold text-gray-700">{doc.label}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveLegalDocument(doc.slug)}
-                    disabled={saving}
-                    className={clsx(
-                      'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95',
-                      saving ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
-                    )}
-                  >
-                    <Save className={clsx('h-3.5 w-3.5', saving && 'animate-spin')} />
-                    {saving ? '저장 중...' : '문서 저장'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSlug((currentSlug) => (currentSlug === doc.slug ? null : doc.slug))}
+                      className={clsx(
+                        'flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all active:scale-95',
+                        previewSlug === doc.slug
+                          ? 'border-[#D4A373] bg-[#FEFAE0] text-[#8A6338]'
+                          : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50',
+                      )}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {previewSlug === doc.slug ? '미리보기 닫기' : '미리보기'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveLegalDocument(doc.slug)}
+                      disabled={saving}
+                      className={clsx(
+                        'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95',
+                        saving ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+                      )}
+                    >
+                      <Save className={clsx('h-3.5 w-3.5', saving && 'animate-spin')} />
+                      {saving ? '저장 중...' : '문서 저장'}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-4 p-5">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
+                    <span className="font-semibold text-gray-700">마지막 저장</span> · {formatUpdatedAt(current.updatedAt)}
+                  </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className={lbl}>Eyebrow</label>
@@ -423,13 +476,49 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
+      {previewDocument ? (
+        <section className="rounded-xl border border-[#D4A373]/30 bg-[#FFFDF8] p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-[#8A6338]">
+            <Eye className="h-4 w-4" />
+            문서 미리보기
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-600">{previewDocument.eyebrow}</p>
+            <h3 className="mt-3 text-2xl font-black tracking-tight text-gray-900">{previewDocument.title}</h3>
+            <p className="mt-3 text-sm leading-7 text-gray-600">{previewDocument.description}</p>
+            <div className="mt-5 space-y-4">
+              {previewSections.map((section) => (
+                <section key={section.title} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <h4 className="text-base font-bold text-gray-900">{section.title}</h4>
+                  <div className="mt-2 space-y-2 text-sm leading-7 text-gray-600">
+                    {section.paragraphs.map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+                  {section.items?.length ? (
+                    <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-7 text-gray-600">
+                      {section.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+            {previewDocument.note ? (
+              <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700">{previewDocument.note}</div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <div className="flex gap-3 rounded-xl border border-[#D4A373]/20 bg-[#FEFAE0] p-4">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#D4A373]" />
         <div className="text-xs leading-relaxed text-[#5F4B32]">
           <p className="mb-1 font-bold">관리 지침</p>
           <p>
             1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의
-            마케팅용 SEO 텍스트를 구성합니다. 3번 섹션은 푸터의 이용약관/개인정보처리방침 페이지에 즉시 반영됩니다.
+            마케팅용 SEO 텍스트를 구성합니다. 3번 섹션은 푸터의 정책/안내 페이지에 즉시 반영되며, 미리보기와 마지막 저장 시각도 함께 확인할 수 있습니다.
           </p>
         </div>
       </div>
