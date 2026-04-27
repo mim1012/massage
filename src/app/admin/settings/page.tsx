@@ -40,6 +40,7 @@ export default function AdminSettingsPage() {
           setLegalDocs((current) => ({
             privacy: { ...current.privacy, ...result.privacy },
             terms: { ...current.terms, ...result.terms },
+            youth: { ...current.youth, ...result.youth },
           }));
         }
       } catch {
@@ -147,6 +148,7 @@ export default function AdminSettingsPage() {
   }> = [
     { slug: 'privacy', label: '개인정보처리방침', icon: Shield, accent: 'text-emerald-600' },
     { slug: 'terms', label: '이용약관', icon: FileText, accent: 'text-sky-600' },
+    { slug: 'youth', label: '청소년보호정책', icon: Shield, accent: 'text-violet-600' },
   ];
 
   return (

@@ -1,4 +1,4 @@
-export type LegalDocumentSlug = 'privacy' | 'terms';
+export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth';
 
 export type LegalSection = {
   title: string;
@@ -189,6 +189,32 @@ const TERMS_SECTIONS: LegalSection[] = [
   },
 ];
 
+const YOUTH_SECTIONS: LegalSection[] = [
+  {
+    title: '청소년 보호 원칙',
+    paragraphs: [
+      '회사는 청소년이 유해한 정보에 노출되지 않도록 관련 법령과 내부 기준에 따라 서비스 운영 정책을 수립하고 적용합니다.',
+      '청소년 보호 책임자 지정, 신고 접수, 유해 정보 차단 및 사후 조치 절차를 통해 건전한 온라인 이용 환경을 유지하기 위해 노력합니다.',
+    ],
+  },
+  {
+    title: '유해 정보 관리',
+    paragraphs: [
+      '법령 또는 운영정책에 위반되는 게시물, 후기, 문의, 광고성 콘텐츠는 모니터링 또는 신고 접수를 통해 확인 후 제한·삭제될 수 있습니다.',
+    ],
+    items: [
+      '청소년에게 부적절한 표현, 선정적 내용, 불법 서비스 유도 문구는 노출 제한 대상입니다.',
+      '운영자는 반복 위반 계정이나 게시물에 대해 사전 통지 없이 숨김, 삭제, 이용 제한 조치를 할 수 있습니다.',
+    ],
+  },
+  {
+    title: '신고 및 문의',
+    paragraphs: [
+      '청소년 보호 관련 문의나 신고는 서비스 하단의 고객센터 또는 운영 채널을 통해 접수할 수 있으며, 확인 후 필요한 조치를 안내합니다.',
+    ],
+  },
+];
+
 export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDocument> = {
   privacy: {
     eyebrow: 'Privacy',
@@ -205,6 +231,14 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
       '본 약관은 마사지찾기 서비스 이용과 관련한 기본 원칙을 안내하기 위한 요약 안내문입니다. 실제 운영 과정에서는 개별 서비스 화면의 고지, 관련 법령, 운영정책이 함께 적용될 수 있습니다.',
     note: '법령상 필수 고지 또는 운영정책 개정이 있는 경우 별도 공지 후 약관 내용이 보완될 수 있습니다.',
     body: buildLegalDocumentBody(TERMS_SECTIONS),
+  },
+  youth: {
+    eyebrow: 'Youth Policy',
+    title: '청소년보호정책',
+    description:
+      '마사지찾기는 청소년 보호를 위해 유해 정보 노출을 최소화하고, 신고 및 모니터링 절차를 통해 안전한 서비스 환경을 유지하기 위해 노력합니다.',
+    note: '청소년 보호 관련 신고는 운영 채널을 통해 접수할 수 있으며, 접수된 내용은 내부 정책에 따라 신속히 검토됩니다.',
+    body: buildLegalDocumentBody(YOUTH_SECTIONS),
   },
 };
 

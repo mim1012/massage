@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildLegalDocumentBody, parseLegalDocumentBody } from '@/lib/legal-documents';
+import { buildLegalDocumentBody, DEFAULT_LEGAL_DOCUMENTS, parseLegalDocumentBody, resolveLegalDocument } from '@/lib/legal-documents';
 
 test('parseLegalDocumentBody parses headings, paragraphs, and bullet items', () => {
   const body = [
@@ -39,4 +39,12 @@ test('buildLegalDocumentBody serializes sections into editable text format', () 
   ]);
 
   assert.equal(body, ['## 약관 안내', '첫 문단', '', '둘째 문단', '', '- 항목 1'].join('\n'));
+});
+
+test('default legal documents include youth policy and resolve fallback content', () => {
+  assert.ok(DEFAULT_LEGAL_DOCUMENTS.youth);
+  const resolved = resolveLegalDocument('youth');
+  assert.equal(resolved.slug, 'youth');
+  assert.equal(resolved.title, '청소년보호정책');
+  assert.ok(resolved.sections.length > 0);
 });
