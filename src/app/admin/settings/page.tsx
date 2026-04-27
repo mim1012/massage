@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { CheckCircle2, Eye, FileText, Globe, Info, Layout, Save, Settings, Shield, Type } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, FileText, Globe, Info, Layout, RotateCcw, Save, Settings, Shield, Type } from 'lucide-react';
 import {
   DEFAULT_LEGAL_DOCUMENTS,
   parseLegalDocumentBody,
@@ -12,10 +12,13 @@ import {
 } from '@/lib/legal-documents';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
-
-type AdminLegalDocument = EditableLegalDocument & {
-  updatedAt?: string | null;
-};
+import {
+  createDefaultAdminSettingsState,
+  getAdminSettingsDirtyState,
+  resetLegalDocumentToDefault,
+  type AdminLegalDocumentState,
+  type AdminSettingsBaseline,
+} from './editor-state';
 
 function formatUpdatedAt(value?: string | null) {
   if (!value) return '아직 저장 기록 없음';
@@ -29,11 +32,12 @@ function formatUpdatedAt(value?: string | null) {
 export default function AdminSettingsPage() {
   const [siteForm, setSiteForm] = useState<SiteSettings>(MOCK_SITE_SETTINGS);
   const [seoForm, setSeoForm] = useState<HomeSeoContent>(MOCK_HOME_SEO);
-  const [legalDocs, setLegalDocs] = useState<Record<LegalDocumentSlug, AdminLegalDocument>>(DEFAULT_LEGAL_DOCUMENTS);
+  const [legalDocs, setLegalDocs] = useState<Record<LegalDocumentSlug, AdminLegalDocumentState>>(DEFAULT_LEGAL_DOCUMENTS);
   const [isSaving, setIsSaving] = useState(false);
   const [isLegalSaving, setIsLegalSaving] = useState<LegalDocumentSlug | null>(null);
   const [legalSaveMessage, setLegalSaveMessage] = useState<string | null>(null);
   const [previewSlug, setPreviewSlug] = useState<LegalDocumentSlug | null>(null);
+  const [baseline, setBaseline] = useState<AdminSettingsBaseline | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const ipt =
@@ -53,18 +57,35 @@ export default function AdminSettingsPage() {
           if (result.siteSettings && result.homeSeo) {
             setSiteForm(result.siteSettings);
             setSeoForm(result.homeSeo);
-          }
-        }
 
-        if (legalResponse.ok) {
-          const result = (await legalResponse.json()) as Partial<Record<LegalDocumentSlug, ResolvedLegalDocument>>;
-          setLegalDocs((current) => ({
-            privacy: { ...current.privacy, ...result.privacy },
-            terms: { ...current.terms, ...result.terms },
-            youth: { ...current.youth, ...result.youth },
-            ad: { ...current.ad, ...result.ad },
-            mobile: { ...current.mobile, ...result.mobile },
-          }));
+            if (legalResponse.ok) {
+              const legalResult = (await legalResponse.json()) as Partial<Record<LegalDocumentSlug, ResolvedLegalDocument>>;
+              const mergedLegalDocs = {
+                privacy: { ...DEFAULT_LEGAL_DOCUMENTS.privacy, ...legalResult.privacy },
+                terms: { ...DEFAULT_LEGAL_DOCUMENTS.terms, ...legalResult.terms },
+                youth: { ...DEFAULT_LEGAL_DOCUMENTS.youth, ...legalResult.youth },
+                ad: { ...DEFAULT_LEGAL_DOCUMENTS.ad, ...legalResult.ad },
+                mobile: { ...DEFAULT_LEGAL_DOCUMENTS.mobile, ...legalResult.mobile },
+              } satisfies Record<LegalDocumentSlug, AdminLegalDocumentState>;
+
+              setLegalDocs(mergedLegalDocs);
+              setBaseline(
+                createDefaultAdminSettingsState({
+                  siteSettings: result.siteSettings,
+                  homeSeo: result.homeSeo,
+                  legalDocs: mergedLegalDocs,
+                }),
+              );
+            } else {
+              setBaseline(
+                createDefaultAdminSettingsState({
+                  siteSettings: result.siteSettings,
+                  homeSeo: result.homeSeo,
+                  legalDocs: DEFAULT_LEGAL_DOCUMENTS,
+                }),
+              );
+            }
+          }
         }
       } catch {
         return;
@@ -73,6 +94,31 @@ export default function AdminSettingsPage() {
 
     void load();
   }, []);
+
+  const dirtyState = useMemo(
+    () =>
+      getAdminSettingsDirtyState({
+        baseline,
+        siteForm,
+        seoForm,
+        legalDocs,
+      }),
+    [baseline, siteForm, seoForm, legalDocs],
+  );
+
+  useEffect(() => {
+    if (!dirtyState.hasAnyChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirtyState.hasAnyChanges]);
 
   async function handleSave() {
     setIsSaving(true);
@@ -92,6 +138,15 @@ export default function AdminSettingsPage() {
         const result = (await response.json()) as { error?: string };
         throw new Error(result.error ?? '설정을 저장하지 못했습니다.');
       }
+
+      setBaseline(
+        createDefaultAdminSettingsState({
+          siteSettings: siteForm,
+          homeSeo: seoForm,
+          legalDocs,
+        }),
+      );
+      setLegalSaveMessage('사이트 기본 설정 저장 완료');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '설정을 저장하지 못했습니다.');
     } finally {
@@ -117,23 +172,65 @@ export default function AdminSettingsPage() {
       }
 
       const result = (await response.json()) as ResolvedLegalDocument;
-      setLegalDocs((current) => ({
-        ...current,
-        [slug]: {
-          eyebrow: result.eyebrow,
-          title: result.title,
-          description: result.description,
-          note: result.note,
-          body: result.body,
-          updatedAt: result.updatedAt ?? new Date().toISOString(),
-        },
-      }));
+      const nextDocument = {
+        eyebrow: result.eyebrow,
+        title: result.title,
+        description: result.description,
+        note: result.note,
+        body: result.body,
+        updatedAt: result.updatedAt ?? new Date().toISOString(),
+      } satisfies AdminLegalDocumentState;
+
+      setLegalDocs((current) => {
+        const nextLegalDocs = {
+          ...current,
+          [slug]: nextDocument,
+        };
+
+        setBaseline((currentBaseline) =>
+          currentBaseline
+            ? createDefaultAdminSettingsState({
+                siteSettings: currentBaseline.siteForm,
+                homeSeo: currentBaseline.seoForm,
+                legalDocs: nextLegalDocs,
+              })
+            : currentBaseline,
+        );
+
+        return nextLegalDocs;
+      });
       setLegalSaveMessage(`${result.title} 저장 완료`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '법률 문서를 저장하지 못했습니다.');
     } finally {
       setIsLegalSaving(null);
     }
+  }
+
+  function handleResetAllSettings() {
+    if (!baseline) {
+      return;
+    }
+
+    setSiteForm({ ...baseline.siteForm });
+    setSeoForm({ ...baseline.seoForm });
+    setLegalDocs({
+      privacy: { ...baseline.legalDocs.privacy },
+      terms: { ...baseline.legalDocs.terms },
+      youth: { ...baseline.legalDocs.youth },
+      ad: { ...baseline.legalDocs.ad },
+      mobile: { ...baseline.legalDocs.mobile },
+    });
+    setPreviewSlug(null);
+    setLegalSaveMessage('저장된 기준으로 편집 내용 되돌림');
+  }
+
+  function handleResetLegalDocument(slug: LegalDocumentSlug) {
+    setLegalDocs((current) => ({
+      ...current,
+      [slug]: resetLegalDocumentToDefault(slug, current[slug]),
+    }));
+    setLegalSaveMessage(null);
   }
 
   const seoSections = [
@@ -188,17 +285,41 @@ export default function AdminSettingsPage() {
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
           <Settings className="h-5 w-5 text-[#D4A373]" /> 사이트 통합 관리 설정
         </h1>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className={clsx(
-            'flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-bold text-white shadow-md transition-all active:scale-95',
-            isSaving ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+        <div className="flex items-center gap-2">
+          {dirtyState.hasAnyChanges ? (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+              저장 안 된 변경 있음
+            </span>
+          ) : (
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+              저장 상태 최신
+            </span>
           )}
-        >
-          <Save className={clsx('h-4 w-4', isSaving && 'animate-spin')} />
-          {isSaving ? '저장 중...' : '전체 설정 저장'}
-        </button>
+          <button
+            type="button"
+            onClick={handleResetAllSettings}
+            disabled={!dirtyState.hasAnyChanges}
+            className={clsx(
+              'flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-bold transition-all active:scale-95',
+              dirtyState.hasAnyChanges
+                ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400',
+            )}
+          >
+            <RotateCcw className="h-4 w-4" /> 편집 되돌리기
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving || !dirtyState.hasAnyChanges}
+            className={clsx(
+              'flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-bold text-white shadow-md transition-all active:scale-95',
+              isSaving || !dirtyState.hasAnyChanges ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+            )}
+          >
+            <Save className={clsx('h-4 w-4', isSaving && 'animate-spin')} />
+            {isSaving ? '저장 중...' : '전체 설정 저장'}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -211,10 +332,21 @@ export default function AdminSettingsPage() {
         {error ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div> : null}
       </div>
 
+      {dirtyState.hasAnyChanges ? (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-semibold">저장되지 않은 변경 사항이 있습니다.</p>
+            <p className="text-xs text-amber-700">페이지를 벗어나면 저장 전 편집 내용이 사라질 수 있습니다.</p>
+          </div>
+        </div>
+      ) : null}
+
       <section className="space-y-6">
         <div className="flex items-center gap-2 border-l-4 border-sky-600 pl-3">
           <Globe className="h-5 w-5 text-gray-800" />
           <h2 className="text-lg font-black text-gray-800">1. 사이트 기본 모듈 설정</h2>
+          {dirtyState.hasSiteChanges ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">수정됨</span> : null}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -313,6 +445,7 @@ export default function AdminSettingsPage() {
         <div className="flex items-center gap-2 border-l-4 border-[#D4A373] pl-3">
           <Layout className="h-5 w-5 text-gray-800" />
           <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
+          {dirtyState.hasSeoChanges ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">수정됨</span> : null}
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -349,6 +482,7 @@ export default function AdminSettingsPage() {
         <div className="flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
           <Shield className="h-5 w-5 text-gray-800" />
           <h2 className="text-lg font-black text-gray-800">3. 약관 · 정책 문구 관리</h2>
+          {Object.values(dirtyState.legalDocs).some(Boolean) ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">수정됨</span> : null}
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -363,8 +497,24 @@ export default function AdminSettingsPage() {
                   <div className="flex items-center gap-2">
                     <Icon className={`h-4 w-4 ${doc.accent}`} />
                     <span className="text-sm font-bold text-gray-700">{doc.label}</span>
+                    {dirtyState.legalDocs[doc.slug] ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">편집 중</span>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleResetLegalDocument(doc.slug)}
+                      className={clsx(
+                        'flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all active:scale-95',
+                        dirtyState.legalDocs[doc.slug]
+                          ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                          : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400',
+                      )}
+                      disabled={!dirtyState.legalDocs[doc.slug]}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> 기본 문구 복원
+                    </button>
                     <button
                       type="button"
                       onClick={() => setPreviewSlug((currentSlug) => (currentSlug === doc.slug ? null : doc.slug))}
