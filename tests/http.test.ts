@@ -28,7 +28,7 @@ test('errorResponse falls back for generic and non-error values', async () => {
   assert.deepEqual(await genericError.json(), { error: 'GENERIC_FAILURE' });
 
   assert.equal(unknownValue.status, 500);
-  assert.deepEqual(await unknownValue.json(), { error: 'Unexpected server error.' });
+  assert.deepEqual(await unknownValue.json(), { error: '예상하지 못한 서버 오류가 발생했습니다.' });
 });
 
 test('assertOwnershipOrAdmin allows admin and matching owner, but blocks other owners', () => {

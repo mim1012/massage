@@ -26,19 +26,88 @@ function findTestFiles(dir) {
   return files.sort();
 }
 
-const testFiles = findTestFiles(testDir);
+function resolveTestFiles(cliArgs) {
+  const allTestFiles = findTestFiles(testDir);
+  if (cliArgs.length === 0) {
+    return allTestFiles;
+  }
+
+  const requested = cliArgs.map((inputPath) => {
+    const absolutePath = path.isAbsolute(inputPath) ? inputPath : path.resolve(projectRoot, inputPath);
+    if (!fs.existsSync(absolutePath)) {
+      console.error(`Test file not found: ${inputPath}`);
+      process.exit(1);
+    }
+    return absolutePath;
+  });
+
+  return requested.filter((filePath) => filePath.endsWith('.test.ts')).sort();
+}
+
+
+function readPrismaDefaultDatabaseUrl() {
+  const prismaConfigPath = path.join(projectRoot, 'prisma.config.ts');
+  const configSource = fs.readFileSync(prismaConfigPath, 'utf8');
+  const match = configSource.match(/url:\s*process\.env\.DATABASE_URL\s*\?\?\s*'([^']+)'/);
+
+  if (!match) {
+    throw new Error('Could not determine default DATABASE_URL from prisma.config.ts');
+  }
+
+  return match[1];
+}
+
+function resolveTestDatabaseUrl(inputUrl) {
+  const url = new URL(inputUrl);
+  const databaseName = url.pathname.split('/').filter(Boolean).pop();
+
+  if (databaseName === 'live_commerce_test') {
+    return url.toString();
+  }
+
+  if (databaseName === 'massage_directory') {
+    url.pathname = `${url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1)}live_commerce_test`;
+    return url.toString();
+  }
+
+  throw new Error(`Refusing to run tests against non-test database: ${databaseName ?? '(unknown)'}`);
+}
+
+function createTestEnv() {
+  const env = { ...process.env };
+  const sourceUrl = env.DATABASE_URL ?? readPrismaDefaultDatabaseUrl();
+  env.DATABASE_URL = resolveTestDatabaseUrl(sourceUrl);
+  return env;
+}
+
+function runCommand(command, args, env) {
+  return spawnSync(command, args, {
+    cwd: projectRoot,
+    stdio: 'inherit',
+    env,
+  });
+}
+
+const testFiles = resolveTestFiles(process.argv.slice(2));
 if (testFiles.length === 0) {
   console.error('No test files found under tests/.');
   process.exit(1);
+}
+
+const testEnv = createTestEnv();
+const seedResult = runCommand(process.execPath, ['--experimental-transform-types', 'prisma/seed.ts'], testEnv);
+if ((seedResult.status ?? 1) !== 0) {
+  process.exit(seedResult.status ?? 1);
 }
 
 let failed = false;
 
 for (const filePath of testFiles) {
   const relativePath = path.relative(projectRoot, filePath).split(path.sep).join('/');
-  console.log(`\n=== Running ${relativePath} ===`);
+  console.log(`
+=== Running ${relativePath} ===`);
 
-  const result = spawnSync(
+  const result = runCommand(
     process.execPath,
     [
       '--disable-warning=ExperimentalWarning',
@@ -49,11 +118,7 @@ for (const filePath of testFiles) {
       '--test',
       relativePath,
     ],
-    {
-      cwd: projectRoot,
-      stdio: 'inherit',
-      env: process.env,
-    },
+    testEnv,
   );
 
   if ((result.status ?? 1) !== 0) {

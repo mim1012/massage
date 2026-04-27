@@ -44,10 +44,39 @@ export const DEFAULT_HOME_SEO: HomeSeoContent = {
     '매일 업데이트되는 프리미엄 추천업소를 통해 최고 수준의 서비스를 경험하세요. 업소 상세 페이지에서 코스 정보, 요금표, 실제 방문 후기를 확인할 수 있습니다.',
 };
 
-export function normalizeSiteSettings(_settings: SiteSettings) {
-  return { ...DEFAULT_SITE_SETTINGS };
+function normalizeField(value: unknown, legacyValue: string, defaultValue: string) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+
+  if (!trimmed || trimmed === legacyValue) {
+    return defaultValue;
+  }
+
+  return trimmed;
 }
 
-export function normalizeHomeSeo(_content: HomeSeoContent) {
-  return { ...DEFAULT_HOME_SEO };
+export function normalizeSiteSettings(settings?: Partial<SiteSettings> | null) {
+  const safeSettings = settings ?? {};
+
+  return {
+    siteName: normalizeField(safeSettings.siteName, LEGACY_EN_SITE_SETTINGS.siteName, DEFAULT_SITE_SETTINGS.siteName),
+    siteTitle: normalizeField(safeSettings.siteTitle, LEGACY_EN_SITE_SETTINGS.siteTitle, DEFAULT_SITE_SETTINGS.siteTitle),
+    siteDescription: normalizeField(safeSettings.siteDescription, LEGACY_EN_SITE_SETTINGS.siteDescription, DEFAULT_SITE_SETTINGS.siteDescription),
+    heroMainText: normalizeField(safeSettings.heroMainText, LEGACY_EN_SITE_SETTINGS.heroMainText, DEFAULT_SITE_SETTINGS.heroMainText),
+    heroSubText: normalizeField(safeSettings.heroSubText, LEGACY_EN_SITE_SETTINGS.heroSubText, DEFAULT_SITE_SETTINGS.heroSubText),
+    contactPhone: normalizeField(safeSettings.contactPhone, LEGACY_EN_SITE_SETTINGS.contactPhone, DEFAULT_SITE_SETTINGS.contactPhone),
+    footerInfo: normalizeField(safeSettings.footerInfo, LEGACY_EN_SITE_SETTINGS.footerInfo, DEFAULT_SITE_SETTINGS.footerInfo),
+  };
+}
+
+export function normalizeHomeSeo(content?: Partial<HomeSeoContent> | null) {
+  const safeContent = content ?? {};
+
+  return {
+    section1Title: normalizeField(safeContent.section1Title, LEGACY_EN_HOME_SEO.section1Title, DEFAULT_HOME_SEO.section1Title),
+    section1Content: normalizeField(safeContent.section1Content, LEGACY_EN_HOME_SEO.section1Content, DEFAULT_HOME_SEO.section1Content),
+    section2Title: normalizeField(safeContent.section2Title, LEGACY_EN_HOME_SEO.section2Title, DEFAULT_HOME_SEO.section2Title),
+    section2Content: normalizeField(safeContent.section2Content, LEGACY_EN_HOME_SEO.section2Content, DEFAULT_HOME_SEO.section2Content),
+    section3Title: normalizeField(safeContent.section3Title, LEGACY_EN_HOME_SEO.section3Title, DEFAULT_HOME_SEO.section3Title),
+    section3Content: normalizeField(safeContent.section3Content, LEGACY_EN_HOME_SEO.section3Content, DEFAULT_HOME_SEO.section3Content),
+  };
 }
