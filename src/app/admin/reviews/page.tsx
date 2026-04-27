@@ -145,7 +145,7 @@ export default function AdminReviewsPage() {
 
         {!loading && filteredReviews.length === 0 ? (
           <div className="py-10 text-center text-sm text-gray-400">
-            {reviews.length === 0 ? '등록된 리뷰가 없습니다.' : '해당 조건의 후기가 없습니다.'}
+            {reviews.length === 0 ? '등록된 리뷰가 없습니다.' : '검색 조건에 맞는 리뷰가 없습니다.'}
           </div>
         ) : null}
 

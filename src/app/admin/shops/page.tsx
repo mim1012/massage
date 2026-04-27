@@ -98,6 +98,8 @@ export default function AdminShopsPage() {
     });
   }, [regionFilter, search, shops]);
 
+  const hasActiveFilters = search.trim().length > 0 || regionFilter !== 'all';
+
   return (
     <div className="max-w-[1200px] space-y-4">
       <div className="flex items-center justify-between">
@@ -217,7 +219,13 @@ export default function AdminShopsPage() {
           </table>
         </div>
         {loading ? <div className="py-6 text-center text-sm text-gray-400">업소 목록을 불러오는 중입니다.</div> : null}
-        {!loading && filteredShops.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div> : null}
+        {!loading && filteredShops.length === 0 ? (
+          <div className="py-6 text-center text-sm text-gray-400">
+            {shops.length === 0 && !hasActiveFilters
+              ? '등록된 업소가 없습니다.'
+              : '검색 조건에 맞는 업소가 없습니다.'}
+          </div>
+        ) : null}
       </div>
     </div>
   );

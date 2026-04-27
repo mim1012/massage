@@ -73,7 +73,7 @@ export default async function AdminStatsPage() {
             </div>
           ))}
           {!loadError && (stats?.topShops?.length ?? 0) === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">조회할 업소 데이터가 없습니다.</div>
+            <div className="py-8 text-center text-sm text-gray-400">표시할 업소 통계가 없습니다.</div>
           ) : null}
         </div>
       </div>
