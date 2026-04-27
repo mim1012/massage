@@ -5,15 +5,15 @@ import { getLegalDocument } from '@/lib/server/legal-documents';
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const document = await getLegalDocument('ad');
+  const document = await getLegalDocument('mobile');
   return {
     title: document.title,
     description: document.description,
   };
 }
 
-export default async function AdPage() {
-  const document = await getLegalDocument('ad');
+export default async function MobilePage() {
+  const document = await getLegalDocument('mobile');
 
   return (
     <PublicInfoPage

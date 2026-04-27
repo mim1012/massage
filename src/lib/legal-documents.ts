@@ -1,4 +1,4 @@
-export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth';
+export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth' | 'ad' | 'mobile';
 
 export type LegalSection = {
   title: string;
@@ -215,6 +215,50 @@ const YOUTH_SECTIONS: LegalSection[] = [
   },
 ];
 
+const AD_SECTIONS: LegalSection[] = [
+  {
+    title: '광고 상품 안내',
+    paragraphs: [
+      '힐링찾기는 메인 노출, 프리미엄 배너, 제휴 업소 소개 등 다양한 형태의 광고 상품을 운영할 수 있습니다.',
+      '광고 상품 구성과 노출 위치는 서비스 운영 정책과 화면 개편에 따라 조정될 수 있습니다.',
+    ],
+  },
+  {
+    title: '진행 절차',
+    paragraphs: ['광고 문의 접수 후 담당자가 상품 구성, 일정, 비용, 노출 조건을 안내하며 협의 완료 후 진행됩니다.'],
+    items: [
+      '광고 집행 전 업소 정보와 소재 검수가 진행될 수 있습니다.',
+      '허위, 과장, 법령 위반 소지가 있는 광고 문구는 제한될 수 있습니다.',
+    ],
+  },
+  {
+    title: '문의 방법',
+    paragraphs: ['광고 관련 상담은 푸터 연락처 또는 제휴/입점 문의 채널을 통해 접수할 수 있습니다.'],
+  },
+];
+
+const MOBILE_SECTIONS: LegalSection[] = [
+  {
+    title: '모바일웹 이용 안내',
+    paragraphs: [
+      '힐링찾기 모바일웹은 스마트폰과 태블릿 환경에서 업소 검색, 상세 조회, 커뮤니티 이용이 가능하도록 최적화되어 있습니다.',
+      '일부 기능은 브라우저 종류, 기기 성능, 로그인 상태에 따라 동작 방식이 달라질 수 있습니다.',
+    ],
+  },
+  {
+    title: '권장 환경',
+    paragraphs: ['최신 버전의 iOS Safari, Android Chrome 등 표준 브라우저 환경에서 이용하는 것을 권장합니다.'],
+    items: [
+      '모바일웹 이용 시 데이터 환경과 네트워크 상태에 따라 로딩 속도가 달라질 수 있습니다.',
+      '앱 설치 없이 브라우저만으로 주요 기능을 사용할 수 있습니다.',
+    ],
+  },
+  {
+    title: '문의 및 지원',
+    paragraphs: ['모바일 환경에서 접속 또는 표시 문제가 발생하는 경우 고객센터를 통해 문의해 주세요.'],
+  },
+];
+
 export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDocument> = {
   privacy: {
     eyebrow: 'Privacy',
@@ -239,6 +283,22 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
       '마사지찾기는 청소년 보호를 위해 유해 정보 노출을 최소화하고, 신고 및 모니터링 절차를 통해 안전한 서비스 환경을 유지하기 위해 노력합니다.',
     note: '청소년 보호 관련 신고는 운영 채널을 통해 접수할 수 있으며, 접수된 내용은 내부 정책에 따라 신속히 검토됩니다.',
     body: buildLegalDocumentBody(YOUTH_SECTIONS),
+  },
+  ad: {
+    eyebrow: 'Advertising',
+    title: '광고안내',
+    description:
+      '힐링찾기 광고 상품과 진행 절차에 대한 기본 안내입니다. 실제 비용과 노출 조건은 담당자 안내 및 협의 결과에 따라 확정됩니다.',
+    note: '광고 진행 가능 여부와 노출 일정은 내부 검수 및 운영 정책에 따라 조정될 수 있습니다.',
+    body: buildLegalDocumentBody(AD_SECTIONS),
+  },
+  mobile: {
+    eyebrow: 'Mobile Web',
+    title: '모바일웹 안내',
+    description:
+      '힐링찾기 모바일웹은 별도 앱 설치 없이 스마트폰 브라우저에서 주요 기능을 이용할 수 있도록 제공됩니다.',
+    note: '기기별 표시 차이나 접속 이슈는 고객센터로 문의해 주시면 확인 후 안내드립니다.',
+    body: buildLegalDocumentBody(MOBILE_SECTIONS),
   },
 };
 

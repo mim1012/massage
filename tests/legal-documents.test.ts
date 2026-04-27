@@ -41,10 +41,23 @@ test('buildLegalDocumentBody serializes sections into editable text format', () 
   assert.equal(body, ['## 약관 안내', '첫 문단', '', '둘째 문단', '', '- 항목 1'].join('\n'));
 });
 
-test('default legal documents include youth policy and resolve fallback content', () => {
+test('default legal documents include youth, ad, and mobile pages and resolve fallback content', () => {
   assert.ok(DEFAULT_LEGAL_DOCUMENTS.youth);
-  const resolved = resolveLegalDocument('youth');
-  assert.equal(resolved.slug, 'youth');
-  assert.equal(resolved.title, '청소년보호정책');
-  assert.ok(resolved.sections.length > 0);
+  assert.ok(DEFAULT_LEGAL_DOCUMENTS.ad);
+  assert.ok(DEFAULT_LEGAL_DOCUMENTS.mobile);
+
+  const youth = resolveLegalDocument('youth');
+  assert.equal(youth.slug, 'youth');
+  assert.equal(youth.title, '청소년보호정책');
+  assert.ok(youth.sections.length > 0);
+
+  const ad = resolveLegalDocument('ad');
+  assert.equal(ad.slug, 'ad');
+  assert.equal(ad.title, '광고안내');
+  assert.ok(ad.sections.length > 0);
+
+  const mobile = resolveLegalDocument('mobile');
+  assert.equal(mobile.slug, 'mobile');
+  assert.equal(mobile.title, '모바일웹 안내');
+  assert.ok(mobile.sections.length > 0);
 });
