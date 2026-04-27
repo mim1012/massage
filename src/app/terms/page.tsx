@@ -1,54 +1,27 @@
 import type { Metadata } from 'next';
 import PublicInfoPage from '@/components/PublicInfoPage';
+import { getLegalDocument } from '@/lib/server/legal-documents';
 
-export const metadata: Metadata = {
-  title: '이용약관',
-  description: '마사지찾기 서비스 이용약관 안내',
-};
+export const dynamic = 'force-dynamic';
 
-const sections = [
-  {
-    title: '서비스 이용',
-    paragraphs: [
-      '마사지찾기는 업소 정보, 커뮤니티 게시판, 회원 기능 등 온라인 정보 서비스를 제공합니다.',
-      '회사는 서비스의 안정적 운영을 위해 필요한 경우 일부 기능의 제공 범위, 운영 시간, 노출 기준을 조정할 수 있습니다.',
-    ],
-  },
-  {
-    title: '회원의 책임',
-    paragraphs: [
-      '회원은 관계 법령, 본 약관, 서비스 내 안내사항을 준수해야 하며 타인의 권리를 침해하거나 서비스 운영을 방해해서는 안 됩니다.',
-    ],
-    items: [
-      '타인의 계정 도용, 허위 정보 등록, 자동화된 비정상 접근은 금지됩니다.',
-      '게시글, 후기, 문의 내용에 대한 책임은 작성자에게 있으며 사실과 다른 내용으로 분쟁이 발생하지 않도록 주의해야 합니다.',
-      '운영자는 정책 위반이 확인된 계정 또는 게시물에 대해 사전 통지 없이 제한, 숨김, 삭제 조치를 할 수 있습니다.',
-    ],
-  },
-  {
-    title: '면책 및 제한',
-    paragraphs: [
-      '서비스에 게시된 업소 정보나 이용 후기 등은 작성 주체 또는 제휴사에 의해 제공될 수 있으며, 회사는 표시 내용의 정확성·적법성을 보증하지 않습니다.',
-      '회사는 천재지변, 통신 장애, 외부 시스템 장애, 이용자 귀책 사유로 인한 손해에 대해 관련 법령이 허용하는 범위 내에서 책임이 제한될 수 있습니다.',
-    ],
-  },
-  {
-    title: '약관 변경',
-    paragraphs: [
-      '관련 법령 또는 서비스 정책 변경이 있는 경우 약관은 수정될 수 있으며, 중요한 변경은 서비스 화면 또는 공지사항을 통해 안내합니다.',
-      '변경된 약관 시행 후에도 서비스를 계속 이용하는 경우 개정 내용에 동의한 것으로 볼 수 있습니다.',
-    ],
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const document = await getLegalDocument('terms');
+  return {
+    title: document.title,
+    description: document.description,
+  };
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const document = await getLegalDocument('terms');
+
   return (
     <PublicInfoPage
-      eyebrow="Terms"
-      title="이용약관"
-      description="본 약관은 마사지찾기 서비스 이용과 관련한 기본 원칙을 안내하기 위한 요약 안내문입니다. 실제 운영 과정에서는 개별 서비스 화면의 고지, 관련 법령, 운영정책이 함께 적용될 수 있습니다."
-      sections={sections}
-      note="법령상 필수 고지 또는 운영정책 개정이 있는 경우 별도 공지 후 약관 내용이 보완될 수 있습니다."
+      eyebrow={document.eyebrow}
+      title={document.title}
+      description={document.description}
+      sections={document.sections}
+      note={document.note}
     />
   );
 }

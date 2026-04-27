@@ -1,53 +1,27 @@
 import type { Metadata } from 'next';
 import PublicInfoPage from '@/components/PublicInfoPage';
+import { getLegalDocument } from '@/lib/server/legal-documents';
 
-export const metadata: Metadata = {
-  title: '개인정보처리방침',
-  description: '마사지찾기 개인정보 처리 원칙 안내',
-};
+export const dynamic = 'force-dynamic';
 
-const sections = [
-  {
-    title: '수집하는 정보',
-    paragraphs: [
-      '회사는 회원가입, 문의 접수, 서비스 이용 과정에서 이름 또는 닉네임, 연락처, 로그인 정보, 접속 기록, 기기 및 브라우저 정보 등 필요한 범위의 개인정보를 처리할 수 있습니다.',
-      '민감정보는 법령상 허용되거나 별도 동의를 받은 경우에 한하여 최소 범위로 처리합니다.',
-    ],
-  },
-  {
-    title: '이용 목적',
-    paragraphs: [
-      '수집한 정보는 회원 식별, 서비스 제공, 문의 응대, 부정 이용 방지, 통계 분석, 공지 전달, 법령상 의무 이행을 위해 사용됩니다.',
-    ],
-  },
-  {
-    title: '보관 및 파기',
-    paragraphs: [
-      '개인정보는 수집·이용 목적이 달성되면 지체 없이 파기하는 것을 원칙으로 합니다.',
-      '다만 전자상거래, 소비자보호, 통신비밀보호 등 관련 법령에서 일정 기간 보관을 요구하는 경우에는 해당 기간 동안 안전하게 보관한 뒤 파기합니다.',
-    ],
-  },
-  {
-    title: '제3자 제공 및 보호',
-    paragraphs: [
-      '회사는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않으며, 법령상 근거가 있거나 서비스 제공에 꼭 필요한 경우에만 제한적으로 처리합니다.',
-    ],
-    items: [
-      '접근 권한 최소화, 비밀번호 보호, 접속 기록 관리 등 기본적인 보안 조치를 유지합니다.',
-      '이용자는 자신의 개인정보 열람, 정정, 삭제, 처리정지 요청을 관련 법령 범위 내에서 할 수 있습니다.',
-      '권리 행사 또는 개인정보 관련 문의는 서비스 하단에 안내된 운영 채널을 통해 접수할 수 있습니다.',
-    ],
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const document = await getLegalDocument('privacy');
+  return {
+    title: document.title,
+    description: document.description,
+  };
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const document = await getLegalDocument('privacy');
+
   return (
     <PublicInfoPage
-      eyebrow="Privacy"
-      title="개인정보처리방침"
-      description="마사지찾기는 이용자의 개인정보를 최소한으로 처리하고, 관련 법령과 합리적인 보안 기준에 따라 안전하게 관리하기 위해 노력합니다. 아래 내용은 서비스 운영에 적용되는 기본 처리 원칙을 설명합니다."
-      sections={sections}
-      note="실제 수집 항목과 보관 기간은 회원가입, 문의, 이벤트 참여 등 개별 화면에서 추가로 고지될 수 있습니다."
+      eyebrow={document.eyebrow}
+      title={document.title}
+      description={document.description}
+      sections={document.sections}
+      note={document.note}
     />
   );
 }

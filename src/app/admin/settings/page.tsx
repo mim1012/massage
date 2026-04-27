@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Globe, Info, Layout, Save, Settings, Type } from 'lucide-react';
+import { FileText, Globe, Info, Layout, Save, Settings, Shield, Type } from 'lucide-react';
+import { DEFAULT_LEGAL_DOCUMENTS, type EditableLegalDocument, type LegalDocumentSlug } from '@/lib/legal-documents';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
 
 export default function AdminSettingsPage() {
   const [siteForm, setSiteForm] = useState<SiteSettings>(MOCK_SITE_SETTINGS);
   const [seoForm, setSeoForm] = useState<HomeSeoContent>(MOCK_HOME_SEO);
+  const [legalDocs, setLegalDocs] = useState<Record<LegalDocumentSlug, EditableLegalDocument>>(DEFAULT_LEGAL_DOCUMENTS);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLegalSaving, setIsLegalSaving] = useState<LegalDocumentSlug | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const ipt =
@@ -19,15 +22,25 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await fetch('/api/admin/settings', { cache: 'no-store' });
-        if (!response.ok) {
-          return;
+        const [settingsResponse, legalResponse] = await Promise.all([
+          fetch('/api/admin/settings', { cache: 'no-store' }),
+          fetch('/api/admin/legal-documents', { cache: 'no-store' }),
+        ]);
+
+        if (settingsResponse.ok) {
+          const result = (await settingsResponse.json()) as { siteSettings?: SiteSettings; homeSeo?: HomeSeoContent };
+          if (result.siteSettings && result.homeSeo) {
+            setSiteForm(result.siteSettings);
+            setSeoForm(result.homeSeo);
+          }
         }
 
-        const result = (await response.json()) as { siteSettings?: SiteSettings; homeSeo?: HomeSeoContent };
-        if (result.siteSettings && result.homeSeo) {
-          setSiteForm(result.siteSettings);
-          setSeoForm(result.homeSeo);
+        if (legalResponse.ok) {
+          const result = (await legalResponse.json()) as Partial<Record<LegalDocumentSlug, EditableLegalDocument>>;
+          setLegalDocs((current) => ({
+            privacy: { ...current.privacy, ...result.privacy },
+            terms: { ...current.terms, ...result.terms },
+          }));
         }
       } catch {
         return;
@@ -62,6 +75,40 @@ export default function AdminSettingsPage() {
     }
   }
 
+  async function handleSaveLegalDocument(slug: LegalDocumentSlug) {
+    setIsLegalSaving(slug);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/legal-documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, ...legalDocs[slug] }),
+      });
+
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        throw new Error(result.error ?? '법률 문서를 저장하지 못했습니다.');
+      }
+
+      const result = (await response.json()) as EditableLegalDocument;
+      setLegalDocs((current) => ({
+        ...current,
+        [slug]: {
+          eyebrow: result.eyebrow,
+          title: result.title,
+          description: result.description,
+          note: result.note,
+          body: result.body,
+        },
+      }));
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : '법률 문서를 저장하지 못했습니다.');
+    } finally {
+      setIsLegalSaving(null);
+    }
+  }
+
   const seoSections = [
     {
       key: 'section1',
@@ -90,6 +137,16 @@ export default function AdminSettingsPage() {
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section3Title: value })),
       setContent: (value: string) => setSeoForm((current) => ({ ...current, section3Content: value })),
     },
+  ];
+
+  const legalDocCards: Array<{
+    slug: LegalDocumentSlug;
+    label: string;
+    icon: typeof Shield;
+    accent: string;
+  }> = [
+    { slug: 'privacy', label: '개인정보처리방침', icon: Shield, accent: 'text-emerald-600' },
+    { slug: 'terms', label: '이용약관', icon: FileText, accent: 'text-sky-600' },
   ];
 
   return (
@@ -245,13 +302,128 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
+      <hr className="border-gray-200" />
+
+      <section className="space-y-6">
+        <div className="flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
+          <Shield className="h-5 w-5 text-gray-800" />
+          <h2 className="text-lg font-black text-gray-800">3. 약관 · 정책 문구 관리</h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          {legalDocCards.map((doc) => {
+            const Icon = doc.icon;
+            const current = legalDocs[doc.slug];
+            const saving = isLegalSaving === doc.slug;
+
+            return (
+              <div key={doc.slug} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`h-4 w-4 ${doc.accent}`} />
+                    <span className="text-sm font-bold text-gray-700">{doc.label}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveLegalDocument(doc.slug)}
+                    disabled={saving}
+                    className={clsx(
+                      'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95',
+                      saving ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+                    )}
+                  >
+                    <Save className={clsx('h-3.5 w-3.5', saving && 'animate-spin')} />
+                    {saving ? '저장 중...' : '문서 저장'}
+                  </button>
+                </div>
+                <div className="space-y-4 p-5">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={lbl}>Eyebrow</label>
+                      <input
+                        type="text"
+                        value={current.eyebrow}
+                        onChange={(event) =>
+                          setLegalDocs((prev) => ({
+                            ...prev,
+                            [doc.slug]: { ...prev[doc.slug], eyebrow: event.target.value },
+                          }))
+                        }
+                        className={ipt}
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>문서 제목</label>
+                      <input
+                        type="text"
+                        value={current.title}
+                        onChange={(event) =>
+                          setLegalDocs((prev) => ({
+                            ...prev,
+                            [doc.slug]: { ...prev[doc.slug], title: event.target.value },
+                          }))
+                        }
+                        className={ipt}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={lbl}>상단 설명</label>
+                    <textarea
+                      rows={3}
+                      value={current.description}
+                      onChange={(event) =>
+                        setLegalDocs((prev) => ({
+                          ...prev,
+                          [doc.slug]: { ...prev[doc.slug], description: event.target.value },
+                        }))
+                      }
+                      className={ipt}
+                    />
+                  </div>
+                  <div>
+                    <label className={lbl}>본문 섹션</label>
+                    <textarea
+                      rows={14}
+                      value={current.body}
+                      onChange={(event) =>
+                        setLegalDocs((prev) => ({
+                          ...prev,
+                          [doc.slug]: { ...prev[doc.slug], body: event.target.value },
+                        }))
+                      }
+                      className={`${ipt} font-mono text-[13px] leading-6`}
+                    />
+                    <p className="mt-2 text-[11px] text-gray-400">형식: `## 섹션 제목`으로 시작하고, 항목은 `- 내용` 형식으로 입력합니다.</p>
+                  </div>
+                  <div>
+                    <label className={lbl}>하단 안내 문구</label>
+                    <textarea
+                      rows={3}
+                      value={current.note}
+                      onChange={(event) =>
+                        setLegalDocs((prev) => ({
+                          ...prev,
+                          [doc.slug]: { ...prev[doc.slug], note: event.target.value },
+                        }))
+                      }
+                      className={ipt}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="flex gap-3 rounded-xl border border-[#D4A373]/20 bg-[#FEFAE0] p-4">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#D4A373]" />
         <div className="text-xs leading-relaxed text-[#5F4B32]">
           <p className="mb-1 font-bold">관리 지침</p>
           <p>
             1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의
-            마케팅용 SEO 텍스트를 구성합니다. 모든 항목은 입력 즉시 시스템에 반영됩니다.
+            마케팅용 SEO 텍스트를 구성합니다. 3번 섹션은 푸터의 이용약관/개인정보처리방침 페이지에 즉시 반영됩니다.
           </p>
         </div>
       </div>
