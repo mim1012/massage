@@ -1,8 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import PaginationControls from '@/components/public/PaginationControls';
+import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, Shop, User } from '@/lib/types';
@@ -51,8 +53,10 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
 function ReviewContent({ initialReviews, initialShops }: { initialReviews: ReviewWithRegion[]; initialShops: Shop[] }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
+  const initialPage = normalizePageParam(searchParams.get('page'));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +71,8 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   const [regionTab, setRegionTab] = useState('all');
   const [shopTab, setShopTab] = useState(initialShopId || 'all');
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const didInitPaginationReset = useRef(false);
   const [form, setForm] = useState({ shopId: initialShopId, authorName: '', rating: 5, content: '' });
 
   useEffect(() => {
@@ -109,8 +115,9 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   useEffect(() => {
     setSearchQuery(initialKeyword);
     setShopTab(initialShopId || 'all');
+    setCurrentPage(initialPage);
     setForm((current) => ({ ...current, shopId: initialShopId }));
-  }, [initialKeyword, initialShopId]);
+  }, [initialKeyword, initialPage, initialShopId]);
 
   useEffect(() => {
     if (!shops.length) {
@@ -204,9 +211,33 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
     shopTab !== 'all' ||
     searchType !== 'all';
 
+  const REVIEW_PAGE_SIZE = 10;
+  const totalPages = getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
+  const visibleReviews = useMemo(() => paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE), [currentPage, filteredReviews]);
+
+  useEffect(() => {
+    if (!didInitPaginationReset.current) {
+      didInitPaginationReset.current = true;
+      return;
+    }
+
+    setCurrentPage(1);
+  }, [regionTab, searchQuery, searchType, shopTab]);
+
   function handleRegionTab(code: string) {
     setRegionTab(code);
     setShopTab('all');
+  }
+
+  function handlePageChange(page: number) {
+    setCurrentPage(page);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (page <= 1) {
+      nextParams.delete('page');
+    } else {
+      nextParams.set('page', String(page));
+    }
+    router.replace(`${pathname}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
   }
 
   function handleOpenModal() {
@@ -398,7 +429,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filteredReviews.map((review) => (
+            {visibleReviews.map((review) => (
               <div key={review.id} className="p-3">
                 <div className="mb-1 flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
@@ -419,6 +450,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
       </div>
 
       <div className="mt-2 text-right text-xs text-gray-400">총 {filteredReviews.length}개 후기</div>
+      <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
 
       {showModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

@@ -1,8 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import PaginationControls from '@/components/public/PaginationControls';
+import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronDown, ChevronRight, ChevronUp, Plus, X } from 'lucide-react';
 import type { QnA, QnAComment, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -26,8 +28,10 @@ function getPrimaryAnswer(entry: QnA) {
 
 function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const shopId = searchParams.get('shopId');
   const query = searchParams.get('q')?.trim() ?? '';
+  const initialPage = normalizePageParam(searchParams.get('page'));
 
   const [entries, setEntries] = useState<QnA[]>(initialEntries);
   const [user, setUser] = useState<User | null>(null);
@@ -39,10 +43,13 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const didInitPaginationReset = useRef(false);
 
   useEffect(() => {
     setEntries(initialEntries);
-  }, [initialEntries]);
+    setCurrentPage(initialPage);
+  }, [initialEntries, initialPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +94,30 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
       return [entry.question, entry.authorName, primaryAnswer].some((value) => value.toLowerCase().includes(normalized));
     });
   }, [entries, query]);
+
+  const QNA_PAGE_SIZE = 10;
+  const totalPages = getTotalPages(filteredEntries.length, QNA_PAGE_SIZE);
+  const visibleEntries = useMemo(() => paginateItems(filteredEntries, currentPage, QNA_PAGE_SIZE), [currentPage, filteredEntries]);
+
+  useEffect(() => {
+    if (!didInitPaginationReset.current) {
+      didInitPaginationReset.current = true;
+      return;
+    }
+
+    setCurrentPage(1);
+  }, [entries, query]);
+
+  function handlePageChange(page: number) {
+    setCurrentPage(page);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (page <= 1) {
+      nextParams.delete('page');
+    } else {
+      nextParams.set('page', String(page));
+    }
+    router.replace(`/board/qna${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,10 +237,10 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
             {!query ? <p className="mt-1 text-[11px] text-gray-300">첫 질문을 남기면 이곳에 순서대로 표시됩니다.</p> : null}
           </div>
         ) : (
-          filteredEntries.map((entry, idx) => {
+          visibleEntries.map((entry, idx) => {
             const answer = getPrimaryAnswer(entry);
             return (
-              <div key={entry.id} className={idx < filteredEntries.length - 1 ? 'border-b border-gray-100' : ''}>
+              <div key={entry.id} className={idx < visibleEntries.length - 1 ? 'border-b border-gray-100' : ''}>
                 <button
                   onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
                   className="w-full text-left transition-all hover:bg-gray-50"
@@ -255,6 +286,8 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
           })
         )}
       </div>
+
+      <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import PaginationControls from '@/components/public/PaginationControls';
 import { listNotices } from '@/lib/server/communityStore';
+import { normalizePageParam, paginateItems, getTotalPages } from '@/lib/pagination';
 import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
@@ -11,8 +13,26 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default async function NoticePage() {
+const NOTICE_PAGE_SIZE = 20;
+
+type SearchParamValue = string | string[] | undefined;
+
+type PageProps = {
+  searchParams?: Promise<{
+    page?: SearchParamValue;
+  }>;
+};
+
+function pickFirst(value: SearchParamValue) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function NoticePage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const currentPage = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const notices = await listNotices();
+  const totalPages = getTotalPages(notices.length, NOTICE_PAGE_SIZE);
+  const pagedNotices = paginateItems(notices, currentPage, NOTICE_PAGE_SIZE);
 
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
@@ -31,12 +51,12 @@ export default async function NoticePage() {
       <h1 className="mb-3 text-lg font-black text-gray-800">📢 공지사항</h1>
 
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
-        {notices.map((notice: Notice, index: number) => (
+        {pagedNotices.map((notice: Notice, index: number) => (
           <Link
             key={notice.id}
             href={`/board/notice/${notice.id}`}
             className={`flex items-center justify-between p-3 transition-all hover:bg-gray-50 ${
-              index < notices.length - 1 ? 'border-b border-gray-100' : ''
+              index < pagedNotices.length - 1 ? 'border-b border-gray-100' : ''
             }`}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -58,6 +78,12 @@ export default async function NoticePage() {
           </div>
         ) : null}
       </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        buildHref={(page) => (page === 1 ? '/board/notice' : `/board/notice?page=${page}`)}
+      />
     </div>
   );
 }
