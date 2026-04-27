@@ -17,9 +17,15 @@ test('top100 headings use 전국 fallback only when filter title is 전체', () 
 
 test('buildShopBrowseHref preserves browse context for region and theme entry modes', () => {
   assert.equal(buildShopBrowseHref({ region: 'seoul' }), '/?region=seoul');
+  assert.equal(buildShopBrowseHref({ source: 'top100' }), '/top100');
+  assert.equal(buildShopBrowseHref({ source: 'top100', region: 'seoul' }), '/top100?region=seoul');
   assert.equal(
     buildShopBrowseHref({ mode: 'theme', region: 'seoul', theme: 'swedish' }),
     '/?view=theme&region=seoul&theme=swedish',
+  );
+  assert.equal(
+    buildShopBrowseHref({ source: 'top100', mode: 'theme', region: 'seoul', theme: 'swedish' }),
+    '/top100?view=theme&region=seoul&theme=swedish',
   );
   assert.equal(
     buildShopBrowseHref({ mode: 'theme', region: 'seoul', subRegion: 'gangnam', theme: 'swedish' }),
@@ -30,8 +36,16 @@ test('buildShopBrowseHref preserves browse context for region and theme entry mo
 test('buildShopDetailHref preserves browse context when entering a detail page from theme mode', () => {
   assert.equal(buildShopDetailHref('gangnam-healing-spa'), '/shop/gangnam-healing-spa');
   assert.equal(
+    buildShopDetailHref('gangnam-healing-spa', { source: 'top100' }),
+    '/shop/gangnam-healing-spa?source=top100',
+  );
+  assert.equal(
     buildShopDetailHref('gangnam-healing-spa', { mode: 'theme', region: 'seoul', theme: 'swedish' }),
     '/shop/gangnam-healing-spa?view=theme&region=seoul&theme=swedish',
+  );
+  assert.equal(
+    buildShopDetailHref('gangnam-healing-spa', { source: 'top100', mode: 'theme', region: 'seoul', theme: 'swedish' }),
+    '/shop/gangnam-healing-spa?source=top100&view=theme&region=seoul&theme=swedish',
   );
   assert.equal(
     buildShopDetailHref('gangnam-healing-spa', {
@@ -45,6 +59,14 @@ test('buildShopDetailHref preserves browse context when entering a detail page f
 });
 
 test('getShopBrowseLabel matches the preserved browse context', () => {
+  assert.equal(
+    getShopBrowseLabel({
+      source: 'top100',
+      fallbackRegionLabel: '서울',
+      fallbackThemeLabel: '스웨디시',
+    }),
+    '인기순위',
+  );
   assert.equal(
     getShopBrowseLabel({
       mode: 'theme',

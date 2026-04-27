@@ -11,6 +11,7 @@ import { getShopBySlug } from '@/lib/server/shop-store';
 interface Props {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{
+    source?: string;
     view?: string;
     region?: string;
     subRegion?: string;
@@ -64,20 +65,30 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
 
   const { shop, reviews } = data;
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
+  const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
   const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
-  const preservedRegion = currentSearchParams?.region === shop.region ? currentSearchParams.region : shop.region;
+  const preservedRegion =
+    source === 'top100'
+      ? currentSearchParams?.region === shop.region
+        ? currentSearchParams.region
+        : undefined
+      : currentSearchParams?.region === shop.region
+        ? currentSearchParams.region
+        : shop.region;
   const preservedSubRegion =
     currentSearchParams?.subRegion && currentSearchParams.subRegion === shop.subRegion ? currentSearchParams.subRegion : undefined;
   const preservedTheme =
     currentSearchParams?.theme && currentSearchParams.theme === shop.theme ? currentSearchParams.theme : undefined;
   const browseHref = buildShopBrowseHref({
     mode: preservedMode,
+    source,
     region: preservedRegion,
     subRegion: preservedSubRegion,
     theme: preservedTheme,
   });
   const browseLabel = getShopBrowseLabel({
     mode: preservedMode,
+    source,
     region: preservedRegion,
     subRegion: preservedSubRegion,
     theme: preservedTheme,
@@ -106,7 +117,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_280px]">
         <div className="space-y-3">
           <div className={`relative overflow-hidden rounded-lg bg-gradient-to-br ${bgColor} p-6 sm:p-8`}>
-            <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 select-none text-[120px] opacity-10 sm:block">
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 select-none text-[120px] opacity-10">
               {themeEmoji[shop.theme] ?? '✨'}
             </div>
             <div className="relative">

@@ -102,7 +102,7 @@ export default function Header() {
           <ul className="flex items-center text-white text-base font-bold">
             <li>
               <Link
-                href="/?view=list"
+                href="/?viewMode=list"
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
                   directoryMode === 'region' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
@@ -293,7 +293,7 @@ export default function Header() {
         <div className="flex items-center justify-around py-1.5">
           {[
             { href: '/', label: '홈', emoji: '🏠' },
-            { href: buildBrowseHref({ mode: 'region' }), label: '업소', emoji: '📋' },
+            { href: '/?viewMode=list', label: '업소', emoji: '📋' },
             { href: '/board', label: '게시판', emoji: '💬' },
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { Shop } from '@/lib/types';
@@ -36,10 +36,12 @@ const gradients = [
 ];
 
 export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
   const detailHref = buildShopDetailHref(shop.slug, {
+    source: pathname.startsWith('/top100') ? 'top100' : 'home',
     mode: searchParams.get('view') === 'theme' && searchParams.get('theme') === shop.theme ? 'theme' : 'region',
     region: searchParams.get('region') === shop.region ? searchParams.get('region') ?? undefined : undefined,
     subRegion:

@@ -361,7 +361,7 @@ function ReviewContent() {
         </div>
       </div>
 
-      <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+      <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {regionList.map((region) => (
           <button
             key={region.code}
@@ -378,7 +378,7 @@ function ReviewContent() {
         ))}
       </div>
 
-      <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+      <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {filteredShopList.map((shop) => (
           <button
             key={shop.id}

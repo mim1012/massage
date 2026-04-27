@@ -17,7 +17,7 @@ export default function GlobalLayout({ children }: { children: React.ReactNode }
 
   return (
     <SiteContentProvider>
-      <Suspense fallback={<div className="h-14 bg-white border-b-2 border-red-600"></div>}>
+      <Suspense fallback={<div className="h-14 bg-white border-b-2 border-[var(--portal-brand)]"></div>}>
         <Header />
       </Suspense>
       <Suspense fallback={null}>

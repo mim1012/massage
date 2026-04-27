@@ -8,14 +8,13 @@ type Top100FilterTitleOptions = {
 
 type BrowseContextOptions = {
   mode?: DirectoryMode;
+  source?: 'home' | 'top100';
   region?: string;
   subRegion?: string;
   theme?: string;
 };
 
-type ShopBrowseHrefOptions = BrowseContextOptions & {
-  region: string;
-};
+type ShopBrowseHrefOptions = BrowseContextOptions;
 
 type ShopBrowseLabelOptions = BrowseContextOptions & {
   fallbackRegionLabel: string;
@@ -37,8 +36,9 @@ export function getTop100RankingLabel(filterTitle: string) {
   return filterTitle === '전체' ? '전국' : filterTitle;
 }
 
-export function buildShopBrowseHref({ mode = 'region', region, subRegion, theme }: ShopBrowseHrefOptions) {
+export function buildShopBrowseHref({ mode = 'region', source, region, subRegion, theme }: ShopBrowseHrefOptions) {
   return buildBrowseHref({
+    basePath: source === 'top100' ? '/top100' : '/',
     mode,
     region,
     subRegion,
@@ -48,6 +48,7 @@ export function buildShopBrowseHref({ mode = 'region', region, subRegion, theme 
 
 export function getShopBrowseLabel({
   mode = 'region',
+  source,
   region,
   subRegion,
   theme,
@@ -55,6 +56,10 @@ export function getShopBrowseLabel({
   fallbackThemeLabel,
   subRegionLabel,
 }: ShopBrowseLabelOptions) {
+  if (source === 'top100') {
+    return '인기순위';
+  }
+
   if (mode === 'theme') {
     return fallbackThemeLabel;
   }
@@ -70,8 +75,12 @@ export function getShopBrowseLabel({
   return fallbackRegionLabel;
 }
 
-export function buildShopDetailHref(slug: string, { mode = 'region', region, subRegion, theme }: BrowseContextOptions = {}) {
+export function buildShopDetailHref(slug: string, { mode = 'region', source, region, subRegion, theme }: BrowseContextOptions = {}) {
   const params = new URLSearchParams();
+
+  if (source === 'top100') {
+    params.set('source', 'top100');
+  }
 
   if (mode === 'theme') {
     params.set('view', 'theme');
