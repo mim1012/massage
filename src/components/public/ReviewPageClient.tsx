@@ -198,6 +198,12 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
     });
   }, [regionTab, reviews, searchQuery, searchType, shopTab]);
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    regionTab !== 'all' ||
+    shopTab !== 'all' ||
+    searchType !== 'all';
+
   function handleRegionTab(code: string) {
     setRegionTab(code);
     setShopTab('all');
@@ -378,8 +384,17 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
           <div className="py-10 text-center text-sm text-gray-400">리뷰를 불러오는 중입니다.</div>
         ) : filteredReviews.length === 0 ? (
           <div className="py-10 text-center text-sm text-gray-400">
-            <p>해당 조건의 후기가 없습니다.</p>
-            <p className="mt-1 text-[11px] text-gray-300">다른 지역이나 업체를 선택해 후기를 확인해보세요.</p>
+            {reviews.length === 0 && !hasActiveFilters ? (
+              <>
+                <p>등록된 후기가 없습니다.</p>
+                <p className="mt-1 text-[11px] text-gray-300">첫 후기가 등록되면 이곳에 표시됩니다.</p>
+              </>
+            ) : (
+              <>
+                <p>검색 조건에 맞는 후기가 없습니다.</p>
+                <p className="mt-1 text-[11px] text-gray-300">검색어 또는 지역·업체 필터를 다시 확인해 주세요.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
