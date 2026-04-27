@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building, Check, Mail, Phone, UserCheck, X } from 'lucide-react';
+import { Building, Check, Mail, Phone, Store, UserCheck, X } from 'lucide-react';
 import clsx from 'clsx';
 import type { User } from '@/lib/types';
 
@@ -60,7 +60,7 @@ export default function ApprovalsPage() {
     <div className="max-w-[1200px] space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <UserCheck className="h-5 w-5 text-red-600" /> 업주 승인 관리
+          <Store className="h-5 w-5 text-red-600" /> 입점 업소 승인 관리
         </h1>
         <div className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-500">
           대기 중인 요청: {pendingUsers.length}건
@@ -70,12 +70,12 @@ export default function ApprovalsPage() {
       {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">승인 대기 요청 ({pendingUsers.length})</h2>
+        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">대기 중인 업소 등록 요청 ({pendingUsers.length})</h2>
 
         {loading ? <div className="mb-4 text-sm text-gray-500">승인 요청을 불러오는 중...</div> : null}
 
         {!loading && pendingUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">대기 중인 업주 요청이 없습니다.</div>
+          <div className="py-8 text-center text-gray-500">대기 중인 업소 등록 요청이 없습니다.</div>
         ) : null}
 
         {!loading ? (
@@ -88,7 +88,7 @@ export default function ApprovalsPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-gray-800">{user.businessName || '상호 정보 없음'}</span>
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">업주심사대기</span>
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">업소심사대기</span>
                   </div>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-gray-600 sm:grid-cols-2">
                     <div className="flex items-center gap-1.5">
@@ -114,7 +114,7 @@ export default function ApprovalsPage() {
                     onClick={() => void updateStatus(user.id, 'approve')}
                     className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700"
                   >
-                    <Check className="h-4 w-4" /> 승인
+                    <Check className="h-4 w-4" /> 등록승인
                   </button>
                   <button
                     onClick={() => void updateStatus(user.id, 'reject')}
@@ -130,9 +130,9 @@ export default function ApprovalsPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">처리 완료 요청</h2>
+        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">최근 업소 처리 내역</h2>
         {processedUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">아직 처리된 요청이 없습니다.</div>
+          <div className="py-8 text-center text-gray-500">처리 내역이 없습니다.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full whitespace-nowrap text-left text-sm">

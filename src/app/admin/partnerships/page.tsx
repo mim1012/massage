@@ -69,6 +69,8 @@ export default function AdminPartnershipsPage() {
     });
   }, [inquiries, searchQuery, statusFilter]);
 
+  const hasActiveFilters = searchQuery.trim().length > 0 || statusFilter !== 'all';
+
   async function removeInquiry(id: string) {
     setError(null);
 
@@ -180,7 +182,9 @@ export default function AdminPartnershipsPage() {
               {!loading && filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
-                    데이터가 없습니다.
+                    {inquiries.length === 0 && !hasActiveFilters
+                      ? '등록된 입점 문의가 없습니다.'
+                      : '검색 조건에 맞는 입점 문의가 없습니다.'}
                   </td>
                 </tr>
               ) : null}
