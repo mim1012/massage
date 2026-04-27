@@ -106,7 +106,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
     }
 
     setCurrentPage(1);
-  }, [entries, query]);
+  }, [query]);
 
   function handlePageChange(page: number) {
     setCurrentPage(page);
@@ -144,6 +144,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
       setQuestion('');
       setShowForm(false);
       setSubmitted(true);
+      setCurrentPage(1);
       setEntries((current) => [result.qna as QnA, ...current]);
       setOpenId(result.qna.id);
     } catch (submitError) {
