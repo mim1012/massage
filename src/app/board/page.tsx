@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getSessionUser } from '@/lib/auth/guards';
-import { getBoardSummary, listNotices, listQna, listReviews } from '@/lib/server/communityStore';
+import { getBoardLandingData } from '@/lib/server/communityStore';
 import type { Notice, QnA, Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
@@ -15,12 +15,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function BoardPage() {
   const currentUser = await getSessionUser();
-  const [summary, notices, qnaEntries, reviews] = await Promise.all([
-    getBoardSummary(),
-    listNotices(),
-    listQna(),
-    currentUser ? listReviews(3) : Promise.resolve([]),
-  ]);
+  const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({
+    includeReviews: Boolean(currentUser),
+    viewer: currentUser ? { id: currentUser.id, role: currentUser.role } : undefined,
+  });
 
   return (
     <div className="mx-auto max-w-[1000px] px-3 py-4">

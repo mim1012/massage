@@ -11,6 +11,7 @@ import {
   deletePartnershipInquiry,
   getAdminShopById,
   getAdminDashboardData,
+  getBoardLandingData,
   getBoardSummary,
   getNoticeById,
   getQnaShopOwnerId,
@@ -184,6 +185,31 @@ dbTest('getBoardSummary and getAdminDashboardData reflect database counts', asyn
   assert.deepEqual(summaryValues, expectedValues);
   assert.ok(dashboard.pendingQna.length <= 4);
   assert.ok(dashboard.recentReviews.length <= 4);
+});
+
+dbTest('getBoardLandingData keeps board cards intact without loading full Q&A threads', async () => {
+  const admin = await getAdminUser();
+  const shop = await getSeedShop();
+  const created = await createQna({
+    shopId: shop.id,
+    question: `Landing page question ${uniqueSuffix()}`,
+    authorName: 'Landing Tester',
+  });
+
+  await answerQna(created.id, 'First landing answer', admin.id, admin.name);
+  await answerQna(created.id, 'Latest landing answer', admin.id, admin.name);
+
+  const landing = await getBoardLandingData({ includeReviews: true });
+  const landingQna = landing.qnaEntries.find((entry) => entry.id === created.id);
+
+  assert.ok(landingQna, 'expected newly created Q&A to appear in landing data');
+  assert.equal(landing.qnaEntries.length <= 3, true);
+  assert.equal(landing.reviews.length <= 3, true);
+  assert.equal(landingQna?.question, created.question);
+  assert.equal(landingQna?.answer, 'Latest landing answer');
+  assert.equal(landingQna?.isAnswered, true);
+  assert.equal(landingQna?.commentCount, 2);
+  assert.deepEqual(landingQna?.comments, []);
 });
 
 dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', async (t: TestContext) => {

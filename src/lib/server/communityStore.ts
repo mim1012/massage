@@ -86,6 +86,57 @@ type LegacyQnaRecord = Prisma.QnAGetPayload<{
   comments: [];
 };
 
+type BoardLandingQnaRecord = Prisma.QnAGetPayload<{
+  select: {
+    id: true;
+    shopId: true;
+    question: true;
+    authorName: true;
+    status: true;
+    createdAt: true;
+    shop: {
+      select: {
+        ownerId: true;
+        name: true;
+        regionLabel: true;
+      };
+    };
+    comments: {
+      select: {
+        content: true;
+        createdAt: true;
+      };
+      orderBy: {
+        createdAt: 'desc';
+      };
+      take: 1;
+    };
+    _count: {
+      select: {
+        comments: true;
+      };
+    };
+  };
+}>;
+
+type LegacyBoardLandingQnaRecord = Prisma.QnAGetPayload<{
+  select: {
+    id: true;
+    shopId: true;
+    question: true;
+    authorName: true;
+    status: true;
+    createdAt: true;
+    shop: {
+      select: {
+        ownerId: true;
+        name: true;
+        regionLabel: true;
+      };
+    };
+  };
+}>;
+
 function buildContainsFilter(value: string) {
   return {
     contains: value,
@@ -143,7 +194,7 @@ async function loadLegacyQnaRecords(where: Prisma.QnAWhereInput) {
   return entries.map((entry) => ({ ...entry, comments: [] as [] })) satisfies LegacyQnaRecord[];
 }
 
-function canCommentOnQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext) {
+function canCommentOnQna(entry: { shop?: { ownerId: string | null } | null }, viewer?: ViewerContext) {
   if (!viewer) {
     return false;
   }
@@ -173,6 +224,28 @@ function mapQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext): QnA
     latestCommentAt: latestComment?.createdAt,
     latestCommentPreview: latestComment?.content,
     comments,
+    createdAt: entry.createdAt.toISOString(),
+  };
+}
+
+function mapBoardLandingQna(entry: BoardLandingQnaRecord | LegacyBoardLandingQnaRecord, viewer?: ViewerContext): QnA {
+  const latestComment = 'comments' in entry ? entry.comments[0] : undefined;
+  const commentCount = '_count' in entry ? entry._count.comments : 0;
+
+  return {
+    id: entry.id,
+    shopId: entry.shopId ?? undefined,
+    shopName: entry.shop?.name ?? undefined,
+    shopRegionLabel: entry.shop?.regionLabel ?? undefined,
+    question: entry.question,
+    answer: latestComment?.content,
+    authorName: entry.authorName,
+    isAnswered: entry.status === QnaStatus.ANSWERED || commentCount > 0,
+    canComment: canCommentOnQna(entry, viewer),
+    commentCount,
+    latestCommentAt: latestComment?.createdAt.toISOString(),
+    latestCommentPreview: latestComment?.content,
+    comments: [],
     createdAt: entry.createdAt.toISOString(),
   };
 }
@@ -434,6 +507,37 @@ const qnaInclude = {
   },
 } satisfies Prisma.QnAInclude;
 
+const boardLandingQnaSelect = {
+  id: true,
+  shopId: true,
+  question: true,
+  authorName: true,
+  status: true,
+  createdAt: true,
+  shop: {
+    select: {
+      ownerId: true,
+      name: true,
+      regionLabel: true,
+    },
+  },
+  comments: {
+    select: {
+      content: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 1,
+  },
+  _count: {
+    select: {
+      comments: true,
+    },
+  },
+} satisfies Prisma.QnASelect;
+
 export async function listQna(options: string | QnaListOptions = {}) {
   const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
   const shopId = normalizedOptions.shopId?.trim();
@@ -479,6 +583,65 @@ export async function listQna(options: string | QnaListOptions = {}) {
     const entries = await loadLegacyQnaRecords(legacyWhere);
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
   }
+}
+
+type BoardLandingOptions = {
+  includeReviews?: boolean;
+  viewer?: ViewerContext;
+};
+
+export async function getBoardLandingData(options: BoardLandingOptions = {}) {
+  const includeReviews = options.includeReviews ?? false;
+
+  const [summary, notices, qnaEntries, reviews] = await Promise.all([
+    getBoardSummary(),
+    listNotices(),
+    (async () => {
+      try {
+        const entries = await prisma.qnA.findMany({
+          select: boardLandingQnaSelect,
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        });
+
+        return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
+      } catch (error) {
+        if (!isQnaCommentStorageUnavailable(error)) {
+          throw error;
+        }
+
+        const entries = await prisma.qnA.findMany({
+          select: {
+            id: true,
+            shopId: true,
+            question: true,
+            authorName: true,
+            status: true,
+            createdAt: true,
+            shop: {
+              select: {
+                ownerId: true,
+                name: true,
+                regionLabel: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        });
+
+        return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
+      }
+    })(),
+    includeReviews ? listReviews(3) : Promise.resolve([]),
+  ]);
+
+  return {
+    summary,
+    notices,
+    qnaEntries,
+    reviews,
+  };
 }
 
 export async function createQnaComment(
