@@ -313,9 +313,11 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
           <div className="rounded border border-gray-200 bg-white py-8 text-center text-sm text-gray-400">
             {qnaList.length === 0
               ? scope === 'owner' && shops.length === 0
-                ? '관리 가능한 업소가 없습니다.'
-                : '표시할 Q&A가 없습니다.'
-              : '검색 조건에 맞는 Q&A가 없습니다.'}
+                ? '관리 가능한 업소가 없습니다. 먼저 내 업소를 등록하거나 관리자 승인 상태를 확인해 주세요.'
+                : scope === 'owner'
+                  ? '아직 내 업소에 등록된 Q&A가 없습니다. 고객 문의가 생기면 이곳에서 바로 댓글을 관리할 수 있습니다.'
+                  : '표시할 Q&A가 없습니다.'
+              : '검색 조건에 맞는 Q&A가 없습니다. 검색어 또는 상태 탭을 다시 확인해 주세요.'}
           </div>
         ) : null}
       </div>

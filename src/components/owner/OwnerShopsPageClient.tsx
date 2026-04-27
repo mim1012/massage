@@ -102,7 +102,9 @@ export default function OwnerShopsPageClient({ initialShops }: { initialShops: A
         </table>
         {filteredShops.length === 0 ? (
           <div className="py-6 text-center text-sm text-gray-400">
-            {shops.length === 0 ? '등록된 업소가 없습니다.' : '검색 조건에 맞는 업소가 없습니다.'}
+            {shops.length === 0
+              ? '아직 등록된 내 업소가 없습니다. 우측 상단의 업소 등록으로 첫 업소를 추가해 주세요.'
+              : '검색 조건에 맞는 업소가 없습니다. 검색어를 지우거나 다른 키워드로 다시 찾아보세요.'}
           </div>
         ) : null}
       </div>

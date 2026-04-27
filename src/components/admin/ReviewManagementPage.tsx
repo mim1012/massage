@@ -175,7 +175,11 @@ export default function ReviewManagementPage({ scope, initialReviews = [] }: Pro
           ))}
         {!loading && filteredReviews.length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-400">
-            {reviews.length === 0 ? '등록된 리뷰가 없습니다.' : '검색 조건에 맞는 리뷰가 없습니다.'}
+            {reviews.length === 0
+              ? scope === 'owner'
+                ? '아직 내 업소에 등록된 리뷰가 없습니다. 고객 리뷰가 생기면 이곳에서 바로 관리할 수 있습니다.'
+                : '등록된 리뷰가 없습니다.'
+              : '검색 조건에 맞는 리뷰가 없습니다. 검색어 또는 평점 필터를 다시 확인해 주세요.'}
           </div>
         ) : null}
       </div>
