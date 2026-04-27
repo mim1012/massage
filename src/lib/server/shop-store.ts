@@ -23,6 +23,46 @@ export const shopInclude = {
   reviews: true,
 } satisfies Prisma.ShopInclude;
 
+const shopListSelect = {
+  id: true,
+  ownerId: true,
+  name: true,
+  slug: true,
+  region: true,
+  regionLabel: true,
+  subRegion: true,
+  subRegionLabel: true,
+  theme: true,
+  themeLabel: true,
+  isPremium: true,
+  premiumOrder: true,
+  thumbnailUrl: true,
+  bannerUrl: true,
+  tagline: true,
+  description: true,
+  address: true,
+  phone: true,
+  hours: true,
+  rating: true,
+  tags: true,
+  createdAt: true,
+  updatedAt: true,
+  courses: {
+    orderBy: { sortOrder: 'asc' },
+    take: 1,
+    select: {
+      name: true,
+      durationMinutes: true,
+      price: true,
+      description: true,
+    },
+  },
+} satisfies Prisma.ShopSelect;
+
+export type ShopListRecord = Prisma.ShopGetPayload<{
+  select: typeof shopListSelect;
+}>;
+
 export function mapShop(record: ShopRecord): Shop {
   const visibleReviews = record.reviews.filter((review) => !review.isHidden);
 
@@ -78,6 +118,43 @@ function mapReview(review: DbReview, shopName: string): Review {
   };
 }
 
+function mapShopList(record: ShopListRecord, reviewCount: number): Shop {
+  return {
+    id: record.id,
+    name: record.name,
+    slug: record.slug,
+    region: record.region,
+    regionLabel: record.regionLabel,
+    subRegion: record.subRegion ?? undefined,
+    subRegionLabel: record.subRegionLabel ?? undefined,
+    theme: record.theme,
+    themeLabel: record.themeLabel,
+    isPremium: record.isPremium,
+    premiumOrder: record.premiumOrder ?? undefined,
+    thumbnailUrl: record.thumbnailUrl ?? '',
+    bannerUrl: record.bannerUrl ?? '',
+    images: [],
+    tagline: record.tagline,
+    description: record.description,
+    address: record.address,
+    phone: record.phone,
+    hours: record.hours,
+    rating: record.rating,
+    reviewCount,
+    courses: record.courses.map((course) => ({
+      name: course.name,
+      duration: `${course.durationMinutes} min`,
+      price: `${course.price}`,
+      description: course.description ?? undefined,
+    })),
+    tags: record.tags,
+    isVisible: true,
+    ownerId: record.ownerId ?? undefined,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
 
@@ -105,11 +182,27 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
 export async function listShops(filters: ShopFilters = {}) {
   const shops = await prisma.shop.findMany({
     where: buildShopWhere(filters),
-    include: shopInclude,
+    select: shopListSelect,
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  const allShops = shops.map(mapShop);
+  const reviewCounts =
+    shops.length > 0
+      ? await prisma.review.groupBy({
+          by: ['shopId'],
+          where: {
+            isHidden: false,
+            shopId: { in: shops.map((shop) => shop.id) },
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : [];
+
+  const reviewCountMap = new Map<string, number>(reviewCounts.map((item) => [item.shopId, Number(item._count._all)]));
+
+  const allShops = shops.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
   const sortedShops = [...allShops];
 
   if (filters.sort === 'popular') {
