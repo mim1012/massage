@@ -14,6 +14,7 @@ import {
   getBoardLandingData,
   getBoardSummary,
   getNoticeById,
+  getPublicSiteContent,
   getQnaShopOwnerId,
   getSiteContent,
   listManagedReviews,
@@ -382,6 +383,43 @@ dbTest('createAdminShop and updateAdminShop persist and replace nested shop data
   assert.deepEqual(updatedShop?.courses, [
     { name: 'Express', duration: '30 min', price: '40000', description: 'Quick' },
   ]);
+});
+
+dbTest('public site content reads normalize legacy values without writing during requests', async () => {
+  const seeded = await prisma.siteSettings.findUnique({
+    where: { id: 'default' },
+  });
+  assert.ok(seeded, 'expected seeded site settings');
+
+  const legacySiteName = `  Healing Finder ${uniqueSuffix()}  `;
+  const legacyHeroText = '  메인  ';
+  const legacySeoTitle = '  s1  ';
+
+  await prisma.siteSettings.update({
+    where: { id: 'default' },
+    data: {
+      siteName: legacySiteName,
+      heroMainText: legacyHeroText,
+      seoSection1Title: legacySeoTitle,
+    },
+  });
+
+  const beforeRead = await prisma.siteSettings.findUnique({
+    where: { id: 'default' },
+  });
+
+  assert.ok(beforeRead, 'expected site settings row before public read');
+  await sleep(5);
+
+  const content = await getPublicSiteContent();
+  const afterRead = await prisma.siteSettings.findUnique({
+    where: { id: 'default' },
+  });
+
+  assert.equal(content?.siteSettings.siteName, legacySiteName.trim());
+  assert.equal(content?.siteSettings.heroMainText, legacyHeroText.trim());
+  assert.equal(content?.homeSeo.section1Title, legacySeoTitle.trim());
+  assert.equal(afterRead?.updatedAt.toISOString(), beforeRead.updatedAt.toISOString());
 });
 
 dbTest('site settings can be loaded and updated', async () => {

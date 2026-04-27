@@ -3,10 +3,8 @@ import HomePageClient from '@/components/public/HomePageClient';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import { buildHomePageData } from '@/lib/public-page-data';
 import { getDirectorySortType } from '@/lib/directory-sort';
-import { getSiteContent } from '@/lib/server/communityStore';
+import { getPublicSiteContent } from '@/lib/server/communityStore';
 import { listShops } from '@/lib/server/shop-store';
-
-export const dynamic = 'force-dynamic';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -35,7 +33,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       theme: pickFirst(resolvedSearchParams?.theme),
       query: pickFirst(resolvedSearchParams?.q),
     }),
-    getSiteContent(),
+    getPublicSiteContent(),
   ]);
 
   const initialData = buildHomePageData({

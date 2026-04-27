@@ -30,6 +30,14 @@ import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
 
+let cachedPublicSiteContent:
+  | {
+      siteSettings: SiteSettings;
+      homeSeo: HomeSeoContent;
+    }
+  | null
+  | undefined;
+
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
     id: shop.id,
@@ -318,6 +326,45 @@ function mapSiteSettings(record: DbSiteSettings) {
   });
 
   return { siteSettings, homeSeo };
+}
+
+function hasLegacySiteContent(
+  record: DbSiteSettings,
+  content: {
+    siteSettings: SiteSettings;
+    homeSeo: HomeSeoContent;
+  },
+) {
+  return (
+    record.siteName !== content.siteSettings.siteName ||
+    record.siteTitle !== content.siteSettings.siteTitle ||
+    record.siteDescription !== content.siteSettings.siteDescription ||
+    record.heroMainText !== content.siteSettings.heroMainText ||
+    record.heroSubText !== content.siteSettings.heroSubText ||
+    record.contactPhone !== content.siteSettings.contactPhone ||
+    record.footerInfo !== content.siteSettings.footerInfo ||
+    record.seoSection1Title !== content.homeSeo.section1Title ||
+    record.seoSection1Content !== content.homeSeo.section1Content ||
+    record.seoSection2Title !== content.homeSeo.section2Title ||
+    record.seoSection2Content !== content.homeSeo.section2Content ||
+    record.seoSection3Title !== content.homeSeo.section3Title ||
+    record.seoSection3Content !== content.homeSeo.section3Content
+  );
+}
+
+async function loadSiteContentRecord() {
+  const record = await prisma.siteSettings.findUnique({
+    where: { id: SITE_SETTINGS_ID },
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  return {
+    record,
+    content: mapSiteSettings(record),
+  };
 }
 
 function parseInteger(value: string) {
@@ -1098,32 +1145,15 @@ export async function deletePartnershipInquiry(id: string) {
 }
 
 export async function getSiteContent() {
-  const record = await prisma.siteSettings.findUnique({
-    where: { id: SITE_SETTINGS_ID },
-  });
+  const loaded = await loadSiteContentRecord();
 
-  if (!record) {
+  if (!loaded) {
     return null;
   }
 
-  const content = mapSiteSettings(record);
+  const { record, content } = loaded;
 
-  const hasLegacyContent =
-    record.siteName !== content.siteSettings.siteName ||
-    record.siteTitle !== content.siteSettings.siteTitle ||
-    record.siteDescription !== content.siteSettings.siteDescription ||
-    record.heroMainText !== content.siteSettings.heroMainText ||
-    record.heroSubText !== content.siteSettings.heroSubText ||
-    record.contactPhone !== content.siteSettings.contactPhone ||
-    record.footerInfo !== content.siteSettings.footerInfo ||
-    record.seoSection1Title !== content.homeSeo.section1Title ||
-    record.seoSection1Content !== content.homeSeo.section1Content ||
-    record.seoSection2Title !== content.homeSeo.section2Title ||
-    record.seoSection2Content !== content.homeSeo.section2Content ||
-    record.seoSection3Title !== content.homeSeo.section3Title ||
-    record.seoSection3Content !== content.homeSeo.section3Content;
-
-  if (hasLegacyContent) {
+  if (hasLegacySiteContent(record, content)) {
     await prisma.siteSettings.update({
       where: { id: SITE_SETTINGS_ID },
       data: {
@@ -1144,7 +1174,21 @@ export async function getSiteContent() {
     });
   }
 
+  cachedPublicSiteContent = content;
+
   return content;
+}
+
+export async function getPublicSiteContent() {
+  if (cachedPublicSiteContent !== undefined) {
+    return cachedPublicSiteContent;
+  }
+
+  const loaded = await loadSiteContentRecord();
+
+  cachedPublicSiteContent = loaded?.content ?? null;
+
+  return cachedPublicSiteContent;
 }
 
 export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
@@ -1183,7 +1227,10 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
     },
   });
 
-  return mapSiteSettings(record);
+  const content = mapSiteSettings(record);
+  cachedPublicSiteContent = content;
+
+  return content;
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
