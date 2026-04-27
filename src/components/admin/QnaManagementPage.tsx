@@ -9,6 +9,8 @@ import { formatDate } from '@/lib/utils';
 
 type Props = {
   scope: 'admin' | 'owner';
+  initialQnaList?: QnA[];
+  initialShops?: AdminShopListItem[];
 };
 
 type TabKey = 'all' | 'pending' | 'done';
@@ -46,18 +48,22 @@ function getThreadComments(qna: QnA): QnAComment[] {
   return [];
 }
 
-export default function QnaManagementPage({ scope }: Props) {
-  const [qnaList, setQnaList] = useState<QnA[]>([]);
-  const [shops, setShops] = useState<AdminShopListItem[]>([]);
+export default function QnaManagementPage({ scope, initialQnaList = [], initialShops = [] }: Props) {
+  const [qnaList, setQnaList] = useState<QnA[]>(initialQnaList);
+  const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
   const [tab, setTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
   const [activeComposerId, setActiveComposerId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialQnaList.length === 0 && initialShops.length === 0);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialQnaList.length > 0 || initialShops.length > 0) {
+      return;
+    }
+
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -106,7 +112,7 @@ export default function QnaManagementPage({ scope }: Props) {
     };
 
     void load();
-  }, [scope]);
+  }, [initialQnaList, initialShops, scope]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
