@@ -15,6 +15,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { Shop } from '@/lib/types';
@@ -199,7 +200,12 @@ function HomeContent() {
                 {premiumShops.map((shop) => (
                   <Link
                     key={shop.id}
-                    href={`/shop/${shop.slug}`}
+                    href={buildShopDetailHref(shop.slug, {
+                      mode: directoryMode,
+                      region: selectedRegion !== 'all' ? selectedRegion : undefined,
+                      subRegion: selectedSubRegion !== 'all' ? selectedSubRegion : undefined,
+                      theme: selectedTheme !== 'all' ? selectedTheme : undefined,
+                    })}
                     className="flex overflow-hidden rounded-2xl border-2 border-amber-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="flex aspect-[4/3] w-36 shrink-0 items-center justify-center border-r border-amber-100 bg-gradient-to-br from-amber-100 to-orange-50 sm:w-56">
