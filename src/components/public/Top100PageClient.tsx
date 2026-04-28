@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, List as ListIcon, RefreshCw, Trophy } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
+import MobilePromoBanners from '@/components/public/MobilePromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
 import { buildTop100PageData } from '@/lib/public-page-data';
@@ -114,6 +115,8 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
               새로고침
             </button>
           </div>
+
+          <MobilePromoBanners />
 
           <div className="rounded-lg border border-gray-200 bg-white p-3">
             <div className="mb-3 flex items-center justify-between border-b border-gray-50 pb-3">

@@ -11,11 +11,23 @@ async function readProjectFile(relativePath: string) {
   return fs.readFile(path.join(projectRoot, relativePath), 'utf8');
 }
 
-test('home page exposes mobile-only promo banner fallbacks for sidebar ads', async () => {
+test('home page uses shared mobile promo banners fallback component', async () => {
   const source = await readProjectFile('src/components/public/HomePageClient.tsx');
 
-  assert.equal(source.includes('md:hidden'), true);
+  assert.equal(source.includes('MobilePromoBanners'), true);
+});
+
+test('top100 page uses shared mobile promo banners fallback component', async () => {
+  const source = await readProjectFile('src/components/public/Top100PageClient.tsx');
+
+  assert.equal(source.includes('MobilePromoBanners'), true);
+});
+
+test('mobile promo banners component contains ad guide, partnership, and banner slot copy', async () => {
+  const source = await readProjectFile('src/components/public/MobilePromoBanners.tsx');
+
   assert.equal(source.includes('건마에반하다'), true);
   assert.equal(source.includes('입점 문의'), true);
   assert.equal(source.includes('배너 슬롯'), true);
+  assert.equal(source.includes('md:hidden'), true);
 });
