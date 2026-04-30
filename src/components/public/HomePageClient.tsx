@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import MobilePromoBanners from '@/components/public/MobilePromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
@@ -310,8 +309,6 @@ export default function HomePageClient({
               </div>
             )}
           </div>
-
-          <MobilePromoBanners />
 
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold">{initialHomeSeo.section1Title}</h1>
