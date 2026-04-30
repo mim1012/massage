@@ -102,7 +102,7 @@ export default function Header() {
           <ul className="flex items-center text-white text-base font-bold">
             <li>
               <Link
-                href="/?viewMode=list"
+                href="/?view=list"
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
                   directoryMode === 'region' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
@@ -144,59 +144,35 @@ export default function Header() {
       <div className="max-w-[1400px] mx-auto px-3">
         <div className="hidden md:block">
           <nav className="flex items-center border-t border-gray-200 -mx-3 px-3 overflow-x-auto scrollbar-hide bg-white">
-            {directoryMode === 'theme'
-              ? THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
-                  <Link
-                    key={theme.code}
-                    href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
-                    className={clsx(
-                      'shrink-0 border-b-2 px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
-                      currentTheme === theme.code
-                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
-                        : 'border-transparent text-gray-700',
-                    )}
-                  >
-                    {theme.label}
-                  </Link>
-                ))
-              : REGIONS.filter((region) => region.code !== 'all').map((region) => (
-                  <Link
-                    key={region.code}
-                    href={buildBrowseHref({ mode: 'region', region: region.code })}
-                    className={clsx(
-                      'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
-                      currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
-                    )}
-                  >
-                    {region.label}
-                  </Link>
-                ))}
+            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+              <Link
+                key={region.code}
+                href={buildBrowseHref({ mode: 'region', region: region.code })}
+                className={clsx(
+                  'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                  currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
+                )}
+              >
+                {region.label}
+              </Link>
+            ))}
             <div className="mx-1 h-4 w-px self-center bg-gray-300" />
-            {(directoryMode === 'theme' ? REGIONS : THEMES)
-              .filter((item) => item.code !== 'all')
+            {THEMES.filter((theme) => theme.code !== 'all')
               .slice(0, 5)
-              .map((item) => {
-                const isThemeItem = directoryMode === 'region';
-                const href = isThemeItem
-                  ? buildBrowseHref({ mode: 'region', theme: item.code })
-                  : buildBrowseHref({ mode: 'theme', region: item.code });
-                const isActive = isThemeItem ? currentTheme === item.code : currentRegion === item.code;
-
-                return (
-                  <Link
-                    key={item.code}
-                    href={href}
-                    className={clsx(
-                      'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
-                      isActive
-                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
-                        : 'border-transparent text-gray-500',
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+              .map((theme) => (
+                <Link
+                  key={theme.code}
+                  href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
+                  className={clsx(
+                    'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                    currentTheme === theme.code
+                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
+                      : 'border-transparent text-gray-500',
+                  )}
+                >
+                  {theme.label}
+                </Link>
+              ))}
           </nav>
 
           {currentRegion && DISTRICTS[currentRegion] && (
@@ -293,7 +269,7 @@ export default function Header() {
         <div className="flex items-center justify-around py-1.5">
           {[
             { href: '/', label: '홈', emoji: '🏠' },
-            { href: '/?viewMode=list', label: '업소', emoji: '📋' },
+            { href: '/?view=list', label: '업소', emoji: '📋' },
             { href: '/board', label: '게시판', emoji: '💬' },
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },

@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import MobilePromoBanners from '@/components/public/MobilePromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
@@ -143,62 +142,30 @@ export default function HomePageClient({
           </div>
 
           <div className="mb-3 flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-            {directoryMode === 'theme' ? (
-              <>
-                <Link
-                  href={buildBrowseHref({ mode: 'theme' })}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                    selectedTheme === 'all'
-                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                      : 'border-gray-300 bg-white text-gray-600'
-                  }`}
-                >
-                  전체
-                </Link>
-                {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
-                  <Link
-                    key={theme.code}
-                    href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                      selectedTheme === theme.code
-                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                        : 'border-gray-300 bg-white text-gray-600'
-                    }`}
-                  >
-                    {theme.label}
-                  </Link>
-                ))}
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/"
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                    !searchParams.get('region') && !searchParams.get('theme')
-                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                      : 'border-gray-300 bg-white text-gray-600'
-                  }`}
-                >
-                  전체
-                </Link>
-                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
-                  <Link
-                    key={region.code}
-                    href={buildBrowseHref({ mode: 'region', region: region.code })}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                      selectedRegion === region.code
-                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
-                        : 'border-gray-300 bg-white text-gray-600'
-                    }`}
-                  >
-                    {region.label}
-                  </Link>
-                ))}
-              </>
-            )}
+            <Link
+              href="/"
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                !searchParams.get('region') && !searchParams.get('theme')
+                  ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                  : 'border-gray-300 bg-white text-gray-600'
+              }`}
+            >
+              전체
+            </Link>
+            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+              <Link
+                key={region.code}
+                href={buildBrowseHref({ mode: 'region', region: region.code })}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  selectedRegion === region.code
+                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                    : 'border-gray-300 bg-white text-gray-600'
+                }`}
+              >
+                {region.label}
+              </Link>
+            ))}
           </div>
-
-          <MobilePromoBanners />
 
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
