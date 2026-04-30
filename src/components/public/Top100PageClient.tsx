@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, List as ListIcon, RefreshCw, Trophy } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
+import MobilePromoBanners from '@/components/public/MobilePromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
 import { buildTop100PageData } from '@/lib/public-page-data';
@@ -168,6 +169,8 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
               </div>
             )}
           </div>
+
+          <MobilePromoBanners />
 
           <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-[11px] leading-relaxed text-gray-400">
             <p>· 인기순위는 실제 유저들의 리뷰 개수와 평점을 종합하여 실시간으로 산정됩니다.</p>
