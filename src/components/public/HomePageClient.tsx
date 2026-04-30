@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
+import MobilePromoBanners from '@/components/public/MobilePromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
@@ -166,6 +167,8 @@ export default function HomePageClient({
               </Link>
             ))}
           </div>
+
+          <MobilePromoBanners />
 
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
