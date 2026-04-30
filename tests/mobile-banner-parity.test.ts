@@ -11,16 +11,18 @@ async function readProjectFile(relativePath: string) {
   return fs.readFile(path.join(projectRoot, relativePath), 'utf8');
 }
 
-test('home page uses shared mobile promo banners fallback component', async () => {
+test('home page places shared mobile promo banners after the main shop list area', async () => {
   const source = await readProjectFile('src/components/public/HomePageClient.tsx');
 
   assert.equal(source.includes('MobilePromoBanners'), true);
+  assert.equal(source.indexOf('MobilePromoBanners />') > source.indexOf('regularShops.length === 0'), true);
 });
 
-test('top100 page uses shared mobile promo banners fallback component', async () => {
+test('top100 page places shared mobile promo banners after the ranking list area', async () => {
   const source = await readProjectFile('src/components/public/Top100PageClient.tsx');
 
   assert.equal(source.includes('MobilePromoBanners'), true);
+  assert.equal(source.indexOf('MobilePromoBanners />') > source.indexOf('shops.length === 0'), true);
 });
 
 test('mobile promo banners component contains ad guide, partnership, and banner slot copy', async () => {

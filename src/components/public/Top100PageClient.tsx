@@ -116,8 +116,6 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
             </button>
           </div>
 
-          <MobilePromoBanners />
-
           <div className="rounded-lg border border-gray-200 bg-white p-3">
             <div className="mb-3 flex items-center justify-between border-b border-gray-50 pb-3">
               <div className="flex items-center gap-2">
@@ -171,6 +169,8 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
               </div>
             )}
           </div>
+
+          <MobilePromoBanners />
 
           <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-[11px] leading-relaxed text-gray-400">
             <p>· 인기순위는 실제 유저들의 리뷰 개수와 평점을 종합하여 실시간으로 산정됩니다.</p>

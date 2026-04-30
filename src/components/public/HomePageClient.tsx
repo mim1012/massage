@@ -168,8 +168,6 @@ export default function HomePageClient({
             ))}
           </div>
 
-          <MobilePromoBanners />
-
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
               <div className="mb-3 flex items-center gap-2">
@@ -312,6 +310,8 @@ export default function HomePageClient({
               </div>
             )}
           </div>
+
+          <MobilePromoBanners />
 
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold">{initialHomeSeo.section1Title}</h1>
