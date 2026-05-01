@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import MobilePromoBanners from '@/components/public/MobilePromoBanners';
+import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
@@ -236,7 +236,7 @@ export default function HomePageClient({
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-gray-800">
-                  🏷️ {sortType === 'popular' ? '인기 추천 업소' : directoryMode === 'theme' ? '테마별 업소' : '전체 업소'}
+                  📋 {sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}
                   {regionLabel !== '전체' && ` · ${regionLabel} ${subRegionLabel}`}
                   {themeLabel && ` · ${themeLabel}`}
                 </span>
@@ -294,10 +294,7 @@ export default function HomePageClient({
             {error ? (
               <div className="py-16 text-center text-sm text-red-500">{error}</div>
             ) : regularShops.length === 0 ? (
-              <div className="py-16 text-center text-sm text-gray-400">
-                <p>해당 조건의 업소가 없습니다.</p>
-                <p className="mt-1 text-[11px] text-gray-300">지역이나 테마를 바꿔 다른 업소를 찾아보세요.</p>
-              </div>
+              <div className="py-16 text-center text-sm text-gray-400">해당 조건의 업소가 없습니다.</div>
             ) : (
               <div
                 className={`shop-grid transition-opacity duration-200 ${
@@ -311,8 +308,6 @@ export default function HomePageClient({
             )}
           </div>
 
-          <MobilePromoBanners />
-
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold">{initialHomeSeo.section1Title}</h1>
             <p className="mb-6 text-sm leading-relaxed text-gray-600">{initialHomeSeo.section1Content}</p>
@@ -323,58 +318,14 @@ export default function HomePageClient({
             <h2 className="mb-2 text-lg font-bold">{initialHomeSeo.section3Title}</h2>
             <p className="text-sm leading-relaxed text-gray-600">{initialHomeSeo.section3Content}</p>
           </div>
+
+          <div className="mt-6 hidden lg:block xl:hidden">
+            <HomeUtilityRail mode="inline" directoryMode={directoryMode} />
+          </div>
         </div>
 
-        <aside className="hidden w-[120px] shrink-0 lg:block">
-          <div className="sticky top-[170px] relative z-10 space-y-2">
-            <Link
-              href="/board/partnership"
-              className="group block cursor-pointer overflow-hidden rounded-lg border-2 border-blue-600 bg-gradient-to-b from-blue-700 to-blue-900 text-white shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="animate-pulse bg-pink-500 py-1 text-center text-[11px] font-black text-white">
-                프리미엄 입점센터
-              </div>
-              <div className="p-2 text-center">
-                <div className="text-[10px] text-blue-200">전국 제휴업소</div>
-                <div className="mt-1 text-sm font-black leading-tight transition-transform group-hover:scale-105">
-                  선착순
-                  <br />
-                  모집중
-                </div>
-              </div>
-            </Link>
-
-            <div className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white text-center shadow-sm">
-              <div className="bg-gray-100 py-1.5 text-[11px] font-bold text-gray-700">QUICK MENU</div>
-              <Link
-                href={buildBrowseHref({ mode: 'region' })}
-                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
-              >
-                <span className="text-xl transition-transform group-hover:-translate-y-0.5">📋</span>
-                <span className="text-[10px] font-bold">전체업소</span>
-              </Link>
-              <Link
-                href={buildBrowseHref({ mode: directoryMode, sort: 'popular' })}
-                className="group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
-              >
-                <span className="text-xl transition-transform group-hover:-translate-y-0.5">🏆</span>
-                <span className="text-[10px] font-bold">인기순위</span>
-              </Link>
-              <div className="flex flex-col items-center py-2">
-                <span className="mb-1 text-[10px] text-gray-400">최근 본 업소</span>
-                <div className="flex h-16 w-16 items-center justify-center rounded border border-gray-200 bg-gray-50 text-[10px] text-gray-400">
-                  없음
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex w-full items-center justify-center gap-1 rounded-lg bg-gray-800 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-gray-700"
-            >
-              ▲ TOP
-            </button>
-          </div>
+        <aside className="hidden w-[120px] shrink-0 xl:block">
+          <HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />
         </aside>
       </div>
     </div>
