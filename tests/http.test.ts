@@ -14,10 +14,15 @@ test('errorResponse maps known auth and registration error codes', async () => {
   const emailInUse = errorResponse(new Error('EMAIL_IN_USE'));
   const invalidCredentials = errorResponse(new Error('INVALID_CREDENTIALS'));
   const ownerNotApproved = errorResponse(new Error('OWNER_NOT_APPROVED'));
+  const slugInUse = errorResponse(new Error('Unique constraint failed on the fields: (`slug`)'));
 
   assert.equal(emailInUse.status, 409);
   assert.equal(invalidCredentials.status, 401);
   assert.equal(ownerNotApproved.status, 403);
+  assert.equal(slugInUse.status, 409);
+  assert.deepEqual(await slugInUse.json(), {
+    error: '이미 사용 중인 슬러그입니다. 다른 URL 영문명을 입력해 주세요.',
+  });
 });
 
 test('errorResponse falls back for generic and non-error values', async () => {

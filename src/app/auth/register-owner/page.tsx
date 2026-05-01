@@ -30,7 +30,7 @@ export default function RegisterOwnerPage() {
     }
 
     const timeout = window.setTimeout(() => {
-      router.push('/admin/shops');
+      router.push('/auth/login');
     }, 1500);
 
     return () => window.clearTimeout(timeout);
@@ -87,16 +87,16 @@ export default function RegisterOwnerPage() {
           <div>
             <h2 className="mb-2 text-2xl font-bold text-gray-800">입점 신청이 완료되었습니다</h2>
             <p className="text-gray-600">
-              업체등록 페이지로 이동합니다...
+              관리자 승인 후 로그인하여 업체 정보를 등록할 수 있습니다.
               <br />
-              <span className="text-sm text-gray-400">(자동 이동 중)</span>
+              <span className="text-sm text-gray-400">로그인 페이지로 자동 이동합니다.</span>
             </p>
           </div>
           <button
-            onClick={() => router.push('/admin/shops')}
+            onClick={() => router.push('/auth/login')}
             className="inline-block w-full rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700"
           >
-            업체등록 바로가기
+            로그인 페이지로 이동
           </button>
         </div>
       </div>

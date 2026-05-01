@@ -101,6 +101,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const [tagsStr, setTagsStr] = useState('');
   const [step, setStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
   const [thumbPreview, setThumbPreview] = useState('');
@@ -252,33 +253,45 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setSaveError('');
 
-    const nextShop: Shop = {
-      ...form,
-      courses,
-      tags: tagsStr
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      images: galleryPreviews,
-      thumbnailUrl: thumbPreview,
-      bannerUrl: bannerPreview,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const response = await fetch(isNew ? '/api/admin/shops' : `/api/admin/shops/${id}`, {
-      method: isNew ? 'POST' : 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shop: nextShop }),
-    });
-
-    if (response.ok) {
-      router.push(routeBase);
+    if (isSaving) {
       return;
     }
 
-    setSaveError('저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const nextShop: Shop = {
+        ...form,
+        courses,
+        tags: tagsStr
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        images: galleryPreviews,
+        thumbnailUrl: thumbPreview,
+        bannerUrl: bannerPreview,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const response = await fetch(isNew ? '/api/admin/shops' : `/api/admin/shops/${id}`, {
+        method: isNew ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: nextShop }),
+      });
+
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (response.ok) {
+        router.replace(routeBase);
+        return;
+      }
+
+      setSaveError(result?.error ?? '저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -796,8 +809,12 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                 다음 <ChevronRight className="h-4 w-4" />
               </button>
             ) : (
-              <button type="submit" className="flex items-center gap-1 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700">
-                <Save className="h-4 w-4" /> 저장 완료
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" /> {isSaving ? '저장 중...' : '저장 완료'}
               </button>
             )}
           </div>

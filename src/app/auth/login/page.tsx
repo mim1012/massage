@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
+import { getPostLoginRedirect } from '@/lib/auth/redirects';
 
 type LoginResult = {
   user?: {
@@ -54,15 +55,7 @@ function LoginContent() {
         return;
       }
 
-      if (redirectTo && result.user.role === 'USER') {
-        router.push(redirectTo);
-      } else if (result.user.role === 'ADMIN') {
-        router.push('/admin');
-      } else if (result.user.role === 'OWNER') {
-        router.push('/admin/shops');
-      } else {
-        router.push('/');
-      }
+      router.push(getPostLoginRedirect(result.user.role, redirectTo));
     } finally {
       setLoading(false);
     }
