@@ -9,6 +9,8 @@ interface ShopFilters {
   theme?: string;
   query?: string;
   sort?: string;
+  regularOffset?: number;
+  regularLimit?: number;
 }
 
 export type ShopRecord = DbShop & {
@@ -180,6 +182,8 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
 }
 
 export async function listShops(filters: ShopFilters = {}) {
+  const regularOffset = Math.max(0, filters.regularOffset ?? 0);
+  const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
   const shops = await prisma.shop.findMany({
     where: buildShopWhere(filters),
     select: shopListSelect,
@@ -218,12 +222,14 @@ export async function listShops(filters: ShopFilters = {}) {
   const premiumShops = sortedShops
     .filter((shop) => shop.isPremium)
     .sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
-  const regularShops = sortedShops.filter((shop) => !shop.isPremium);
+  const allRegularShops = sortedShops.filter((shop) => !shop.isPremium);
+  const regularShops = regularLimit ? allRegularShops.slice(regularOffset, regularOffset + regularLimit) : allRegularShops;
 
   return {
     allShops: sortedShops,
     premiumShops,
     regularShops,
+    regularTotal: allRegularShops.length,
     total: sortedShops.length,
   };
 }

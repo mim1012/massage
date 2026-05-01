@@ -5,6 +5,7 @@ export type ShopListResponse = {
   allShops: Shop[];
   premiumShops: Shop[];
   regularShops: Shop[];
+  regularTotal?: number;
   total: number;
 };
 
@@ -42,6 +43,7 @@ export function buildHomePageData({
   return {
     premiumShops: shopResponse.premiumShops.slice(0, 4),
     regularShops: sortRegularShops(shopResponse.regularShops, sortType),
+    regularTotal: shopResponse.regularTotal ?? shopResponse.regularShops.length,
     siteSettings: siteContent.siteSettings,
     homeSeo: siteContent.homeSeo,
   };

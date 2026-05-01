@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
+import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
 
 export default function Header() {
@@ -40,7 +41,7 @@ export default function Header() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-3">
-        <div className="flex items-center h-14 gap-3">
+        <div className="flex h-14 items-center gap-2 sm:gap-3">
           <Link href="/" className="flex items-center gap-1.5 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--portal-brand)] shadow-sm">
               <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
@@ -51,7 +52,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-auto">
+          <form onSubmit={handleSearch} className="mx-auto min-w-0 flex-1 max-w-xl">
             <div className="flex gap-0 overflow-hidden rounded-lg border border-gray-300 shadow-sm transition-all focus-within:border-[var(--portal-brand)] focus-within:ring-1 focus-within:ring-[color-mix(in_srgb,var(--portal-brand)_30%,transparent)]">
               <select
                 value={selectedRegion}
@@ -147,7 +148,7 @@ export default function Header() {
             {REGIONS.filter((region) => region.code !== 'all').map((region) => (
               <Link
                 key={region.code}
-                href={buildBrowseHref({ mode: 'region', region: region.code })}
+                href={buildBrowseHref({ mode: 'region', region: region.code, theme: currentTheme })}
                 className={clsx(
                   'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
                   currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
@@ -162,7 +163,12 @@ export default function Header() {
               .map((theme) => (
                 <Link
                   key={theme.code}
-                  href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
+                  href={buildBrowseHref({
+                    mode: 'theme',
+                    region: currentRegion,
+                    subRegion: currentSubRegion,
+                    theme: theme.code,
+                  })}
                   className={clsx(
                     'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
                     currentTheme === theme.code
@@ -237,7 +243,12 @@ export default function Header() {
               {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
                 <Link
                   key={theme.code}
-                  href={buildBrowseHref({ mode: 'theme', theme: theme.code })}
+                  href={buildBrowseHref({
+                    mode: 'theme',
+                    region: currentRegion,
+                    subRegion: currentSubRegion,
+                    theme: theme.code,
+                  })}
                   onClick={() => setMobileMenuOpen(false)}
                   className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-[var(--portal-brand)] hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
                 >
@@ -260,6 +271,10 @@ export default function Header() {
               >
                 회원가입
               </Link>
+            </div>
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="mb-2 text-xs font-bold text-gray-400">광고/입점</p>
+              <SidebarPromoBanners mode="inline" onNavigate={() => setMobileMenuOpen(false)} />
             </div>
           </div>
         </div>

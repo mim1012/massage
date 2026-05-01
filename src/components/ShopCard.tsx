@@ -1,9 +1,8 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
-import { buildShopDetailHref } from '@/lib/browse-context';
 import { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
@@ -11,6 +10,7 @@ import clsx from 'clsx';
 interface ShopCardProps {
   shop: Shop;
   variant?: 'premium' | 'regular';
+  detailHref?: string;
 }
 
 const themeEmoji: Record<string, string> = {
@@ -35,19 +35,10 @@ const gradients = [
   'from-lime-100 to-green-50',
 ];
 
-export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
-  const detailHref = buildShopDetailHref(shop.slug, {
-    source: pathname.startsWith('/top100') ? 'top100' : 'home',
-    mode: searchParams.get('view') === 'theme' && searchParams.get('theme') === shop.theme ? 'theme' : 'region',
-    region: searchParams.get('region') === shop.region ? searchParams.get('region') ?? undefined : undefined,
-    subRegion:
-      shop.subRegion && searchParams.get('subRegion') === shop.subRegion ? searchParams.get('subRegion') ?? undefined : undefined,
-    theme: searchParams.get('theme') === shop.theme ? searchParams.get('theme') ?? undefined : undefined,
-  });
+  const thumbnailUrl = shop.thumbnailUrl?.trim();
 
   return (
     <Link
@@ -57,10 +48,19 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
         isPremium ? 'border-[var(--portal-premium-border)]' : 'border-gray-200 border-opacity-70',
       )}
     >
-      <div className={clsx('shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br', gradients[gIdx])}>
-        <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
-          {themeEmoji[shop.theme] ?? '✨'}
-        </span>
+      <div
+        className={clsx(
+          'shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br bg-cover bg-center',
+          !thumbnailUrl && gradients[gIdx],
+        )}
+        style={thumbnailUrl ? { backgroundImage: `url(${thumbnailUrl})` } : undefined}
+      >
+        {thumbnailUrl ? <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" /> : null}
+        {!thumbnailUrl ? (
+          <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
+            {themeEmoji[shop.theme] ?? '✨'}
+          </span>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-1 flex-col p-3">
         <div className="mb-1 flex items-start justify-between gap-1">
@@ -102,3 +102,5 @@ export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
     </Link>
   );
 }
+
+export default memo(ShopCard);

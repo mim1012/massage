@@ -122,14 +122,14 @@ body {
 /* ===== 카드 그리드 반응형 ===== */
 .shop-grid.card-view {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
 }
-@media (max-width: 1024px) {
-  .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
-}
 @media (max-width: 768px) {
-  .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .shop-grid.card-view { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+}
+@media (min-width: 1280px) {
+  .shop-grid.card-view { grid-template-columns: repeat(4, 1fr); }
 }
 
 .shop-grid.list-view {
@@ -159,6 +159,69 @@ body {
   .premium-grid { grid-template-columns: 1fr; }
 }
 
+.premium-shop-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.premium-shop-media {
+  width: 144px;
+  border-right-width: 1px;
+}
+@media (min-width: 1200px) {
+  .premium-shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .premium-shop-media { width: 224px; }
+}
+@media (max-width: 1024px) {
+  .premium-shop-grid { grid-template-columns: 1fr; }
+  .premium-shop-card { flex-direction: column; }
+  .premium-shop-media {
+    aspect-ratio: 16 / 9 !important;
+    width: 100%;
+    border-right-width: 0;
+    border-bottom-width: 1px;
+  }
+}
+
+/* ===== 모바일 배너 레일 ===== */
+.mobile-banner-rail {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.mobile-banner-card {
+  display: flex;
+  min-height: 74px;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+.mobile-premium-center {
+  min-height: 86px;
+  border: 2px solid #2563eb;
+  background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
+}
+.mobile-ad-guide {
+  border: 2px solid var(--portal-blue-banner-border);
+  background: var(--portal-blue-banner);
+  color: #fff;
+}
+.mobile-partnership {
+  border: 2px solid #d1d5db;
+  background: #f8f9fa;
+  color: #1f2937;
+}
+.mobile-empty-slot {
+  min-height: 96px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #9ca3af;
+}
 /* ===== 단계형 UI 스타일 ===== */
 .step-indicator {
   display: flex;

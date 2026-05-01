@@ -6,6 +6,8 @@ import { getDirectorySortType } from '@/lib/directory-sort';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
 import { listShops } from '@/lib/server/shop-store';
 
+const HOME_REGULAR_PAGE_SIZE = 24;
+
 type SearchParamValue = string | string[] | undefined;
 
 type PageProps = {
@@ -32,6 +34,9 @@ export default async function HomePage({ searchParams }: PageProps) {
       subRegion: pickFirst(resolvedSearchParams?.subRegion),
       theme: pickFirst(resolvedSearchParams?.theme),
       query: pickFirst(resolvedSearchParams?.q),
+      sort: pickFirst(resolvedSearchParams?.sort),
+      regularOffset: 0,
+      regularLimit: HOME_REGULAR_PAGE_SIZE,
     }),
     getPublicSiteContent(),
   ]);
@@ -50,6 +55,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       <HomePageClient
         initialPremiumShops={initialData.premiumShops}
         initialRegularShops={initialData.regularShops}
+        initialRegularTotal={initialData.regularTotal}
         initialSiteSettings={initialData.siteSettings}
         initialHomeSeo={initialData.homeSeo}
       />

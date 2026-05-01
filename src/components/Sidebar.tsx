@@ -30,7 +30,7 @@ export default function Sidebar() {
             {REGIONS.filter((r) => r.code !== 'all').map((r) => (
               <div key={r.code}>
                 <Link
-                  href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code })}
+                  href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, theme: currentTheme })}
                   className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
                 >
                   &rsaquo; {r.label}
@@ -43,7 +43,13 @@ export default function Sidebar() {
                       .map((d) => (
                         <Link
                           key={d.code}
-                          href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, subRegion: d.code })}
+                          href={buildBrowseHref({
+                            mode: 'region',
+                            basePath: baseUrl,
+                            region: r.code,
+                            subRegion: d.code,
+                            theme: currentTheme,
+                          })}
                           className={clsx(
                             'block border-b border-white/50 px-3 py-1.5 pl-6 text-xs text-gray-500 last:border-0 hover:text-[var(--portal-brand)]',
                             currentSubRegion === d.code && 'font-bold text-[var(--portal-brand)]',

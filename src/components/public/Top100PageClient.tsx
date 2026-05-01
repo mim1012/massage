@@ -7,7 +7,8 @@ import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
-import { getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
+import { buildShopDetailHref, getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
+import { getDirectoryMode } from '@/lib/directory-mode';
 import { buildTop100PageData } from '@/lib/public-page-data';
 import type { Shop } from '@/lib/types';
 
@@ -24,6 +25,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
+  const directoryMode = getDirectoryMode(searchParams.get('view'));
 
   const [shops, setShops] = useState<Shop[]>(initialShops);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -163,7 +165,17 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
                     >
                       {idx + 1}
                     </div>
-                    <ShopCard shop={shop} />
+                    <ShopCard
+                      shop={shop}
+                      detailHref={buildShopDetailHref(shop.slug, {
+                        source: 'top100',
+                        mode: directoryMode,
+                        region: selectedRegion === shop.region ? selectedRegion : undefined,
+                        subRegion:
+                          shop.subRegion && selectedSubRegion === shop.subRegion ? selectedSubRegion : undefined,
+                        theme: selectedTheme === shop.theme ? selectedTheme : undefined,
+                      })}
+                    />
                   </div>
                 ))}
               </div>

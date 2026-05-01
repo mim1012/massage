@@ -6,7 +6,7 @@ import { test } from 'node:test';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(testDir, '..');
-const templateRoot = '/tmp/massage-template-fresh';
+const templateRoot = path.resolve(projectRoot, '..', 'massageO');
 
 async function readProjectFile(root: string, relativePath: string) {
   return fs.readFile(path.join(root, relativePath), 'utf8');
@@ -25,7 +25,7 @@ test('home page keeps the same mobile filter-to-premium flow as the template', a
   assert.equal(prodSource.includes("🏷️ {sortType === 'popular' ? '인기 추천 업소' : directoryMode === 'theme' ? '테마별 업소' : '전체 업소'}"), false);
   assert.equal(prodSource.includes("📋 {sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}"), true);
   assert.equal(prodSource.includes('지역이나 테마를 바꿔 다른 업소를 찾아보세요.'), false);
-  assert.equal(prodSource.includes('HomeUtilityRail mode="inline"'), true);
+  assert.equal(prodSource.includes('HomeUtilityRail mode="inline"'), false);
   assert.equal(prodSource.indexOf('rounded-lg border border-gray-200 bg-white p-3') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
 });
 
@@ -46,13 +46,12 @@ test('home utility rail is reused responsively instead of a hard-coded right rai
   const sidebarSource = await readProjectFile(projectRoot, 'src/components/Sidebar.tsx');
 
   assert.equal(prodSource.includes("import HomeUtilityRail from '@/components/public/HomeUtilityRail';"), true);
-  assert.equal(prodSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), true);
-  assert.equal(prodSource.includes('<HomeUtilityRail mode="inline" directoryMode={directoryMode} />'), true);
+  assert.equal(prodSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), false);
+  assert.equal(prodSource.includes('<HomeUtilityRail mode="inline" directoryMode={directoryMode} />'), false);
   assert.equal(prodSource.includes('<HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />'), true);
-  assert.equal(prodSource.includes('<SidebarPromoBanners mode="inline" />'), true);
+  assert.equal(prodSource.includes('<SidebarPromoBanners mode="inline" />'), false);
   assert.equal(sidebarSource.includes('<SidebarPromoBanners mode="sidebar" />'), true);
-  assert.equal(prodSource.includes('hidden w-[120px] shrink-0 xl:block'), true);
-  assert.equal(prodSource.includes('hidden lg:block xl:hidden'), true);
+  assert.equal(prodSource.includes('hidden w-[120px] shrink-0 lg:block'), true);
   assert.equal(utilitySource.includes("mode: 'sidebar' | 'inline'"), true);
   assert.equal(promoSource.includes("mode?: 'sidebar' | 'inline'"), true);
 });

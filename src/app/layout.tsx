@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
       </head>
-      <body className="bg-gray-100 text-gray-900 antialiased min-h-screen flex flex-col">
+      <body className="bg-gray-100 text-gray-900 antialiased min-h-screen flex flex-col" suppressHydrationWarning>
         <GlobalLayout>{children}</GlobalLayout>
       </body>
     </html>
