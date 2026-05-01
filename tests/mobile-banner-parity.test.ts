@@ -42,13 +42,19 @@ test('top100 page keeps the same hero-to-list mobile flow as the template', asyn
 test('home utility rail is reused responsively instead of a hard-coded right rail only', async () => {
   const prodSource = await readProjectFile(projectRoot, 'src/components/public/HomePageClient.tsx');
   const utilitySource = await readProjectFile(projectRoot, 'src/components/public/HomeUtilityRail.tsx');
+  const promoSource = await readProjectFile(projectRoot, 'src/components/public/SidebarPromoBanners.tsx');
+  const sidebarSource = await readProjectFile(projectRoot, 'src/components/Sidebar.tsx');
 
   assert.equal(prodSource.includes("import HomeUtilityRail from '@/components/public/HomeUtilityRail';"), true);
+  assert.equal(prodSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), true);
   assert.equal(prodSource.includes('<HomeUtilityRail mode="inline" directoryMode={directoryMode} />'), true);
   assert.equal(prodSource.includes('<HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />'), true);
+  assert.equal(prodSource.includes('<SidebarPromoBanners mode="inline" />'), true);
+  assert.equal(sidebarSource.includes('<SidebarPromoBanners mode="sidebar" />'), true);
   assert.equal(prodSource.includes('hidden w-[120px] shrink-0 xl:block'), true);
   assert.equal(prodSource.includes('hidden lg:block xl:hidden'), true);
   assert.equal(utilitySource.includes("mode: 'sidebar' | 'inline'"), true);
+  assert.equal(promoSource.includes("mode?: 'sidebar' | 'inline'"), true);
 });
 
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {

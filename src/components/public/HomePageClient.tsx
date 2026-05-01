@@ -15,6 +15,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import HomeUtilityRail from '@/components/public/HomeUtilityRail';
+import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
@@ -166,6 +167,10 @@ export default function HomePageClient({
                 {region.label}
               </Link>
             ))}
+          </div>
+
+          <div className="mb-4 md:hidden">
+            <SidebarPromoBanners mode="inline" />
           </div>
 
           {premiumShops.length > 0 && (

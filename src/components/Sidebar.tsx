@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref } from '@/lib/directory-mode';
+import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
 
 export default function Sidebar() {
@@ -112,34 +113,7 @@ export default function Sidebar() {
         </div>
 
         {/* 광고/입점 배너 영역 */}
-        <div className="space-y-2 mt-4">
-          <Link
-            href="/board/notice"
-            className="block w-full cursor-pointer rounded border-2 border-[var(--portal-blue-banner-border)] bg-[var(--portal-blue-banner)] p-3 text-center text-white shadow-sm transition-colors duration-200 hover:-translate-y-0.5 hover:bg-[var(--portal-blue-banner-hover)]"
-          >
-            <div className="text-[10px] text-blue-200 mb-0.5">건마에반하다</div>
-            <div className="font-black text-[15px] mb-1">광고 안내</div>
-            <div className="inline-block bg-yellow-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
-              바로가기 &gt;
-            </div>
-          </Link>
-
-          <Link
-            href="/board/partnership"
-            className="block w-full bg-[#f8f9fa] text-gray-800 rounded p-3 text-center border-2 border-gray-300 hover:border-gray-400 hover:bg-white transition-all shadow-sm cursor-pointer hover:-translate-y-0.5 duration-200"
-          >
-            <div className="text-[10px] text-gray-500 mb-0.5">힐링찾기</div>
-            <div className="mb-1 text-[15px] font-black text-[var(--portal-brand)]">입점 문의</div>
-            <div className="inline-block bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">모집중 &gt;</div>
-          </Link>
-
-          {/* 광고 배너 슬롯 Placeholder */}
-          <div className="bg-gray-100 h-[150px] rounded border border-gray-200 flex flex-col items-center justify-center text-gray-400">
-            <div className="text-xl mb-1">🎯</div>
-            <span className="text-xs font-bold">배너 슬롯</span>
-            <span className="text-[10px]">180×150</span>
-          </div>
-        </div>
+        <SidebarPromoBanners mode="sidebar" />
       </div>
     </aside>
   );
