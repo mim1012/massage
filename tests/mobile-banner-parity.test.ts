@@ -56,6 +56,14 @@ test('home utility rail is reused responsively instead of a hard-coded right rai
   assert.equal(promoSource.includes("mode?: 'sidebar' | 'inline'"), true);
 });
 
+test('home page keeps mobile banner rail below the main shop lists like the dad mobile layout', async () => {
+  const prodSource = await readProjectFile(projectRoot, 'src/components/public/HomePageClient.tsx');
+
+  assert.equal(prodSource.includes("import MobileBannerRail from '@/components/public/MobileBannerRail';"), true);
+  assert.equal(prodSource.indexOf('{premiumShops.length > 0 && (') < prodSource.indexOf('<MobileBannerRail />'), true);
+  assert.equal(prodSource.indexOf('<MobileBannerRail />') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
+});
+
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
 });
