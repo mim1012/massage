@@ -6,6 +6,7 @@ import { buildHomePageData } from '@/lib/public-page-data';
 import { buildBrowseHref } from '@/lib/directory-mode';
 import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 import { getDirectorySortType } from '@/lib/directory-sort';
+import { createDeferredHomeShopResponse, shouldDeferInitialHomeDirectoryFetch } from '@/lib/home-directory-fetch-strategy';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
 import { listShops } from '@/lib/server/shop-store';
 
@@ -49,17 +50,20 @@ export default async function HomePage({ searchParams }: PageProps) {
   }
 
   const sortType = getDirectorySortType(sort);
+  const deferInitialDirectoryFetch = shouldDeferInitialHomeDirectoryFetch({ query: q });
 
   const [shopResponse, siteContent] = await Promise.all([
-    listShops({
-      region,
-      subRegion,
-      theme,
-      query: q,
-      sort,
-      regularOffset: 0,
-      regularLimit: HOME_REGULAR_PAGE_SIZE,
-    }),
+    deferInitialDirectoryFetch
+      ? Promise.resolve(createDeferredHomeShopResponse())
+      : listShops({
+          region,
+          subRegion,
+          theme,
+          query: q,
+          sort,
+          regularOffset: 0,
+          regularLimit: HOME_REGULAR_PAGE_SIZE,
+        }),
     getPublicSiteContent(),
   ]);
 
@@ -80,6 +84,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         initialRegularTotal={initialData.regularTotal}
         initialSiteSettings={initialData.siteSettings}
         initialHomeSeo={initialData.homeSeo}
+        deferInitialDirectoryFetch={deferInitialDirectoryFetch}
       />
     </Suspense>
   );

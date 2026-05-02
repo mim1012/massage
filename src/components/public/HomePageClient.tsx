@@ -19,6 +19,7 @@ import MobileBannerRail from '@/components/public/MobileBannerRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { deriveStructuredSearchIntent } from '@/lib/structured-search';
+import { shouldAutoLoadDeferredHomeDirectory } from '@/lib/home-directory-fetch-strategy';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { HomeSeoContent, Shop, SiteSettings } from '@/lib/types';
@@ -53,12 +54,14 @@ export default function HomePageClient({
   initialRegularTotal,
   initialSiteSettings,
   initialHomeSeo,
+  deferInitialDirectoryFetch = false,
 }: {
   initialPremiumShops: Shop[];
   initialRegularShops: Shop[];
   initialRegularTotal: number;
   initialSiteSettings: SiteSettings;
   initialHomeSeo: HomeSeoContent;
+  deferInitialDirectoryFetch?: boolean;
 }) {
   const searchParams = useSearchParams();
   const selectedRegion = searchParams.get('region') ?? 'all';
@@ -72,7 +75,7 @@ export default function HomePageClient({
   const [premiumShops, setPremiumShops] = useState<Shop[]>(initialPremiumShops);
   const [regularShops, setRegularShops] = useState<Shop[]>(initialRegularShops);
   const [regularTotal, setRegularTotal] = useState(initialRegularTotal);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(deferInitialDirectoryFetch);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(viewParam);
@@ -157,7 +160,20 @@ export default function HomePageClient({
     setRegularShops(initialRegularShops);
     setRegularTotal(initialRegularTotal);
     setError(null);
-  }, [initialPremiumShops, initialRegularShops, initialRegularTotal]);
+    setIsLoading(deferInitialDirectoryFetch);
+  }, [deferInitialDirectoryFetch, initialPremiumShops, initialRegularShops, initialRegularTotal]);
+
+  useEffect(() => {
+    if (!shouldAutoLoadDeferredHomeDirectory({
+      deferInitialDirectoryFetch,
+      premiumCount: initialPremiumShops.length,
+      regularCount: initialRegularShops.length,
+    })) {
+      return;
+    }
+
+    void loadShops();
+  }, [deferInitialDirectoryFetch, initialPremiumShops.length, initialRegularShops.length, loadShops]);
 
   const regionLabel = useMemo(
     () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',
