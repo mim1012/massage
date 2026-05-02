@@ -26,7 +26,7 @@ export default function PaginationControls({ currentPage, totalPages, onPageChan
 
     if (buildHref) {
       return (
-        <Link key={`${label ?? page}-${page}`} href={buildHref(page)} className={className} aria-current={isActive ? 'page' : undefined}>
+        <Link key={`${label ?? page}-${page}`} href={buildHref(page)} prefetch={false} className={className} aria-current={isActive ? 'page' : undefined}>
           {content}
         </Link>
       );

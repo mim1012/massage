@@ -310,11 +310,11 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-red-600">
+        <Link href="/" prefetch={false} className="hover:text-red-600">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/board" className="hover:text-red-600">
+        <Link href="/board" prefetch={false} className="hover:text-red-600">
           게시판
         </Link>
         <ChevronRight className="h-3 w-3" />
