@@ -1,4 +1,4 @@
-import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
+import { Prisma, type Review as DbReview, type Shop as DbShop, type ShopCourse, type ShopImage } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import type { Review, Shop } from '@/lib/types';
@@ -17,6 +17,16 @@ interface ShopFilters {
   regularOffset?: number;
   regularLimit?: number;
 }
+
+type SearchPageHitRow = {
+  id: string;
+  bucket: number;
+  sort_index: number;
+};
+
+type SearchCountRow = {
+  total: number | bigint;
+};
 
 export type ShopRecord = DbShop & {
   images: ShopImage[];
@@ -188,8 +198,12 @@ function normalizeShopFilters(filters: ShopFilters = {}): ShopFilters {
   };
 }
 
+function getMappedRegion(region?: string) {
+  return region && region !== 'all' ? (REGION_MAP[region] ?? region) : undefined;
+}
+
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
-  const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
+  const mappedRegion = getMappedRegion(filters.region);
 
   return {
     isVisible: true,
@@ -210,8 +224,148 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
+function buildRawSearchWhereSql(filters: ShopFilters) {
+  if (!filters.query) {
+    throw new Error('buildRawSearchWhereSql requires filters.query');
+  }
+
+  const mappedRegion = getMappedRegion(filters.region);
+  const exactQuery = filters.query;
+  const prefixQuery = `${filters.query}%`;
+  const containsQuery = `%${filters.query}%`;
+  const conditions: Prisma.Sql[] = [Prisma.sql`"is_visible" = true`];
+
+  if (mappedRegion) {
+    conditions.push(Prisma.sql`"region" = ${mappedRegion}`);
+  }
+
+  if (filters.subRegion && filters.subRegion !== 'all') {
+    conditions.push(Prisma.sql`"sub_region" = ${filters.subRegion}`);
+  }
+
+  if (filters.theme && filters.theme !== 'all') {
+    conditions.push(Prisma.sql`"theme" = ${filters.theme}`);
+  }
+
+  conditions.push(Prisma.sql`(
+    "name" ILIKE ${containsQuery}
+    OR "region_label" ILIKE ${containsQuery}
+    OR COALESCE("sub_region_label", '') ILIKE ${containsQuery}
+    OR "theme_label" ILIKE ${containsQuery}
+    OR EXISTS (SELECT 1 FROM unnest("tags") AS tag WHERE tag ILIKE ${containsQuery})
+  )`);
+
+  const searchRankSql = Prisma.sql`(
+    CASE WHEN "name" ILIKE ${exactQuery} THEN 120 ELSE 0 END +
+    CASE WHEN "name" ILIKE ${prefixQuery} THEN 60 ELSE 0 END +
+    CASE WHEN "name" ILIKE ${containsQuery} THEN 30 ELSE 0 END +
+    CASE WHEN "region_label" ILIKE ${exactQuery} THEN 24 ELSE 0 END +
+    CASE WHEN COALESCE("sub_region_label", '') ILIKE ${exactQuery} THEN 24 ELSE 0 END +
+    CASE WHEN "theme_label" ILIKE ${exactQuery} THEN 24 ELSE 0 END +
+    CASE WHEN EXISTS (SELECT 1 FROM unnest("tags") AS tag WHERE tag ILIKE ${exactQuery}) THEN 18 ELSE 0 END +
+    CASE WHEN EXISTS (SELECT 1 FROM unnest("tags") AS tag WHERE tag ILIKE ${containsQuery}) THEN 9 ELSE 0 END
+  )`;
+
+  return {
+    whereSql: Prisma.sql`${Prisma.join(conditions, ' AND ')}`,
+    searchRankSql,
+  };
+}
+
+async function queryRawSearchShops(filters: ShopFilters) {
+  const normalizedFilters = normalizeShopFilters(filters);
+  const regularOffset = normalizedFilters.regularOffset ?? 0;
+  const regularLimit = normalizedFilters.regularLimit;
+
+  if (!normalizedFilters.query || !regularLimit || normalizedFilters.sort === 'popular') {
+    return null;
+  }
+
+  const { whereSql, searchRankSql } = buildRawSearchWhereSql(normalizedFilters);
+
+  const [pageHits, countRows] = await Promise.all([
+    prisma.$queryRaw<SearchPageHitRow[]>(Prisma.sql`
+      WITH filtered AS (
+        SELECT
+          "id",
+          "is_premium",
+          "premium_order",
+          "created_at",
+          ${searchRankSql} AS search_rank
+        FROM "shops"
+        WHERE ${whereSql}
+      ),
+      premium_hits AS (
+        SELECT
+          "id",
+          0 AS bucket,
+          ROW_NUMBER() OVER (ORDER BY "premium_order" ASC NULLS LAST, search_rank DESC, "created_at" DESC) AS sort_index
+        FROM filtered
+        WHERE "is_premium" = true
+      ),
+      regular_hits AS (
+        SELECT
+          "id",
+          1 AS bucket,
+          ROW_NUMBER() OVER (ORDER BY search_rank DESC, "created_at" DESC) AS sort_index
+        FROM filtered
+        WHERE "is_premium" = false
+      )
+      SELECT "id", bucket, sort_index FROM premium_hits
+      UNION ALL
+      SELECT "id", bucket, sort_index
+      FROM regular_hits
+      WHERE sort_index > ${regularOffset} AND sort_index <= ${regularOffset + regularLimit}
+      ORDER BY bucket ASC, sort_index ASC
+    `),
+    prisma.$queryRaw<SearchCountRow[]>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS total
+      FROM "shops"
+      WHERE ${whereSql} AND "is_premium" = false
+    `),
+  ]);
+
+  const ids = pageHits.map((row) => row.id);
+  const regularTotal = Number(countRows[0]?.total ?? 0);
+
+  if (ids.length === 0) {
+    return {
+      allShops: [],
+      premiumShops: [],
+      regularShops: [],
+      regularTotal,
+      total: regularTotal,
+    };
+  }
+
+  const records = await prisma.shop.findMany({
+    where: { id: { in: ids } },
+    select: shopListSelect,
+  });
+
+  const recordMap = new Map(records.map((record) => [record.id, record]));
+  const orderedRecords = ids.map((id) => recordMap.get(id)).filter((record): record is ShopListRecord => Boolean(record));
+  const reviewCountMap = await fetchReviewCountMap(orderedRecords.map((shop) => shop.id));
+  const mappedShops = orderedRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+  const premiumShops = mappedShops.filter((shop) => shop.isPremium);
+  const regularShops = mappedShops.filter((shop) => !shop.isPremium);
+
+  return {
+    allShops: mappedShops,
+    premiumShops,
+    regularShops,
+    regularTotal,
+    total: premiumShops.length + regularTotal,
+  };
+}
+
 async function queryShops(filters: ShopFilters = {}) {
   const normalizedFilters = normalizeShopFilters(filters);
+  const rawSearchResult = await queryRawSearchShops(normalizedFilters);
+
+  if (rawSearchResult) {
+    return rawSearchResult;
+  }
   const regularOffset = normalizedFilters.regularOffset ?? 0;
   const regularLimit = normalizedFilters.regularLimit;
   const where = buildShopWhere(normalizedFilters);
@@ -290,7 +444,7 @@ async function queryShops(filters: ShopFilters = {}) {
 }
 
 
-const listShopsCached = unstable_cache(async (filters: ShopFilters) => queryShops(filters), ['shop-list-v3'], {
+const listShopsCached = unstable_cache(async (filters: ShopFilters) => queryShops(filters), ['shop-list-v4'], {
   revalidate: SHOP_LIST_CACHE_REVALIDATE_SECONDS,
 });
 
