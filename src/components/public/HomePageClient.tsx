@@ -18,6 +18,7 @@ import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import MobileBannerRail from '@/components/public/MobileBannerRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
+import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { HomeSeoContent, Shop, SiteSettings } from '@/lib/types';
@@ -81,10 +82,14 @@ export default function HomePageClient({
     setError(null);
 
     const params = new URLSearchParams();
-    if (selectedRegion !== 'all') params.set('region', selectedRegion);
-    if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
-    if (selectedTheme !== 'all') params.set('theme', selectedTheme);
-    if (searchQuery) params.set('q', searchQuery);
+    const searchIntent = deriveStructuredSearchIntent(searchQuery);
+    const resolvedRegion = selectedRegion !== 'all' ? selectedRegion : searchIntent.region;
+    const resolvedSubRegion = selectedSubRegion !== 'all' ? selectedSubRegion : searchIntent.subRegion;
+    const resolvedTheme = selectedTheme !== 'all' ? selectedTheme : searchIntent.theme;
+    if (resolvedRegion && resolvedRegion !== 'all') params.set('region', resolvedRegion);
+    if (resolvedSubRegion && resolvedSubRegion !== 'all') params.set('subRegion', resolvedSubRegion);
+    if (resolvedTheme && resolvedTheme !== 'all') params.set('theme', resolvedTheme);
+    if (searchIntent.freeText) params.set('q', searchIntent.freeText);
     params.set('sort', sortType);
     params.set('regularOffset', '0');
     params.set('regularLimit', String(REGULAR_PAGE_SIZE));
@@ -113,10 +118,14 @@ export default function HomePageClient({
     setError(null);
 
     const params = new URLSearchParams();
-    if (selectedRegion !== 'all') params.set('region', selectedRegion);
-    if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
-    if (selectedTheme !== 'all') params.set('theme', selectedTheme);
-    if (searchQuery) params.set('q', searchQuery);
+    const searchIntent = deriveStructuredSearchIntent(searchQuery);
+    const resolvedRegion = selectedRegion !== 'all' ? selectedRegion : searchIntent.region;
+    const resolvedSubRegion = selectedSubRegion !== 'all' ? selectedSubRegion : searchIntent.subRegion;
+    const resolvedTheme = selectedTheme !== 'all' ? selectedTheme : searchIntent.theme;
+    if (resolvedRegion && resolvedRegion !== 'all') params.set('region', resolvedRegion);
+    if (resolvedSubRegion && resolvedSubRegion !== 'all') params.set('subRegion', resolvedSubRegion);
+    if (resolvedTheme && resolvedTheme !== 'all') params.set('theme', resolvedTheme);
+    if (searchIntent.freeText) params.set('q', searchIntent.freeText);
     params.set('sort', sortType);
     params.set('regularOffset', String(regularShops.length));
     params.set('regularLimit', String(REGULAR_PAGE_SIZE));
