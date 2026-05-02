@@ -2,76 +2,11 @@ import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage 
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import type { Review, Shop } from '@/lib/types';
-import { DISTRICTS, REGION_MAP, REGIONS, THEMES } from '@/lib/catalog';
+import { REGION_MAP } from '@/lib/catalog';
+import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 import { prisma } from '@/lib/db/prisma';
 
 const SHOP_LIST_CACHE_REVALIDATE_SECONDS = 30;
-
-type SearchIntent = {
-  region?: string;
-  subRegion?: string;
-  theme?: string;
-  freeText?: string;
-};
-
-const normalizeSearchKey = (value: string) => value.trim().replaceAll(/\s+/g, '').toLowerCase();
-
-const regionSearchMap = new Map(
-  REGIONS.filter((region) => region.code !== 'all').flatMap((region) => [
-    [normalizeSearchKey(region.code), region.code],
-    [normalizeSearchKey(region.label), region.code],
-  ]),
-);
-
-const themeSearchMap = new Map(
-  THEMES.filter((theme) => theme.code !== 'all').flatMap((theme) => [
-    [normalizeSearchKey(theme.code), theme.code],
-    [normalizeSearchKey(theme.label), theme.code],
-  ]),
-);
-
-const districtCandidates = new Map<string, { region: string; code: string }[]>();
-for (const [region, districts] of Object.entries(DISTRICTS)) {
-  for (const district of districts) {
-    if (district.code === 'all') {
-      continue;
-    }
-
-    for (const key of [normalizeSearchKey(district.code), normalizeSearchKey(district.label)]) {
-      const existing = districtCandidates.get(key) ?? [];
-      existing.push({ region, code: district.code });
-      districtCandidates.set(key, existing);
-    }
-  }
-}
-
-const districtSearchMap = new Map(
-  [...districtCandidates.entries()]
-    .filter(([, candidates]) => new Set(candidates.map((candidate) => `${candidate.region}:${candidate.code}`)).size === 1)
-    .map(([key, candidates]) => [key, candidates[0]]),
-);
-
-function deriveSearchIntent(query?: string): SearchIntent {
-  const trimmedQuery = query?.trim();
-  if (!trimmedQuery) {
-    return {};
-  }
-
-  const normalizedQuery = normalizeSearchKey(trimmedQuery);
-  const region = regionSearchMap.get(normalizedQuery);
-  const theme = themeSearchMap.get(normalizedQuery);
-  const district = districtSearchMap.get(normalizedQuery);
-
-  if (!region && !theme && !district) {
-    return { freeText: trimmedQuery };
-  }
-
-  return {
-    region: region ?? district?.region,
-    subRegion: district?.code,
-    theme,
-  };
-}
 
 interface ShopFilters {
   region?: string;
@@ -240,7 +175,7 @@ async function fetchReviewCountMap(shopIds: string[]) {
 function normalizeShopFilters(filters: ShopFilters = {}): ShopFilters {
   const normalizeValue = (value?: string) => value?.trim() || undefined;
   const normalizedQuery = normalizeValue(filters.query);
-  const searchIntent = deriveSearchIntent(normalizedQuery);
+  const searchIntent = deriveStructuredSearchIntent(normalizedQuery);
 
   return {
     region: normalizeValue(filters.region) ?? searchIntent.region,

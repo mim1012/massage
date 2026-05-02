@@ -1,3 +1,5 @@
+import { deriveStructuredSearchIntent } from '@/lib/structured-search';
+
 export type DirectoryMode = 'region' | 'theme';
 
 type BrowseHrefOptions = {
@@ -33,20 +35,25 @@ export function buildBrowseHref({
     params.set('view', 'theme');
   }
 
-  if (isMeaningful(region)) {
-    params.set('region', region!);
+  const searchIntent = deriveStructuredSearchIntent(q);
+  const resolvedRegion = isMeaningful(region) ? region! : searchIntent.region;
+  const resolvedSubRegion = isMeaningful(subRegion) ? subRegion! : searchIntent.subRegion;
+  const resolvedTheme = isMeaningful(theme) ? theme! : searchIntent.theme;
+
+  if (resolvedRegion && resolvedRegion !== 'all') {
+    params.set('region', resolvedRegion);
   }
 
-  if (isMeaningful(subRegion)) {
-    params.set('subRegion', subRegion!);
+  if (resolvedSubRegion && resolvedSubRegion !== 'all') {
+    params.set('subRegion', resolvedSubRegion);
   }
 
-  if (isMeaningful(theme)) {
-    params.set('theme', theme!);
+  if (resolvedTheme && resolvedTheme !== 'all') {
+    params.set('theme', resolvedTheme);
   }
 
-  if (q?.trim()) {
-    params.set('q', q.trim());
+  if (searchIntent.freeText) {
+    params.set('q', searchIntent.freeText);
   }
 
   if (sort && sort !== 'random') {
