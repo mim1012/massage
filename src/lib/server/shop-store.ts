@@ -28,6 +28,35 @@ type SearchCountRow = {
   total: number | bigint;
 };
 
+type RawSearchShopRow = {
+  id: string;
+  name: string;
+  slug: string;
+  region: string;
+  region_label: string;
+  sub_region: string | null;
+  sub_region_label: string | null;
+  theme: string;
+  theme_label: string;
+  is_premium: boolean;
+  premium_order: number | null;
+  thumbnail_url: string | null;
+  banner_url: string | null;
+  tagline: string;
+  rating: number;
+  tags: string[];
+  created_at: string | Date;
+  review_count: number;
+  course_name: string | null;
+  duration_minutes: number | null;
+  price: number | null;
+};
+
+type RawSearchSummaryRow = {
+  shops: Prisma.JsonValue;
+  regular_total: number | bigint;
+};
+
 export type ShopRecord = DbShop & {
   images: ShopImage[];
   courses: ShopCourse[];
@@ -159,6 +188,47 @@ function mapShopList(record: ShopListRecord, reviewCount: number): Shop {
   };
 }
 
+function mapRawSearchShop(record: RawSearchShopRow): Shop {
+  const createdAt = record.created_at instanceof Date ? record.created_at.toISOString() : new Date(record.created_at).toISOString();
+
+  return {
+    id: record.id,
+    name: record.name,
+    slug: record.slug,
+    region: record.region,
+    regionLabel: record.region_label,
+    subRegion: record.sub_region ?? undefined,
+    subRegionLabel: record.sub_region_label ?? undefined,
+    theme: record.theme,
+    themeLabel: record.theme_label,
+    isPremium: record.is_premium,
+    premiumOrder: record.premium_order ?? undefined,
+    thumbnailUrl: record.thumbnail_url ?? '',
+    bannerUrl: record.banner_url ?? '',
+    images: [],
+    tagline: record.tagline,
+    description: '',
+    address: '',
+    phone: '',
+    hours: '',
+    rating: record.rating,
+    reviewCount: Number(record.review_count ?? 0),
+    courses: record.course_name
+      ? [{
+          name: record.course_name,
+          duration: `${record.duration_minutes ?? 0} min`,
+          price: `${record.price ?? 0}`,
+          description: undefined,
+        }]
+      : [],
+    tags: Array.isArray(record.tags) ? record.tags : [],
+    isVisible: true,
+    ownerId: undefined,
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
 function buildReviewCountMap(items: Array<{ shopId: string; _count: { _all: number } }>) {
   return new Map<string, number>(items.map((item) => [item.shopId, Number(item._count._all)]));
 }
@@ -283,70 +353,108 @@ async function queryRawSearchShops(filters: ShopFilters) {
 
   const { whereSql, searchRankSql } = buildRawSearchWhereSql(normalizedFilters);
 
-  const [pageHits, countRows] = await Promise.all([
-    prisma.$queryRaw<SearchPageHitRow[]>(Prisma.sql`
-      WITH filtered AS (
-        SELECT
-          "id",
-          "is_premium",
-          "premium_order",
-          "created_at",
-          ${searchRankSql} AS search_rank
-        FROM "shops"
-        WHERE ${whereSql}
-      ),
-      premium_hits AS (
-        SELECT
-          "id",
-          0 AS bucket,
-          ROW_NUMBER() OVER (ORDER BY "premium_order" ASC NULLS LAST, search_rank DESC, "created_at" DESC) AS sort_index
-        FROM filtered
-        WHERE "is_premium" = true
-      ),
-      regular_hits AS (
-        SELECT
-          "id",
-          1 AS bucket,
-          ROW_NUMBER() OVER (ORDER BY search_rank DESC, "created_at" DESC) AS sort_index
-        FROM filtered
-        WHERE "is_premium" = false
-      )
+  const summaryRows = await prisma.$queryRaw<RawSearchSummaryRow[]>(Prisma.sql`
+    WITH filtered AS (
+      SELECT
+        s."id",
+        s."is_premium",
+        s."premium_order",
+        s."created_at",
+        ${searchRankSql} AS search_rank
+      FROM "shops" s
+      WHERE ${whereSql}
+    ),
+    regular_total AS (
+      SELECT COUNT(*)::bigint AS regular_total
+      FROM filtered
+      WHERE "is_premium" = false
+    ),
+    premium_hits AS (
+      SELECT
+        "id",
+        0 AS bucket,
+        ROW_NUMBER() OVER (ORDER BY "premium_order" ASC NULLS LAST, search_rank DESC, "created_at" DESC) AS sort_index
+      FROM filtered
+      WHERE "is_premium" = true
+    ),
+    regular_hits AS (
+      SELECT
+        "id",
+        1 AS bucket,
+        ROW_NUMBER() OVER (ORDER BY search_rank DESC, "created_at" DESC) AS sort_index
+      FROM filtered
+      WHERE "is_premium" = false
+    ),
+    selected_hits AS (
       SELECT "id", bucket, sort_index FROM premium_hits
       UNION ALL
       SELECT "id", bucket, sort_index
       FROM regular_hits
       WHERE sort_index > ${regularOffset} AND sort_index <= ${regularOffset + regularLimit}
-      ORDER BY bucket ASC, sort_index ASC
-    `),
-    prisma.$queryRaw<SearchCountRow[]>(Prisma.sql`
-      SELECT COUNT(*)::bigint AS total
-      FROM "shops"
-      WHERE ${whereSql} AND "is_premium" = false
-    `),
-  ]);
+    ),
+    review_counts AS (
+      SELECT r."shop_id", COUNT(*)::int AS review_count
+      FROM "reviews" r
+      JOIN selected_hits sh ON sh."id" = r."shop_id"
+      WHERE r."is_hidden" = false
+      GROUP BY r."shop_id"
+    ),
+    first_courses AS (
+      SELECT DISTINCT ON (c."shop_id")
+        c."shop_id",
+        c."name",
+        c."duration_minutes",
+        c."price"
+      FROM "shop_courses" c
+      JOIN selected_hits sh ON sh."id" = c."shop_id"
+      ORDER BY c."shop_id", c."sort_order" ASC
+    ),
+    result_rows AS (
+      SELECT
+        sh.bucket,
+        sh.sort_index,
+        s."id",
+        s."name",
+        s."slug",
+        s."region",
+        s."region_label",
+        s."sub_region",
+        s."sub_region_label",
+        s."theme",
+        s."theme_label",
+        s."is_premium",
+        s."premium_order",
+        s."thumbnail_url",
+        s."banner_url",
+        s."tagline",
+        s."rating",
+        s."tags",
+        s."created_at",
+        COALESCE(rc.review_count, 0) AS review_count,
+        fc."name" AS course_name,
+        fc."duration_minutes",
+        fc."price"
+      FROM selected_hits sh
+      JOIN "shops" s ON s."id" = sh."id"
+      LEFT JOIN review_counts rc ON rc."shop_id" = s."id"
+      LEFT JOIN first_courses fc ON fc."shop_id" = s."id"
+    )
+    SELECT
+      COALESCE(
+        json_agg(row_to_json(result_rows) ORDER BY result_rows.bucket ASC, result_rows.sort_index ASC)
+        FILTER (WHERE result_rows."id" IS NOT NULL),
+        '[]'::json
+      ) AS shops,
+      regular_total.regular_total
+    FROM regular_total
+    LEFT JOIN result_rows ON TRUE
+    GROUP BY regular_total.regular_total
+  `);
 
-  const ids = pageHits.map((row) => row.id);
-  const regularTotal = Number(countRows[0]?.total ?? 0);
-
-  if (ids.length === 0) {
-    return {
-      allShops: [],
-      premiumShops: [],
-      regularShops: [],
-      regularTotal,
-      total: regularTotal,
-    };
-  }
-
-  const records = await prisma.shop.findMany({
-    where: { id: { in: ids } },
-    select: shopListSelect,
-  });
-
-  const recordMap = new Map(records.map((record) => [record.id, record]));
-  const orderedRecords = ids.map((id) => recordMap.get(id)).filter((record): record is ShopListRecord => Boolean(record));
-  const reviewCountMap = await fetchReviewCountMap(orderedRecords.map((shop) => shop.id));
-  const mappedShops = orderedRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+  const summaryRow = summaryRows[0];
+  const regularTotal = Number(summaryRow?.regular_total ?? 0);
+  const rawShops = Array.isArray(summaryRow?.shops) ? (summaryRow.shops as unknown as RawSearchShopRow[]) : [];
+  const mappedShops = rawShops.map(mapRawSearchShop);
   const premiumShops = mappedShops.filter((shop) => shop.isPremium);
   const regularShops = mappedShops.filter((shop) => !shop.isPremium);
 
@@ -444,7 +552,7 @@ async function queryShops(filters: ShopFilters = {}) {
 }
 
 
-const listShopsCached = unstable_cache(async (filters: ShopFilters) => queryShops(filters), ['shop-list-v4'], {
+const listShopsCached = unstable_cache(async (filters: ShopFilters) => queryShops(filters), ['shop-list-v5'], {
   revalidate: SHOP_LIST_CACHE_REVALIDATE_SECONDS,
 });
 
