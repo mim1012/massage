@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import { createSubmissionLock } from '@/lib/client/submission-lock';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import type { Course, Shop, User } from '@/lib/types';
 
@@ -107,6 +108,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const [thumbPreview, setThumbPreview] = useState('');
   const [bannerPreview, setBannerPreview] = useState('');
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const submitLockRef = useRef(createSubmissionLock());
 
   const thumbRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
@@ -254,7 +256,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (isSaving) {
+    if (!submitLockRef.current.tryAcquire()) {
       return;
     }
 
@@ -290,6 +292,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
       setSaveError(result?.error ?? '저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
     } finally {
+      submitLockRef.current.release();
       setIsSaving(false);
     }
   };
