@@ -253,8 +253,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     });
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
 
     if (!submitLockRef.current.tryAcquire()) {
       return;
@@ -332,7 +331,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form className="space-y-4">
         {step === 0 ? (
           <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
             <h2 className="border-b border-gray-100 pb-2 text-base font-black text-gray-800">① 기본 정보</h2>
@@ -818,7 +817,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={() => void handleSubmit()}
                 disabled={isSaving}
                 className="flex items-center gap-1 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >

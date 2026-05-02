@@ -30,3 +30,14 @@ test('createSubmissionLock remains locked if release is not called after success
   assert.equal(lock.tryAcquire(), true);
   assert.equal(lock.tryAcquire(), false);
 });
+
+
+test('manual save flow can acquire on preview step and blocks a second save click until released', () => {
+  const lock = createSubmissionLock();
+
+  assert.equal(lock.tryAcquire(), true);
+  assert.equal(lock.tryAcquire(), false);
+
+  lock.release();
+  assert.equal(lock.tryAcquire(), true);
+});
