@@ -263,6 +263,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     setIsSaving(true);
     setSaveError('');
 
+    let shouldReleaseLock = true;
+
     try {
       const nextShop: Shop = {
         ...form,
@@ -286,14 +288,17 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
 
       if (response.ok) {
+        shouldReleaseLock = false;
         router.replace(routeBase);
         return;
       }
 
       setSaveError(result?.error ?? '저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
     } finally {
-      submitLockRef.current.release();
-      setIsSaving(false);
+      if (shouldReleaseLock) {
+        submitLockRef.current.release();
+        setIsSaving(false);
+      }
     }
   };
 

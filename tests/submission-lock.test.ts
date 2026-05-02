@@ -22,3 +22,11 @@ test('createSubmissionLock stays locked across synchronous duplicate submits', (
   assert.equal(firstSubmitAllowed, true);
   assert.equal(secondSubmitAllowed, false);
 });
+
+
+test('createSubmissionLock remains locked if release is not called after success', () => {
+  const lock = createSubmissionLock();
+
+  assert.equal(lock.tryAcquire(), true);
+  assert.equal(lock.tryAcquire(), false);
+});
