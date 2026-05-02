@@ -42,7 +42,7 @@ export default function Header() {
 
       <div className="max-w-[1400px] mx-auto px-3">
         <div className="flex h-14 items-center gap-2 sm:gap-3">
-          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+          <Link href="/" prefetch={false} className="flex items-center gap-1.5 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--portal-brand)] shadow-sm">
               <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
             </div>
@@ -80,15 +80,15 @@ export default function Header() {
           </form>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <Link href="/auth/login" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+            <Link href="/auth/login" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
               로그인
             </Link>
             <span className="text-gray-300 hidden sm:block">|</span>
-            <Link href="/auth/register" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+            <Link href="/auth/register" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
               회원가입
             </Link>
             <span className="text-gray-300 hidden sm:block">|</span>
-            <Link href="/admin" className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+            <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
               관리자
             </Link>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-1.5 text-gray-600">
@@ -104,6 +104,7 @@ export default function Header() {
             <li>
               <Link
                 href="/?view=list"
+                prefetch={false}
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
                   directoryMode === 'region' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
@@ -115,6 +116,7 @@ export default function Header() {
             <li>
               <Link
                 href="/?view=theme"
+                prefetch={false}
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
                   directoryMode === 'theme' && 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]',
@@ -124,17 +126,17 @@ export default function Header() {
               </Link>
             </li>
             <li>
-              <Link href="/top100" className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link href="/top100" prefetch={false} className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 인기순위
               </Link>
             </li>
             <li>
-              <Link href="/board" className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link href="/board" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 커뮤니티
               </Link>
             </li>
             <li>
-              <Link href="/board/qna" className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link href="/board/qna" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 고객센터
               </Link>
             </li>
@@ -149,6 +151,7 @@ export default function Header() {
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code, theme: currentTheme })}
+                prefetch={false}
                 className={clsx(
                   'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
                   currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
@@ -169,6 +172,7 @@ export default function Header() {
                     subRegion: currentSubRegion,
                     theme: theme.code,
                   })}
+                  prefetch={false}
                   className={clsx(
                     'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
                     currentTheme === theme.code
@@ -249,6 +253,7 @@ export default function Header() {
                     subRegion: currentSubRegion,
                     theme: theme.code,
                   })}
+                  prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
                   className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-[var(--portal-brand)] hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
                 >
@@ -259,6 +264,7 @@ export default function Header() {
             <div className="flex gap-2 pt-2 border-t border-gray-100">
               <Link
                 href="/auth/login"
+                prefetch={false}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex-1 text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
               >
@@ -266,6 +272,7 @@ export default function Header() {
               </Link>
               <Link
                 href="/auth/register"
+                prefetch={false}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex-1 rounded bg-[var(--portal-brand)] py-2 text-center text-xs font-semibold text-white hover:bg-[var(--portal-brand-hover)]"
               >
@@ -289,7 +296,7 @@ export default function Header() {
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: '/auth/login', label: 'MY', emoji: '👤' },
           ].map((item) => (
-            <Link key={`${item.label}-${item.href}`} href={item.href} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
+            <Link key={`${item.label}-${item.href}`} href={item.href} prefetch={false} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
               <span className="text-base">{item.emoji}</span>
               <span className="text-[10px] text-gray-500">{item.label}</span>
             </Link>

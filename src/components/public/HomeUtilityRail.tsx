@@ -15,6 +15,7 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
     <div className={isSidebar ? 'sticky top-[170px] relative z-10 space-y-2' : 'space-y-3'}>
       <Link
         href="/board/partnership"
+        prefetch={false}
         className="group block cursor-pointer overflow-hidden rounded-lg border-2 border-blue-600 bg-gradient-to-b from-blue-700 to-blue-900 text-white shadow-sm transition-shadow hover:shadow-md"
       >
         <div className="animate-pulse bg-pink-500 py-1 text-center text-[11px] font-black text-white">프리미엄 입점센터</div>
@@ -38,6 +39,7 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
         {isSidebar ? <div className="bg-gray-100 py-1.5 text-[11px] font-bold text-gray-700">QUICK MENU</div> : null}
         <Link
           href={buildBrowseHref({ mode: 'region' })}
+          prefetch={false}
           className={
             isSidebar
               ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'
@@ -52,6 +54,7 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
         </Link>
         <Link
           href={buildBrowseHref({ mode: directoryMode, sort: 'popular' })}
+          prefetch={false}
           className={
             isSidebar
               ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'

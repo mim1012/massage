@@ -1,4 +1,5 @@
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
+import { cache } from 'react';
 import type { Review, Shop } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
@@ -20,14 +21,13 @@ export type ShopRecord = DbShop & {
 };
 
 export const shopInclude = {
-  images: true,
-  courses: true,
-  reviews: true,
+  images: { orderBy: { sortOrder: 'asc' } },
+  courses: { orderBy: { sortOrder: 'asc' } },
+  reviews: { where: { isHidden: false }, orderBy: { createdAt: 'desc' } },
 } satisfies Prisma.ShopInclude;
 
 const shopListSelect = {
   id: true,
-  ownerId: true,
   name: true,
   slug: true,
   region: true,
@@ -41,14 +41,9 @@ const shopListSelect = {
   thumbnailUrl: true,
   bannerUrl: true,
   tagline: true,
-  description: true,
-  address: true,
-  phone: true,
-  hours: true,
   rating: true,
   tags: true,
   createdAt: true,
-  updatedAt: true,
   courses: {
     orderBy: { sortOrder: 'asc' },
     take: 1,
@@ -56,7 +51,6 @@ const shopListSelect = {
       name: true,
       durationMinutes: true,
       price: true,
-      description: true,
     },
   },
 } satisfies Prisma.ShopSelect;
@@ -66,8 +60,6 @@ export type ShopListRecord = Prisma.ShopGetPayload<{
 }>;
 
 export function mapShop(record: ShopRecord): Shop {
-  const visibleReviews = record.reviews.filter((review) => !review.isHidden);
-
   return {
     id: record.id,
     name: record.name,
@@ -82,19 +74,15 @@ export function mapShop(record: ShopRecord): Shop {
     premiumOrder: record.premiumOrder ?? undefined,
     thumbnailUrl: record.thumbnailUrl ?? record.images[0]?.imageUrl ?? '',
     bannerUrl: record.bannerUrl ?? record.images[0]?.imageUrl ?? '',
-    images: [...record.images]
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((image) => image.imageUrl),
+    images: record.images.map((image) => image.imageUrl),
     tagline: record.tagline,
     description: record.description,
     address: record.address,
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount: visibleReviews.length,
-    courses: [...record.courses]
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((course) => ({
+    reviewCount: record.reviews.length,
+    courses: record.courses.map((course) => ({
         name: course.name,
         duration: `${course.durationMinutes} min`,
         price: `${course.price}`,
@@ -137,24 +125,47 @@ function mapShopList(record: ShopListRecord, reviewCount: number): Shop {
     bannerUrl: record.bannerUrl ?? '',
     images: [],
     tagline: record.tagline,
-    description: record.description,
-    address: record.address,
-    phone: record.phone,
-    hours: record.hours,
+    description: '',
+    address: '',
+    phone: '',
+    hours: '',
     rating: record.rating,
     reviewCount,
     courses: record.courses.map((course) => ({
       name: course.name,
       duration: `${course.durationMinutes} min`,
       price: `${course.price}`,
-      description: course.description ?? undefined,
+      description: undefined,
     })),
     tags: record.tags,
     isVisible: true,
-    ownerId: record.ownerId ?? undefined,
+    ownerId: undefined,
     createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
+    updatedAt: record.createdAt.toISOString(),
   };
+}
+
+function buildReviewCountMap(items: Array<{ shopId: string; _count: { _all: number } }>) {
+  return new Map<string, number>(items.map((item) => [item.shopId, Number(item._count._all)]));
+}
+
+async function fetchReviewCountMap(shopIds: string[]) {
+  if (shopIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const reviewCounts = await prisma.review.groupBy({
+    by: ['shopId'],
+    where: {
+      isHidden: false,
+      shopId: { in: shopIds },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  return buildReviewCountMap(reviewCounts);
 }
 
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
@@ -184,27 +195,52 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
 export async function listShops(filters: ShopFilters = {}) {
   const regularOffset = Math.max(0, filters.regularOffset ?? 0);
   const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
+  const where = buildShopWhere(filters);
+
+  if (regularLimit && filters.sort !== 'popular') {
+    const premiumWhere: Prisma.ShopWhereInput = { ...where, isPremium: true };
+    const regularWhere: Prisma.ShopWhereInput = { ...where, isPremium: false };
+
+    const [premiumRecords, regularRecords, regularTotal] = await Promise.all([
+      prisma.shop.findMany({
+        where: premiumWhere,
+        select: shopListSelect,
+        orderBy: [{ premiumOrder: 'asc' }, { createdAt: 'desc' }],
+      }),
+      prisma.shop.findMany({
+        where: regularWhere,
+        select: shopListSelect,
+        orderBy: [{ createdAt: 'desc' }],
+        skip: regularOffset,
+        take: regularLimit,
+      }),
+      prisma.shop.count({ where: regularWhere }),
+    ]);
+
+    const reviewCountMap = await fetchReviewCountMap([
+      ...premiumRecords.map((shop) => shop.id),
+      ...regularRecords.map((shop) => shop.id),
+    ]);
+
+    const premiumShops = premiumRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+    const regularShops = regularRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+
+    return {
+      allShops: [...premiumShops, ...regularShops],
+      premiumShops,
+      regularShops,
+      regularTotal,
+      total: premiumShops.length + regularTotal,
+    };
+  }
+
   const shops = await prisma.shop.findMany({
-    where: buildShopWhere(filters),
+    where,
     select: shopListSelect,
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  const reviewCounts =
-    shops.length > 0
-      ? await prisma.review.groupBy({
-          by: ['shopId'],
-          where: {
-            isHidden: false,
-            shopId: { in: shops.map((shop) => shop.id) },
-          },
-          _count: {
-            _all: true,
-          },
-        })
-      : [];
-
-  const reviewCountMap = new Map<string, number>(reviewCounts.map((item) => [item.shopId, Number(item._count._all)]));
+  const reviewCountMap = await fetchReviewCountMap(shops.map((shop) => shop.id));
 
   const allShops = shops.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
   const sortedShops = [...allShops];
@@ -234,7 +270,7 @@ export async function listShops(filters: ShopFilters = {}) {
   };
 }
 
-export async function getShopBySlug(slug: string) {
+const getShopBySlugCached = cache(async (slug: string) => {
   const shop = await prisma.shop.findFirst({
     where: { slug, isVisible: true },
     include: shopInclude,
@@ -246,11 +282,12 @@ export async function getShopBySlug(slug: string) {
 
   return {
     shop: mapShop(shop),
-    reviews: shop.reviews
-      .filter((review) => !review.isHidden)
-      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
-      .map((review) => mapReview(review, shop.name)),
+    reviews: shop.reviews.map((review) => mapReview(review, shop.name)),
   };
+});
+
+export async function getShopBySlug(slug: string) {
+  return getShopBySlugCached(slug);
 }
 
 export async function updateShopVisibility(shopId: string, isVisible: boolean) {
