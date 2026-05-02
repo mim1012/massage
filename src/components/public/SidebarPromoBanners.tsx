@@ -15,6 +15,7 @@ export default function SidebarPromoBanners({ mode = 'sidebar', onNavigate }: Si
     <div className={clsx('space-y-2', isSidebar ? 'mt-4' : '')}>
       <Link
         href="/board/notice"
+        prefetch={false}
         onClick={onNavigate}
         className={clsx(
           'block w-full cursor-pointer text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5',
@@ -28,6 +29,7 @@ export default function SidebarPromoBanners({ mode = 'sidebar', onNavigate }: Si
 
       <Link
         href="/board/partnership"
+        prefetch={false}
         onClick={onNavigate}
         className={clsx(
           'block w-full cursor-pointer text-center text-gray-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5',

@@ -24,13 +24,14 @@ export default function Sidebar() {
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
           <div className="bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white">📍 지역별 업소</div>
           <div>
-            <Link href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
+            <Link href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} prefetch={false} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
               전체보기
             </Link>
             {REGIONS.filter((r) => r.code !== 'all').map((r) => (
               <div key={r.code}>
                 <Link
                   href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, theme: currentTheme })}
+                  prefetch={false}
                   className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
                 >
                   &rsaquo; {r.label}
@@ -50,6 +51,7 @@ export default function Sidebar() {
                             subRegion: d.code,
                             theme: currentTheme,
                           })}
+                          prefetch={false}
                           className={clsx(
                             'block border-b border-white/50 px-3 py-1.5 pl-6 text-xs text-gray-500 last:border-0 hover:text-[var(--portal-brand)]',
                             currentSubRegion === d.code && 'font-bold text-[var(--portal-brand)]',
@@ -73,6 +75,7 @@ export default function Sidebar() {
           <div>
             <Link
               href="/top100"
+              prefetch={false}
               className={clsx(
                 'lnb-menu-item font-bold text-gray-700 hover:text-[var(--portal-brand)]',
                 pathname === '/top100' && 'active',
@@ -80,7 +83,7 @@ export default function Sidebar() {
             >
               &rsaquo; 주간 인기 추천업소
             </Link>
-            <Link href="/?sort=new" className="lnb-menu-item font-bold text-gray-700 hover:text-[var(--portal-brand)]">
+            <Link href="/?sort=new" prefetch={false} className="lnb-menu-item font-bold text-gray-700 hover:text-[var(--portal-brand)]">
               &rsaquo; 신규 등록 업소
             </Link>
           </div>
@@ -94,6 +97,7 @@ export default function Sidebar() {
               <Link
                 key={t.code}
                 href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}
+                prefetch={false}
                 className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
               >
                 &rsaquo; {t.label}
@@ -106,13 +110,13 @@ export default function Sidebar() {
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
           <div className="bg-[var(--portal-support)] px-3 py-2 text-xs font-bold text-white">📞 고객센터</div>
           <div>
-            <Link href="/board/notice" className="lnb-menu-item">
+            <Link href="/board/notice" prefetch={false} className="lnb-menu-item">
               &rsaquo; 공지사항
             </Link>
-            <Link href="/board/qna" className="lnb-menu-item">
+            <Link href="/board/qna" prefetch={false} className="lnb-menu-item">
               &rsaquo; Q&amp;A 문의
             </Link>
-            <Link href="/board/review" className="lnb-menu-item">
+            <Link href="/board/review" prefetch={false} className="lnb-menu-item">
               &rsaquo; 업소 후기
             </Link>
           </div>

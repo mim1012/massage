@@ -43,6 +43,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
   return (
     <Link
       href={detailHref}
+      prefetch={false}
       className={clsx(
         'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
         isPremium ? 'border-[var(--portal-premium-border)]' : 'border-gray-200 border-opacity-70',

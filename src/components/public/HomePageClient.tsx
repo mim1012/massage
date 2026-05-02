@@ -190,6 +190,7 @@ export default function HomePageClient({
           <div className="mb-3 flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide md:hidden">
             <Link
               href="/"
+              prefetch={false}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 isAllCategorySelected
                   ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
@@ -202,6 +203,7 @@ export default function HomePageClient({
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code })}
+                prefetch={false}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   selectedRegion === region.code
                     ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
@@ -234,6 +236,7 @@ export default function HomePageClient({
                       subRegion: selectedSubRegion !== 'all' ? selectedSubRegion : undefined,
                       theme: selectedTheme !== 'all' ? selectedTheme : undefined,
                     })}
+                    prefetch={false}
                     className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-amber-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div
@@ -305,6 +308,7 @@ export default function HomePageClient({
                       subRegion: selectedSubRegion,
                       theme: selectedTheme,
                     })}
+                    prefetch={false}
                     className="text-[11px] font-bold text-[var(--portal-brand)] hover:underline"
                   >
                     정렬 초기화
