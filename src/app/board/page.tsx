@@ -33,6 +33,7 @@ export default async function BoardPage() {
           <Link
             key={tab.href}
             href={tab.href}
+            prefetch={false}
             className="rounded border border-gray-200 bg-white p-3 text-center transition-all hover:border-red-300 hover:bg-red-50/50"
           >
             <div className="mb-1 text-2xl">{tab.emoji}</div>
@@ -45,7 +46,7 @@ export default async function BoardPage() {
       <div className="mb-3 rounded border border-gray-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">📢 공지사항</h2>
-          <Link href="/board/notice" className="text-xs text-red-600 hover:underline">
+          <Link href="/board/notice" prefetch={false} className="text-xs text-red-600 hover:underline">
             전체 &raquo;
           </Link>
         </div>
@@ -54,6 +55,7 @@ export default async function BoardPage() {
             <Link
               key={notice.id}
               href={`/board/notice/${notice.id}`}
+              prefetch={false}
               className="-mx-1 flex items-center justify-between rounded px-1 py-2 transition-all hover:bg-gray-50"
             >
               <div className="flex min-w-0 items-center gap-2">
@@ -73,7 +75,7 @@ export default async function BoardPage() {
       <div className="mb-3 rounded border border-gray-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">💬 Q&amp;A</h2>
-          <Link href="/board/qna" className="text-xs text-red-600 hover:underline">
+          <Link href="/board/qna" prefetch={false} className="text-xs text-red-600 hover:underline">
             전체 &raquo;
           </Link>
         </div>
@@ -101,7 +103,7 @@ export default async function BoardPage() {
       <div className="rounded border border-gray-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-sm font-black text-gray-800">⭐ 최근 후기</h2>
-          <Link href="/board/review" className="text-xs text-red-600 hover:underline">
+          <Link href="/board/review" prefetch={false} className="text-xs text-red-600 hover:underline">
             전체 &raquo;
           </Link>
         </div>

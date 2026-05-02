@@ -31,11 +31,11 @@ export default async function NoticeDetailPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-red-600">
+        <Link href="/" prefetch={false} className="hover:text-red-600">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/board/notice" className="hover:text-red-600">
+        <Link href="/board/notice" prefetch={false} className="hover:text-red-600">
           공지사항
         </Link>
         <ChevronRight className="h-3 w-3" />
@@ -54,7 +54,7 @@ export default async function NoticeDetailPage({ params }: Props) {
         <div className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{notice.content}</div>
       </div>
       <div className="mt-3 text-center">
-        <Link href="/board/notice" className="text-sm text-gray-500 hover:text-red-600">
+        <Link href="/board/notice" prefetch={false} className="text-sm text-gray-500 hover:text-red-600">
           목록으로
         </Link>
       </div>

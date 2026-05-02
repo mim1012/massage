@@ -37,11 +37,11 @@ export default async function NoticePage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-red-600">
+        <Link href="/" prefetch={false} className="hover:text-red-600">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/board" className="hover:text-red-600">
+        <Link href="/board" prefetch={false} className="hover:text-red-600">
           게시판
         </Link>
         <ChevronRight className="h-3 w-3" />
@@ -55,6 +55,7 @@ export default async function NoticePage({ searchParams }: PageProps) {
           <Link
             key={notice.id}
             href={`/board/notice/${notice.id}`}
+            prefetch={false}
             className={`flex items-center justify-between p-3 transition-all hover:bg-gray-50 ${
               index < pagedNotices.length - 1 ? 'border-b border-gray-100' : ''
             }`}

@@ -196,6 +196,7 @@ export default function Header() {
                     subRegion: district.code,
                     theme: currentTheme,
                   })}
+                  prefetch={false}
                   className={clsx(
                     'text-[13px] text-center rounded py-1',
                     district.code === 'all' && (!currentSubRegion || currentSubRegion === 'all')

@@ -158,11 +158,11 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-red-600">
+        <Link href="/" prefetch={false} className="hover:text-red-600">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/board" className="hover:text-red-600">
+        <Link href="/board" prefetch={false} className="hover:text-red-600">
           게시판
         </Link>
         <ChevronRight className="h-3 w-3" />
@@ -188,11 +188,12 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
           <div className="mb-3 rounded border border-gray-200 bg-white p-4 text-center">
             <p className="text-sm font-bold text-gray-800">질문 작성은 로그인한 회원만 가능합니다.</p>
             <div className="mt-3 flex justify-center gap-2">
-              <Link href="/auth/login" className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
+              <Link href="/auth/login" prefetch={false} className="rounded bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">
                 로그인
               </Link>
               <Link
                 href="/auth/register"
+                prefetch={false}
                 className="rounded border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-red-300 hover:text-red-600"
               >
                 회원가입
