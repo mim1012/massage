@@ -1,8 +1,11 @@
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
+import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import type { Review, Shop } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
+
+const SHOP_LIST_CACHE_REVALIDATE_SECONDS = 30;
 
 interface ShopFilters {
   region?: string;
@@ -168,6 +171,20 @@ async function fetchReviewCountMap(shopIds: string[]) {
   return buildReviewCountMap(reviewCounts);
 }
 
+function normalizeShopFilters(filters: ShopFilters = {}): ShopFilters {
+  const normalizeValue = (value?: string) => value?.trim() || undefined;
+
+  return {
+    region: normalizeValue(filters.region),
+    subRegion: normalizeValue(filters.subRegion),
+    theme: normalizeValue(filters.theme),
+    query: normalizeValue(filters.query),
+    sort: normalizeValue(filters.sort),
+    regularOffset: Math.max(0, filters.regularOffset ?? 0),
+    regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined,
+  };
+}
+
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
 
@@ -192,12 +209,13 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
-export async function listShops(filters: ShopFilters = {}) {
-  const regularOffset = Math.max(0, filters.regularOffset ?? 0);
-  const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
-  const where = buildShopWhere(filters);
+async function queryShops(filters: ShopFilters = {}) {
+  const normalizedFilters = normalizeShopFilters(filters);
+  const regularOffset = normalizedFilters.regularOffset ?? 0;
+  const regularLimit = normalizedFilters.regularLimit;
+  const where = buildShopWhere(normalizedFilters);
 
-  if (regularLimit && filters.sort !== 'popular') {
+  if (regularLimit && normalizedFilters.sort !== 'popular') {
     const premiumWhere: Prisma.ShopWhereInput = { ...where, isPremium: true };
     const regularWhere: Prisma.ShopWhereInput = { ...where, isPremium: false };
 
@@ -245,13 +263,13 @@ export async function listShops(filters: ShopFilters = {}) {
   const allShops = shops.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
   const sortedShops = [...allShops];
 
-  if (filters.sort === 'popular') {
+  if (normalizedFilters.sort === 'popular') {
     sortedShops.sort((left, right) => {
       if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
       if (right.rating !== left.rating) return right.rating - left.rating;
       return right.createdAt.localeCompare(left.createdAt);
     });
-  } else if (filters.sort === 'new') {
+  } else if (normalizedFilters.sort === 'new') {
     sortedShops.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -268,6 +286,15 @@ export async function listShops(filters: ShopFilters = {}) {
     regularTotal: allRegularShops.length,
     total: sortedShops.length,
   };
+}
+
+
+const listShopsCached = unstable_cache(async (filters: ShopFilters) => queryShops(filters), ['shop-list-v3'], {
+  revalidate: SHOP_LIST_CACHE_REVALIDATE_SECONDS,
+});
+
+export async function listShops(filters: ShopFilters = {}) {
+  return await listShopsCached(normalizeShopFilters(filters));
 }
 
 const getShopBySlugCached = cache(async (slug: string) => {

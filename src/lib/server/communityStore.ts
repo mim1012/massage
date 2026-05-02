@@ -9,6 +9,7 @@ import {
   type Review as DbReview,
   type SiteSettings as DbSiteSettings,
 } from '@prisma/client';
+import { unstable_cache } from 'next/cache';
 import type {
   HomeSeoContent,
   Notice,
@@ -29,6 +30,7 @@ import {
 import { mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
+const BOARD_LANDING_CACHE_REVALIDATE_SECONDS = 30;
 
 let cachedPublicSiteContent:
   | {
@@ -637,7 +639,7 @@ type BoardLandingOptions = {
   viewer?: ViewerContext;
 };
 
-export async function getBoardLandingData(options: BoardLandingOptions = {}) {
+async function queryBoardLandingData(options: BoardLandingOptions = {}) {
   const includeReviews = options.includeReviews ?? false;
 
   const [summary, notices, qnaEntries, reviews] = await Promise.all([
@@ -689,6 +691,22 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
     qnaEntries,
     reviews,
   };
+}
+
+const getAnonymousBoardLandingDataCached = unstable_cache(
+  async () => queryBoardLandingData({ includeReviews: false }),
+  ['board-landing-anon-v1'],
+  { revalidate: BOARD_LANDING_CACHE_REVALIDATE_SECONDS },
+);
+
+export async function getBoardLandingData(options: BoardLandingOptions = {}) {
+  const includeReviews = options.includeReviews ?? false;
+
+  if (!includeReviews && !options.viewer) {
+    return await getAnonymousBoardLandingDataCached();
+  }
+
+  return await queryBoardLandingData(options);
 }
 
 export async function createQnaComment(
