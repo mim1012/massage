@@ -200,8 +200,6 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
             { regionLabel: { contains: filters.query, mode: 'insensitive' } },
             { subRegionLabel: { contains: filters.query, mode: 'insensitive' } },
             { themeLabel: { contains: filters.query, mode: 'insensitive' } },
-            { tagline: { contains: filters.query, mode: 'insensitive' } },
-            { description: { contains: filters.query, mode: 'insensitive' } },
             { tags: { has: filters.query } },
           ],
         }
