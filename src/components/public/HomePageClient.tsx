@@ -213,7 +213,7 @@ export default function HomePageClient({
             ))}
           </div>
 
-          <MobileBannerRail />
+          {/* 모바일 배너 삭제 */}
 
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">

@@ -13,6 +13,7 @@ import {
   Plus,
   Save,
   Trash2,
+  Crown,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -405,6 +406,35 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                 placeholder="예: 강남 최고의 프리미엄 스웨디시 마사지"
               />
             </div>
+
+            {currentUser.role === 'ADMIN' && (
+              <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isPremium"
+                    checked={form.isPremium}
+                    onChange={(event) => setForm({ ...form, isPremium: event.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-[#D4A373] focus:ring-[#D4A373]"
+                  />
+                  <label htmlFor="isPremium" className="flex items-center gap-1 text-sm font-bold text-gray-700">
+                    <Crown className="h-4 w-4 text-amber-500" /> 프리미엄 업소(AD) 설정
+                  </label>
+                </div>
+                {form.isPremium && (
+                  <div>
+                    <label className={labelClassName}>프리미엄 노출 순서 (낮을수록 먼저 노출)</label>
+                    <input
+                      type="number"
+                      value={form.premiumOrder ?? 0}
+                      onChange={(event) => setForm({ ...form, premiumOrder: parseInt(event.target.value) })}
+                      className={inputClassName}
+                      placeholder="예: 1"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : null}
 

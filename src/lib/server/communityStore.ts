@@ -415,22 +415,29 @@ function buildShopPayload(input: Shop) {
   };
 }
 
-export async function listAdminShops() {
-  const shops = await prisma.shop.findMany({
-    include: shopInclude,
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-  });
+export async function listManagedShops(
+  user: { id: string; role: UserRole },
+  filters: { region?: string; q?: string } = {},
+) {
+  const where: Prisma.ShopWhereInput = {};
 
-  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
-}
+  if (user.role === 'OWNER') {
+    where.ownerId = user.id;
+  }
 
-export async function listManagedShops(user: { id: string; role: UserRole }) {
-  if (user.role === 'ADMIN') {
-    return listAdminShops();
+  if (filters.region && filters.region !== 'all') {
+    where.region = filters.region;
+  }
+
+  if (filters.q) {
+    where.OR = [
+      { name: { contains: filters.q, mode: 'insensitive' } },
+      { phone: { contains: filters.q, mode: 'insensitive' } },
+    ];
   }
 
   const shops = await prisma.shop.findMany({
-    where: { ownerId: user.id },
+    where,
     include: shopInclude,
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
   });
@@ -460,7 +467,7 @@ export async function updatePremiumOrder(orderedIds: string[]) {
 }
 
 export async function getPremiumBoardData(): Promise<PremiumBoardData> {
-  const shops = await listAdminShops();
+  const shops = await listManagedShops({ id: 'admin', role: 'ADMIN' });
 
   return {
     premiumShops: shops.filter((shop) => shop.isPremium),

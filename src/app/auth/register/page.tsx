@@ -14,43 +14,43 @@ export default function RegisterSelectionPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 md:gap-6">
           <Link
             href="/auth/register/user"
-            className="group flex flex-col items-center gap-4 rounded-2xl border-2 border-transparent bg-white p-8 text-center shadow-sm transition-all hover:border-red-500 hover:shadow-md"
+            className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-transparent bg-white p-4 text-center shadow-sm transition-all hover:border-red-500 hover:shadow-md md:gap-4 md:p-8"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-red-50">
-              <User className="h-10 w-10 text-gray-400 transition-colors group-hover:text-red-500" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-red-50 md:h-20 md:w-20">
+              <User className="h-7 w-7 text-gray-400 transition-colors group-hover:text-red-500 md:h-10 md:w-10" />
             </div>
             <div>
-              <h2 className="mb-2 text-xl font-bold text-gray-800">일반 고객 회원</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="mb-1 text-base font-bold text-gray-800 md:mb-2 md:text-xl">일반 고객 회원</h2>
+              <p className="text-[11px] text-gray-500 md:text-sm">
                 힐링찾기를 통해 나와 맞는 테라피를
-                <br />
+                <br className="hidden md:block" />
                 찾고 이용하고 싶으신 분
               </p>
             </div>
-            <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-red-600 group-hover:text-white">
+            <div className="mt-2 rounded-full bg-gray-100 px-4 py-1.5 text-xs font-bold text-gray-700 transition-colors group-hover:bg-red-600 group-hover:text-white md:mt-4 md:px-6 md:py-2 md:text-sm">
               일반 가입하기
             </div>
           </Link>
 
           <Link
             href="/auth/register-owner"
-            className="group flex flex-col items-center gap-4 rounded-2xl border-2 border-transparent bg-white p-8 text-center shadow-sm transition-all hover:border-blue-500 hover:shadow-md"
+            className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-transparent bg-white p-4 text-center shadow-sm transition-all hover:border-blue-500 hover:shadow-md md:gap-4 md:p-8"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50">
-              <Store className="h-10 w-10 text-gray-400 transition-colors group-hover:text-blue-500" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50 md:h-20 md:w-20">
+              <Store className="h-7 w-7 text-gray-400 transition-colors group-hover:text-blue-500 md:h-10 md:w-10" />
             </div>
             <div>
-              <h2 className="mb-2 text-xl font-bold text-gray-800">입점사 (사장님)</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="mb-1 text-base font-bold text-gray-800 md:mb-2 md:text-xl">입점사 (사장님)</h2>
+              <p className="text-[11px] text-gray-500 md:text-sm">
                 운영 중인 내 업소를 등록하고
-                <br />
+                <br className="hidden md:block" />
                 더 많은 고객과 만나고 싶으신 분
               </p>
             </div>
-            <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+            <div className="mt-2 rounded-full bg-gray-100 px-4 py-1.5 text-xs font-bold text-gray-700 transition-colors group-hover:bg-blue-600 group-hover:text-white md:mt-4 md:px-6 md:py-2 md:text-sm">
               입점 신청하기
             </div>
           </Link>

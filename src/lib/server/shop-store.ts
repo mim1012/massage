@@ -219,9 +219,37 @@ export async function listShops(filters: ShopFilters = {}) {
     sortedShops.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  const premiumShops = sortedShops
-    .filter((shop) => shop.isPremium)
-    .sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
+  const premiumShopsRaw = sortedShops.filter((shop) => shop.isPremium);
+
+  // 전체 지역 조회 시 특정 지역 독점을 방지하기 위해 지역별 안배 로직 적용
+  let premiumShops: Shop[];
+  if (!filters.region || filters.region === 'all') {
+    const regionGroups = new Map<string, Shop[]>();
+    premiumShopsRaw.forEach((shop) => {
+      const list = regionGroups.get(shop.region) || [];
+      list.push(shop);
+      regionGroups.set(
+        shop.region,
+        list.sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999)),
+      );
+    });
+
+    const balanced: Shop[] = [];
+    const regions = Array.from(regionGroups.keys());
+    const maxLen = Math.max(...Array.from(regionGroups.values()).map((l) => l.length), 0);
+
+    for (let i = 0; i < maxLen; i++) {
+      for (const reg of regions) {
+        const list = regionGroups.get(reg);
+        if (list && list[i]) {
+          balanced.push(list[i]);
+        }
+      }
+    }
+    premiumShops = balanced;
+  } else {
+    premiumShops = premiumShopsRaw.sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
+  }
   const allRegularShops = sortedShops.filter((shop) => !shop.isPremium);
   const regularShops = regularLimit ? allRegularShops.slice(regularOffset, regularOffset + regularLimit) : allRegularShops;
 

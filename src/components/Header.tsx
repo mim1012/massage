@@ -145,13 +145,15 @@ export default function Header() {
       <div className="max-w-[1400px] mx-auto px-3">
         <div className="hidden md:block">
           <nav className="flex items-center border-t border-gray-200 -mx-3 px-3 overflow-x-auto scrollbar-hide bg-white">
-            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+            {REGIONS.map((region) => (
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code, theme: currentTheme })}
                 className={clsx(
-                  'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
-                  currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
+                  'shrink-0 border-b-2 px-4 py-3 text-[13px] font-bold transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                  currentRegion === region.code || (region.code === 'all' && !currentRegion)
+                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
+                    : 'border-transparent text-gray-600',
                 )}
               >
                 {region.label}
@@ -170,7 +172,7 @@ export default function Header() {
                     theme: theme.code,
                   })}
                   className={clsx(
-                    'shrink-0 border-b-2 px-3 py-2 text-sm transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                    'shrink-0 border-b-2 px-3 py-3 text-[13px] transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
                     currentTheme === theme.code
                       ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
                       : 'border-transparent text-gray-500',
@@ -182,7 +184,7 @@ export default function Header() {
           </nav>
 
           {currentRegion && DISTRICTS[currentRegion] && (
-            <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded grid grid-cols-8 gap-y-2 gap-x-2">
+            <div className="bg-gray-100/50 border-t border-b border-gray-200 p-2 mb-2 grid grid-cols-4 gap-1.5 md:grid-cols-8">
               {DISTRICTS[currentRegion].map((district) => (
                 <Link
                   key={district.code}
@@ -193,12 +195,12 @@ export default function Header() {
                     theme: currentTheme,
                   })}
                   className={clsx(
-                    'text-[13px] text-center rounded py-1',
+                    'text-[12px] text-center rounded py-1.5 transition-all shadow-sm',
                     district.code === 'all' && (!currentSubRegion || currentSubRegion === 'all')
-                      ? 'bg-[var(--portal-brand)] text-white font-bold'
+                      ? 'bg-[var(--portal-brand)] text-white font-black'
                       : currentSubRegion === district.code
-                        ? 'bg-[var(--portal-brand)] text-white font-bold'
-                        : 'text-gray-700 hover:bg-gray-200',
+                        ? 'bg-[var(--portal-brand)] text-white font-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-100',
                   )}
                 >
                   {district.label}

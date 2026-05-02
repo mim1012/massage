@@ -83,6 +83,27 @@ export default function AdminShopsPage() {
     }
   }
 
+  async function updatePremiumOrder(shop: AdminShopListItem, order: number) {
+    if (shop.premiumOrder === order) return;
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/shops/${shop.id}/premium`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isPremium: true,
+          premiumOrder: order,
+        }),
+      });
+      if (!response.ok) throw new Error('순서 변경 실패');
+      await loadShops();
+    } catch (updateError) {
+      setError('프리미엄 순서를 변경하지 못했습니다.');
+      console.error(updateError);
+    }
+  }
+
   const filteredShops = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -175,16 +196,27 @@ export default function AdminShopsPage() {
                       </span>
                     </td>
                     <td data-label="AD" className="px-4 py-2 text-center">
-                      <button
-                        onClick={() => void togglePremium(shop)}
-                        className={clsx(
-                          'rounded p-1 text-white transition-colors',
-                          shop.isPremium ? 'bg-amber-500' : 'bg-gray-300 hover:bg-gray-400',
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => void togglePremium(shop)}
+                          className={clsx(
+                            'rounded p-1 text-white transition-colors',
+                            shop.isPremium ? 'bg-amber-500' : 'bg-gray-300 hover:bg-gray-400',
+                          )}
+                          title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
+                        >
+                          <Crown className="h-3.5 w-3.5" />
+                        </button>
+                        {shop.isPremium && (
+                          <input
+                            type="number"
+                            defaultValue={shop.premiumOrder ?? 0}
+                            onBlur={(e) => updatePremiumOrder(shop, parseInt(e.target.value))}
+                            className="w-10 rounded border border-amber-200 bg-amber-50 text-center text-[10px] font-bold text-amber-700 outline-none focus:border-amber-500"
+                            title="노출 순서 (낮을수록 먼저 노출)"
+                          />
                         )}
-                        title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
-                      >
-                        <Crown className="h-3.5 w-3.5" />
-                      </button>
+                      </div>
                     </td>
                     <td data-label="업소명" className="px-4 py-2 font-bold text-gray-800">
                       <Link href={`/admin/shops/${shop.id}`} className="hover:text-[#D4A373] hover:underline">
