@@ -6,6 +6,7 @@ import { DISTRICTS } from '@/lib/catalog';
 import { buildShopBrowseHref, getShopBrowseLabel } from '@/lib/browse-context';
 import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
+import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
 import { getShopBySlug } from '@/lib/server/shop-store';
 
 interface Props {
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${data.shop.name} - ${data.shop.regionLabel} ${data.shop.themeLabel}`,
-    description: data.shop.description.slice(0, 155),
+    description: stripShopDescriptionToText(data.shop.description).slice(0, 155),
   };
 }
 
@@ -64,6 +65,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   }
 
   const { shop, reviews } = data;
+  const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
   const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
   const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
@@ -145,7 +147,10 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>
-            <p className="text-sm leading-relaxed text-gray-600">{shop.description}</p>
+            <div
+              className="prose prose-sm max-w-none text-gray-600 prose-img:rounded-2xl prose-img:shadow-sm prose-p:leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: shopDescriptionHtml }}
+            />
             {shop.tags.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1">
                 {shop.tags.map((tag) => (

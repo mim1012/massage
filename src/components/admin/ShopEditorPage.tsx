@@ -19,6 +19,8 @@ import clsx from 'clsx';
 import { createSubmissionLock } from '@/lib/client/submission-lock';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import type { Course, Shop, User } from '@/lib/types';
+import RichTextEditor from '@/components/admin/RichTextEditor';
+import { normalizeShopDescription } from '@/lib/shop-description';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -267,6 +269,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     try {
       const nextShop: Shop = {
         ...form,
+        description: normalizeShopDescription(form.description),
         courses,
         tags: tagsStr
           .split(',')
@@ -413,13 +416,11 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
             <h2 className="border-b border-gray-100 pb-2 text-base font-black text-gray-800">② 상세 정보</h2>
 
             <div>
-              <label className={labelClassName}>상세 설명</label>
-              <textarea
-                rows={5}
+              <RichTextEditor
+                label="상세 설명"
                 value={form.description}
-                onChange={(event) => setForm({ ...form, description: event.target.value })}
-                className={`${inputClassName} resize-none`}
-                placeholder="업소 소개, 특장점, 서비스 안내 등"
+                onChange={(description) => setForm({ ...form, description })}
+                helperText="입력칸을 크게 확장했습니다. 글자 색상, 크기, 글꼴, 좌/중/우 정렬, 본문 이미지 첨부를 사용할 수 있습니다."
               />
             </div>
 
@@ -756,6 +757,16 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <div className="flex gap-2"><MapPin className="h-4 w-4 shrink-0 text-gray-400" /><span className="text-xs">{form.address || '-'}</span></div>
                 </div>
               </div>
+
+              {form.description ? (
+                <div className="mt-4">
+                  <p className="mb-2 border-b pb-1 text-xs font-bold text-gray-500">상세 설명 미리보기</p>
+                  <div
+                    className="prose prose-sm max-w-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-gray-700 prose-img:rounded-xl prose-img:shadow-sm"
+                    dangerouslySetInnerHTML={{ __html: normalizeShopDescription(form.description) }}
+                  />
+                </div>
+              ) : null}
 
               {courses.length > 0 ? (
                 <div className="mt-4">

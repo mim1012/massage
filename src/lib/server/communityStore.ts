@@ -28,6 +28,7 @@ import {
   normalizeSiteSettings,
 } from '@/lib/site-content-defaults';
 import { mapShop, shopInclude } from '@/lib/server/shop-store';
+import { normalizeShopDescription } from '@/lib/shop-description';
 
 const SITE_SETTINGS_ID = 'default';
 const BOARD_LANDING_CACHE_REVALIDATE_SECONDS = 30;
@@ -402,7 +403,7 @@ function buildShopPayload(input: Shop) {
     theme: input.theme,
     themeLabel: input.themeLabel,
     tagline: input.tagline.trim(),
-    description: input.description.trim(),
+    description: normalizeShopDescription(input.description),
     address: input.address.trim(),
     phone: input.phone.trim(),
     hours: input.hours.trim(),
