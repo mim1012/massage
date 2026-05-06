@@ -223,7 +223,10 @@ export default function HomePageClient({
             >
               전체
             </Link>
-            {REGIONS.filter((region) => ['seoul', 'gyeonggi', 'incheon', 'busan', 'daegu', 'jeju'].includes(region.code)).map((region) => (
+            {['seoul', 'gyeonggi', 'incheon', 'busan', 'daegu', 'jeju']
+              .map((code) => REGIONS.find((region) => region.code === code))
+              .filter((region): region is NonNullable<typeof region> => Boolean(region))
+              .map((region) => (
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code })}
