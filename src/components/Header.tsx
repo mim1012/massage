@@ -79,7 +79,7 @@ export default function Header() {
             </div>
             <div className="hidden sm:block leading-tight">
               <span className="text-base font-black text-[var(--portal-brand)]">{siteSettings.siteName}</span>
-              <span className="text-gray-400 text-[10px] block -mt-0.5">{siteSettings.siteDescription}</span>
+              <span className="text-gray-400 text-[10px] block -mt-0.5">HEALING DIRECTORY</span>
             </div>
           </Link>
 
@@ -91,7 +91,7 @@ export default function Header() {
                 className="shrink-0 pl-2.5 pr-1 py-2 text-sm bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none"
               >
                 <option value="all">전체지역</option>
-                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                {REGIONS.filter((region) => ['seoul', 'gyeonggi', 'incheon', 'busan', 'daegu', 'jeju'].includes(region.code)).map((region) => (
                   <option key={region.code} value={region.code}>
                     {region.label}
                   </option>
@@ -177,7 +177,7 @@ export default function Header() {
               </Link>
             </li>
             <li>
-              <Link href="/top100" prefetch={false} className="block px-6 py-3 text-yellow-100 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <Link href="/top100" prefetch={false} className="block px-6 py-3 text-sky-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
                 인기순위
               </Link>
             </li>
