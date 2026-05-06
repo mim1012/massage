@@ -14,7 +14,6 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import HomeUtilityRail from '@/components/public/HomeUtilityRail';
-import MobileBannerRail from '@/components/public/MobileBannerRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { deriveStructuredSearchIntent } from '@/lib/structured-search';
@@ -245,10 +244,10 @@ export default function HomePageClient({
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-blue-600 text-base">👑</span>
-                <span className="text-sm font-black text-blue-800">PREMIUM 추천업소</span>
-                <div className="h-px flex-1 bg-blue-200" />
-                <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-500 border border-blue-100">광고 · 최대 4개</span>
+                <span className="text-[var(--portal-brand)] text-base">👑</span>
+                <span className="text-sm font-black text-[var(--portal-brand-dark)]">PREMIUM 추천업소</span>
+                <div className="h-px flex-1 bg-[color-mix(in_srgb,var(--portal-brand)_25%,white)]" />
+                <span className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-1.5 py-0.5 text-[10px] text-[var(--portal-brand)]">광고 · 최대 4개</span>
               </div>
 
               <div className="premium-shop-grid">
@@ -262,10 +261,10 @@ export default function HomePageClient({
                       theme: selectedTheme !== 'all' ? selectedTheme : undefined,
                     })}
                     prefetch={false}
-                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-blue-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-blue-500"
+                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
                   >
                     <div
-                      className="premium-shop-media flex aspect-[4/3] shrink-0 items-center justify-center border-blue-100 bg-gradient-to-br from-blue-100 to-sky-50 bg-cover bg-center"
+                      className="premium-shop-media flex aspect-[4/3] shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white bg-cover bg-center"
                       style={shop.bannerUrl?.trim() ? { backgroundImage: `url(${shop.bannerUrl})` } : undefined}
                     >
                       {!shop.bannerUrl?.trim() ? (
@@ -276,14 +275,14 @@ export default function HomePageClient({
                       <div className="mb-2 flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center gap-1.5">
-                            <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
+                            <span className="rounded bg-[var(--portal-brand)] px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
                             <h3 className="truncate text-base font-bold text-gray-900 sm:text-lg">{shop.name}</h3>
                           </div>
                           <p className="line-clamp-1 text-xs text-gray-500 sm:text-sm">{shop.tagline}</p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
-                          <Star className="h-4 w-4 fill-blue-500 text-blue-500" />
-                          <span className="text-sm font-bold text-blue-700">{formatRating(shop.rating)}</span>
+                        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-2 py-1">
+                          <Star className="h-4 w-4 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
+                          <span className="text-sm font-bold text-[var(--portal-brand-dark)]">{formatRating(shop.rating)}</span>
                         </div>
                       </div>
                       <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
@@ -414,7 +413,6 @@ export default function HomePageClient({
             )}
           </div>
 
-          <MobileBannerRail />
 
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold text-slate-800">{initialHomeSeo.section1Title}</h1>

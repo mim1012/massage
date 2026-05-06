@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const ipt =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all focus:border-[#D4A373] focus:outline-none focus:ring-1 focus:ring-[#D4A373]/20';
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all focus:border-[var(--portal-brand)] focus:outline-none focus:ring-1 focus:ring-[var(--portal-brand)]/20';
   const lbl = 'mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-700';
 
   useEffect(() => {
@@ -237,7 +237,7 @@ export default function AdminSettingsPage() {
     {
       key: 'section1',
       label: '첫 번째 블록',
-      color: 'text-[#D4A373]',
+      color: 'text-[var(--portal-brand)]',
       title: seoForm.section1Title,
       content: seoForm.section1Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section1Title: value })),
@@ -246,7 +246,7 @@ export default function AdminSettingsPage() {
     {
       key: 'section2',
       label: '두 번째 블록',
-      color: 'text-[#D4A373]',
+      color: 'text-[var(--portal-brand)]',
       title: seoForm.section2Title,
       content: seoForm.section2Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section2Title: value })),
@@ -255,7 +255,7 @@ export default function AdminSettingsPage() {
     {
       key: 'section3',
       label: '세 번째 블록',
-      color: 'text-blue-600',
+      color: 'text-[var(--portal-brand)]',
       title: seoForm.section3Title,
       content: seoForm.section3Content,
       setTitle: (value: string) => setSeoForm((current) => ({ ...current, section3Title: value })),
@@ -283,7 +283,7 @@ export default function AdminSettingsPage() {
     <div className="max-w-[1200px] space-y-10 pb-10">
       <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-gray-200 bg-gray-50/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <Settings className="h-5 w-5 text-[#D4A373]" /> 사이트 통합 관리 설정
+          <Settings className="h-5 w-5 text-[var(--portal-brand)]" /> 사이트 통합 관리 설정
         </h1>
         <div className="flex items-center gap-2">
           {dirtyState.hasAnyChanges ? (
@@ -313,7 +313,7 @@ export default function AdminSettingsPage() {
             disabled={isSaving || !dirtyState.hasAnyChanges}
             className={clsx(
               'flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-bold text-white shadow-md transition-all active:scale-95',
-              isSaving || !dirtyState.hasAnyChanges ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+              isSaving || !dirtyState.hasAnyChanges ? 'cursor-not-allowed bg-gray-400' : 'bg-[var(--portal-brand)] hover:bg-[var(--portal-brand-hover)]',
             )}
           >
             <Save className={clsx('h-4 w-4', isSaving && 'animate-spin')} />
@@ -442,7 +442,7 @@ export default function AdminSettingsPage() {
       <hr className="border-gray-200" />
 
       <section className="space-y-6">
-        <div className="flex items-center gap-2 border-l-4 border-[#D4A373] pl-3">
+        <div className="flex items-center gap-2 border-l-4 border-[var(--portal-brand)] pl-3">
           <Layout className="h-5 w-5 text-gray-800" />
           <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
           {dirtyState.hasSeoChanges ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">수정됨</span> : null}
@@ -521,7 +521,7 @@ export default function AdminSettingsPage() {
                       className={clsx(
                         'flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all active:scale-95',
                         previewSlug === doc.slug
-                          ? 'border-[#D4A373] bg-[#FEFAE0] text-[#8A6338]'
+                          ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand-dark)]'
                           : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50',
                       )}
                     >
@@ -534,7 +534,7 @@ export default function AdminSettingsPage() {
                       disabled={saving}
                       className={clsx(
                         'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95',
-                        saving ? 'cursor-not-allowed bg-gray-400' : 'bg-[#D4A373] hover:bg-[#C29262]',
+                        saving ? 'cursor-not-allowed bg-gray-400' : 'bg-[var(--portal-brand)] hover:bg-[var(--portal-brand-hover)]',
                       )}
                     >
                       <Save className={clsx('h-3.5 w-3.5', saving && 'animate-spin')} />
@@ -627,8 +627,8 @@ export default function AdminSettingsPage() {
       </section>
 
       {previewDocument ? (
-        <section className="rounded-xl border border-[#D4A373]/30 bg-[#FFFDF8] p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-[#8A6338]">
+        <section className="rounded-xl border border-[var(--portal-brand)]/30 bg-[white] p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-[var(--portal-brand-dark)]">
             <Eye className="h-4 w-4" />
             문서 미리보기
           </div>
@@ -662,9 +662,9 @@ export default function AdminSettingsPage() {
         </section>
       ) : null}
 
-      <div className="flex gap-3 rounded-xl border border-[#D4A373]/20 bg-[#FEFAE0] p-4">
-        <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#D4A373]" />
-        <div className="text-xs leading-relaxed text-[#5F4B32]">
+      <div className="flex gap-3 rounded-xl border border-[var(--portal-brand)]/20 bg-[var(--portal-brand-soft)] p-4">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--portal-brand)]" />
+        <div className="text-xs leading-relaxed text-[var(--color-text-primary)]">
           <p className="mb-1 font-bold">관리 지침</p>
           <p>
             1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의

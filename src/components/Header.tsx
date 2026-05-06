@@ -9,7 +9,6 @@ import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
 import { useAuthSession } from '@/lib/use-auth-session';
 import { getMyHref, getMyLabel } from '@/lib/auth/navigation';
-import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
 
 export default function Header() {
@@ -394,10 +393,6 @@ export default function Header() {
                 </div>
               </div>
             )}
-            <div className="mt-3 border-t border-gray-100 pt-3">
-              <p className="mb-2 text-xs font-bold text-gray-400">광고/입점</p>
-              <SidebarPromoBanners mode="inline" onNavigate={() => setMobileMenuOpen(false)} />
-            </div>
           </div>
         </div>
       )}

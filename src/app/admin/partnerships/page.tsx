@@ -111,7 +111,7 @@ export default function AdminPartnershipsPage() {
       case 'pending':
         return <span className="rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-bold text-yellow-700">접수대기</span>;
       case 'contacted':
-        return <span className="rounded-full bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-700">상담중</span>;
+        return <span className="rounded-full bg-[var(--portal-brand-soft)] px-2 py-1 text-[11px] font-bold text-[var(--portal-brand-dark)]">상담중</span>;
       case 'completed':
         return <span className="rounded-full bg-green-100 px-2 py-1 text-[11px] font-bold text-green-700">완료</span>;
     }

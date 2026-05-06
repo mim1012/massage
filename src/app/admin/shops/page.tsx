@@ -104,11 +104,11 @@ export default function AdminShopsPage() {
     <div className="max-w-[1200px] space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <Store className="h-5 w-5 text-[#D4A373]" /> 업소 목록 관리
+          <Store className="h-5 w-5 text-[var(--portal-brand)]" /> 업소 목록 관리
         </h1>
         <Link
           href="/admin/shops/new"
-          className="flex items-center gap-1 rounded bg-[#D4A373] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[#C29262]"
+          className="flex items-center gap-1 rounded bg-[var(--portal-brand)] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[var(--portal-brand-hover)]"
         >
           <Plus className="h-4 w-4" /> 업소 등록
         </Link>
@@ -122,13 +122,13 @@ export default function AdminShopsPage() {
             placeholder="업소명, 지역, 전화번호 검색"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded border border-gray-300 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-[#D4A373]"
+            className="w-full rounded border border-gray-300 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-[var(--portal-brand)]"
           />
         </div>
         <select
           value={regionFilter}
           onChange={(event) => setRegionFilter(event.target.value)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#D4A373]"
+          className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[var(--portal-brand)]"
         >
           {REGIONS.map((region) => (
             <option key={region.code} value={region.code}>
@@ -187,7 +187,7 @@ export default function AdminShopsPage() {
                       </button>
                     </td>
                     <td data-label="업소명" className="px-4 py-2 font-bold text-gray-800">
-                      <Link href={`/admin/shops/${shop.id}`} className="hover:text-[#D4A373] hover:underline">
+                      <Link href={`/admin/shops/${shop.id}`} className="hover:text-[var(--portal-brand)] hover:underline">
                         {shop.name}
                       </Link>
                       {!shop.isVisible ? (
@@ -202,7 +202,7 @@ export default function AdminShopsPage() {
                     <td data-label="관리" className="px-4 py-2 text-center whitespace-nowrap">
                       <Link
                         href={`/admin/shops/${shop.id}`}
-                        className="inline-flex items-center gap-1 rounded border border-[#D4A373]/30 bg-white px-2 py-1 text-xs font-bold text-[#D4A373] shadow-sm hover:bg-[#FEFAE0]"
+                        className="inline-flex items-center gap-1 rounded border border-[var(--portal-brand)]/30 bg-white px-2 py-1 text-xs font-bold text-[var(--portal-brand)] shadow-sm hover:bg-[var(--portal-brand-soft)]"
                       >
                         <Edit2 className="h-3 w-3" /> 버튼 수정
                       </Link>

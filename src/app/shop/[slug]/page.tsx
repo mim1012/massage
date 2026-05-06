@@ -49,7 +49,7 @@ const themeEmoji: Record<string, string> = {
 const bgColors = [
   'from-orange-200 to-amber-100',
   'from-rose-200 to-pink-100',
-  'from-[#FEFAE0] to-[#FCF9F5]',
+  'from-[var(--portal-brand-soft)] to-[var(--portal-bg)]',
   'from-amber-200 to-orange-100',
   'from-yellow-200 to-amber-100',
 ];
@@ -103,11 +103,11 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-3">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-[#D4A373]">
+        <Link href="/" className="hover:text-[var(--portal-brand)]">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href={browseHref} className="hover:text-[#D4A373]">
+        <Link href={browseHref} className="hover:text-[var(--portal-brand)]">
           {browseLabel}
         </Link>
         <ChevronRight className="h-3 w-3" />
@@ -178,7 +178,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
                       {course.description ? <p className="mt-0.5 text-[11px] text-gray-400">{course.description}</p> : null}
                     </td>
                     <td className="text-center text-gray-500">{course.duration}</td>
-                    <td className="text-right font-bold text-[#D4A373]">{course.price}</td>
+                    <td className="text-right font-bold text-[var(--portal-brand)]">{course.price}</td>
                   </tr>
                 ))}
               </tbody>
@@ -188,7 +188,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
               <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
-              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[#D4A373] hover:underline">
+              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[var(--portal-brand)] hover:underline">
                 전체보기 &raquo;
               </Link>
             </div>
@@ -225,7 +225,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
         <div className="space-y-3">
           <a
             href={`tel:${shop.phone}`}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4A373] py-3 text-sm font-bold text-white transition-colors active:scale-95 hover:bg-[#C29262]"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--portal-brand)] py-3 text-sm font-bold text-white transition-colors active:scale-95 hover:bg-[var(--portal-brand-hover)]"
           >
             <Phone className="h-4 w-4" />
             지금 전화하기
@@ -235,23 +235,23 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             <h3 className="mb-3 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📌 영업 정보</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">전화번호</p>
-                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[#D4A373]">
+                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[var(--portal-brand)]">
                     {shop.phone}
                   </a>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">영업시간</p>
                   <p className="text-gray-800">{shop.hours}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">주소</p>
                   <p className="text-gray-800">{shop.address}</p>
@@ -262,11 +262,11 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
 
           <Link
             href={`/board/qna?shopId=${shop.id}`}
-            className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:border-[#D4A373]"
+            className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:border-[var(--portal-brand)]"
           >
             <div className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-[#D4A373]" />
-              <span className="text-sm font-semibold text-gray-800 group-hover:text-[#D4A373]">Q&A 문의</span>
+              <MessageCircle className="h-4 w-4 text-[var(--portal-brand)]" />
+              <span className="text-sm font-semibold text-gray-800 group-hover:text-[var(--portal-brand)]">Q&A 문의</span>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400" />
           </Link>

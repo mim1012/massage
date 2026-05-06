@@ -266,7 +266,7 @@ export default function PartnershipPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-4">
-              <div className="rounded-full bg-yellow-400 p-2 text-white">💬</div>
+              <div className="rounded-full bg-[var(--portal-brand)] p-2 text-white">💬</div>
               <div className="text-left">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Kakao ID</p>
                 <p className="text-sm font-black text-gray-800">healing_help</p>

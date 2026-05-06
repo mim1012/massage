@@ -179,7 +179,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
         <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filtered.length}건 / 전체 {qnaList.length}건</div>
       </div>
 
-      <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+      <div className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,white)] bg-[var(--portal-brand-soft)] px-3 py-2 text-xs text-[var(--portal-brand-dark)]">
         {description} 여러 댓글이 제공되면 스레드 형태로 표시되며, 기존 단일 답변 데이터도 함께 호환됩니다.
       </div>
 

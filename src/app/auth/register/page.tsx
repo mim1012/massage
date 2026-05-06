@@ -39,7 +39,7 @@ export default function RegisterSelectionPage() {
             href="/auth/register-owner"
             className="group flex flex-col items-center gap-4 rounded-2xl border-2 border-transparent bg-white p-8 text-center shadow-sm transition-all hover:border-blue-500 hover:shadow-md"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-blue-50">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 transition-colors group-hover:bg-[var(--portal-brand-soft)]">
               <Store className="h-10 w-10 text-gray-400 transition-colors group-hover:text-blue-500" />
             </div>
             <div>
@@ -50,7 +50,7 @@ export default function RegisterSelectionPage() {
                 더 많은 고객과 만나고 싶으신 분
               </p>
             </div>
-            <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+            <div className="mt-4 rounded-full bg-gray-100 px-6 py-2 text-sm font-bold text-gray-700 transition-colors group-hover:bg-[var(--portal-brand)] group-hover:text-white">
               입점 신청하기
             </div>
           </Link>

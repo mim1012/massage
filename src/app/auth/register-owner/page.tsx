@@ -81,7 +81,7 @@ export default function RegisterOwnerPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-md space-y-6 rounded-xl bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]">
             <Store className="h-8 w-8" />
           </div>
           <div>

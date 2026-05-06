@@ -134,7 +134,7 @@ export default function AdminReviewsPage() {
         </select>
       </div>
 
-      <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+      <div className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,white)] bg-[var(--portal-brand-soft)] px-3 py-2 text-xs text-[var(--portal-brand-dark)]">
         리뷰는 현재 삭제만 가능합니다. 기존 관리자 삭제 API 동작은 그대로 유지됩니다.
       </div>
 

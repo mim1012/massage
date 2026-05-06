@@ -697,7 +697,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           <div className="space-y-4">
             <div className="rounded-lg border border-gray-200 bg-white p-5">
               <h2 className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-2 text-base font-black text-gray-800">
-                <Eye className="h-4 w-4 text-blue-500" /> 미리보기
+                <Eye className="h-4 w-4 text-[var(--portal-brand)]" /> 미리보기
               </h2>
 
               <div className="mb-6">
@@ -747,7 +747,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">업소명</span><span className="font-semibold">{form.name || '-'}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">지역</span><span>{form.regionLabel} {form.subRegionLabel}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">테마</span><span>{form.themeLabel}</span></div>
-                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">슬러그</span><span className="font-mono text-xs text-blue-600">/shop/{form.slug || '...'}</span></div>
+                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">슬러그</span><span className="font-mono text-xs text-[var(--portal-brand)]">/shop/{form.slug || '...'}</span></div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p className="border-b pb-1 text-xs font-bold text-gray-500">연락·운영</p>

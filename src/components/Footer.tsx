@@ -10,7 +10,7 @@ export default function Footer() {
   const socialItems = [
     { label: 'YT', href: '#', className: 'bg-[var(--portal-brand)]' },
     { label: 'IG', href: '#', className: 'bg-[var(--portal-brand-hover)]' },
-    { label: 'BL', href: '#', className: 'bg-sky-500' },
+    { label: 'BL', href: '#', className: 'bg-[var(--portal-blue-banner-hover)]' },
   ];
 
   return (

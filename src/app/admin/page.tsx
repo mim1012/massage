@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 const summaryCards = [
-  { label: '전체 업소', icon: Store, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { label: '전체 업소', icon: Store, color: 'text-[var(--portal-brand)]', bg: 'bg-[var(--portal-brand-soft)]' },
   { label: '프리미엄(AD)', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-  { label: '미답변 Q&A', icon: MessageCircle, color: 'text-[#D4A373]', bg: 'bg-[#FEFAE0]' },
+  { label: '미답변 Q&A', icon: MessageCircle, color: 'text-[var(--portal-brand)]', bg: 'bg-[var(--portal-brand-soft)]' },
   { label: '오늘 페이지뷰', icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
 ] as const;
 
@@ -68,9 +68,9 @@ export default async function AdminDashboardPage() {
         <section className="rounded border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-              <AlertCircle className="h-4 w-4 text-[#D4A373]" /> 처리 필요 Q&amp;A
+              <AlertCircle className="h-4 w-4 text-[var(--portal-brand)]" /> 처리 필요 Q&amp;A
             </h2>
-            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-[#D4A373]">
+            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-[var(--portal-brand)]">
               더보기
             </Link>
           </div>
@@ -78,7 +78,7 @@ export default async function AdminDashboardPage() {
             {(dashboard?.pendingQna ?? []).map((item) => (
               <div key={item.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="min-w-0 truncate pr-3 text-gray-700">{item.question}</span>
-                <Link href="/admin/qna" className="shrink-0 rounded bg-[#FEFAE0] px-2 py-1 text-[11px] text-[#D4A373]">
+                <Link href="/admin/qna" className="shrink-0 rounded bg-[var(--portal-brand-soft)] px-2 py-1 text-[11px] text-[var(--portal-brand)]">
                   답변하기
                 </Link>
               </div>
@@ -92,7 +92,7 @@ export default async function AdminDashboardPage() {
         <section className="rounded border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-              <TrendingUp className="h-4 w-4 text-blue-500" /> 최근 작성된 후기
+              <TrendingUp className="h-4 w-4 text-[var(--portal-brand)]" /> 최근 작성된 후기
             </h2>
           </div>
           <div className="divide-y divide-gray-100">

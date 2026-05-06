@@ -83,7 +83,7 @@ export default function AdminShell({
         }`}
       >
         <div className="flex items-center gap-2 border-b border-gray-200 p-4">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-[#D4A373]">
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-[var(--portal-brand)]">
             <span className="text-xs font-black text-white">힐</span>
           </div>
           <span className="text-sm font-bold text-gray-800">힐링 관리자</span>
@@ -98,7 +98,7 @@ export default function AdminShell({
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={`mb-1 flex items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
-                  isActive ? 'bg-[#FEFAE0] font-bold text-[#D4A373]' : 'text-gray-600 hover:bg-gray-100'
+                  isActive ? 'bg-[var(--portal-brand-soft)] font-bold text-[var(--portal-brand)]' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -117,7 +117,7 @@ export default function AdminShell({
             type="button"
             onClick={() => void handleLogout()}
             disabled={isLoggingOut}
-            className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-[#FEFAE0] hover:text-[#D4A373] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" />
             {isLoggingOut ? '로그아웃 중...' : '로그아웃'}

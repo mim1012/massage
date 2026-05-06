@@ -1,22 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --portal-bg: #FCF9F5;
-  --portal-text: #5F4B32;
-  --portal-brand: #D4A373;
-  --portal-brand-dark: #A78B71;
-  --portal-brand-hover: #C29262;
-  --portal-brand-soft: #FEFAE0;
-  --portal-gnb: #8B9A67;
-  --portal-gnb-hover: #7A8956;
-  --portal-blue-banner: #183b70;
-  --portal-blue-banner-border: #102a52;
-  --portal-blue-banner-hover: #1f4a8a;
-  --portal-premium-top: #fff9f0;
-  --portal-premium-border: #f59e0b;
-  --portal-rank: #eab308;
-  --portal-theme: #f97316;
-  --portal-support: #374151;
+  --portal-brand: #1E40AF;
+  --portal-brand-hover: #1E3A8A;
+  --portal-brand-dark: #172554;
+  --portal-brand-soft: #EFF6FF;
+
+  --portal-bg: #FFFFFF;
+  --portal-text: #0F172A;
+  --portal-gnb: #0F172A;
+  --portal-gnb-hover: #1E293B;
+
+  --portal-rank: #0EA5E9;
+  --portal-theme: #3B82F6;
+  --portal-support: #475569;
+
+  --portal-blue-banner: #1E3A8A;
+  --portal-blue-banner-hover: #1E40AF;
+  --portal-blue-banner-border: #2563EB;
+
+  --portal-premium-top: #F8FBFF;
+  --portal-premium-border: #2563EB;
+
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-dark: #1E3A8A;
+  --color-primary-soft: #EFF6FF;
+  --color-bg: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-premium: #FBBF24;
 }
 
 /* ===== 기본 설정 ===== */
@@ -72,12 +90,12 @@ body {
 
 /* 작은 광고 배너 슬롯 */
 .ad-slot {
-  background: linear-gradient(135deg, #f8f8f8, #eee);
-  border: 1px dashed #ccc;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px dashed var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--color-text-secondary);
   font-size: 11px;
   border-radius: 4px;
 }
@@ -94,7 +112,7 @@ body {
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
 }
 .banner-item:hover {
-  box-shadow: 0 4px 16px rgba(180,120,60,0.08);
+  box-shadow: 0 10px 25px rgba(30, 64, 175, 0.12);
   border-color: var(--portal-brand);
   transform: translateY(-2px);
 }
@@ -204,7 +222,7 @@ body {
 .mobile-premium-center {
   min-height: 86px;
   border: 2px solid #2563eb;
-  background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
+  background: linear-gradient(180deg, var(--portal-brand), var(--portal-brand-dark));
 }
 .mobile-ad-guide {
   border: 2px solid var(--portal-blue-banner-border);
@@ -212,15 +230,15 @@ body {
   color: #fff;
 }
 .mobile-partnership {
-  border: 2px solid #d1d5db;
-  background: #f8f9fa;
-  color: #1f2937;
+  border: 2px solid var(--color-border);
+  background: var(--portal-brand-soft);
+  color: var(--color-text-primary);
 }
 .mobile-empty-slot {
   min-height: 96px;
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
-  color: #9ca3af;
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  color: var(--color-text-secondary);
 }
 /* ===== 단계형 UI 스타일 ===== */
 .step-indicator {
@@ -233,7 +251,7 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #999;
+  color: var(--color-text-secondary);
   font-weight: 600;
 }
 .step-item.active {
@@ -276,7 +294,7 @@ body {
 }
 .draggable-item:active {
   cursor: grabbing;
-  background: #fef9c3;
+  background: var(--portal-brand-soft);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 

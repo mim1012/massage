@@ -25,14 +25,14 @@ const themeEmoji: Record<string, string> = {
 };
 
 const gradients = [
-  'from-blue-100 to-indigo-50',
-  'from-cyan-100 to-blue-50',
-  'from-indigo-100 to-blue-50',
-  'from-blue-50 to-slate-50',
-  'from-sky-100 to-blue-50',
-  'from-blue-100 to-sky-50',
-  'from-slate-100 to-blue-50',
-  'from-cyan-50 to-indigo-50',
+  'from-[var(--portal-brand-soft)] to-white',
+  'from-[color-mix(in_srgb,var(--portal-brand)_12%,white)] to-white',
+  'from-[color-mix(in_srgb,var(--portal-theme)_12%,white)] to-[var(--portal-brand-soft)]',
+  'from-white to-[var(--portal-brand-soft)]',
+  'from-[color-mix(in_srgb,var(--portal-rank)_10%,white)] to-white',
+  'from-[var(--portal-brand-soft)] to-[color-mix(in_srgb,var(--portal-theme)_8%,white)]',
+  'from-slate-50 to-[var(--portal-brand-soft)]',
+  'from-white to-[color-mix(in_srgb,var(--portal-brand)_10%,white)]',
 ];
 
 function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
@@ -45,8 +45,8 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
       href={detailHref}
       prefetch={false}
       className={clsx(
-        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-blue-300',
-        isPremium ? 'border-blue-300' : 'border-gray-200 border-opacity-70',
+        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[color-mix(in_srgb,var(--portal-brand)_35%,white)]',
+        isPremium ? 'border-[var(--portal-blue-banner-border)]' : 'border-gray-200 border-opacity-70',
       )}
     >
       <div
@@ -67,7 +67,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
         <div className="mb-1 flex items-start justify-between gap-1">
           <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{shop.name}</h3>
           {isPremium ? (
-            <span className="shrink-0 rounded bg-blue-600 px-1 py-0.5 text-[9px] font-black text-white">AD</span>
+            <span className="shrink-0 rounded bg-[var(--portal-brand)] px-1 py-0.5 text-[9px] font-black text-white">AD</span>
           ) : null}
         </div>
 
@@ -94,7 +94,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
 
         <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2">
           <div className="flex items-center gap-1 text-xs">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <Star className="h-3 w-3 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
             <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
           </div>
           {shop.courses[0] ? <span className="text-xs font-bold text-[var(--portal-brand)]">{shop.courses[0].price}~</span> : null}

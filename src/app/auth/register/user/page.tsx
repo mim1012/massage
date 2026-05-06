@@ -116,7 +116,7 @@ export default function RegisterUserPage() {
       <div className="w-full max-w-sm">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-[#D4A373]">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-[var(--portal-brand)]">
               <span className="text-lg font-black text-white">힐</span>
             </div>
             <h1 className="mb-1 text-lg font-black text-gray-800">일반 고객 회원가입</h1>
@@ -129,7 +129,7 @@ export default function RegisterUserPage() {
               value={form.nickname}
               onChange={(event) => setForm((current) => ({ ...current, nickname: event.target.value }))}
               placeholder="닉네임"
-              className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[#D4A373] focus:outline-none"
+              className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[var(--portal-brand)] focus:outline-none"
             />
             <input
               type="text"
@@ -137,7 +137,7 @@ export default function RegisterUserPage() {
               value={form.id}
               onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
               placeholder="아이디"
-              className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[#D4A373] focus:outline-none"
+              className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-[var(--portal-brand)] focus:outline-none"
             />
             <div className="relative">
               <input
@@ -148,7 +148,7 @@ export default function RegisterUserPage() {
                   setForm((current) => ({ ...current, password: event.target.value }))
                 }
                 placeholder="비밀번호 (8자 이상)"
-                className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-[#D4A373] focus:outline-none"
+                className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-[var(--portal-brand)] focus:outline-none"
               />
               <button
                 type="button"
@@ -169,7 +169,7 @@ export default function RegisterUserPage() {
                       setAgreements((current) => ({ ...current, terms: event.target.checked }));
                       setError(null);
                     }}
-                    className="accent-[#D4A373]"
+                    className="accent-[var(--portal-brand)]"
                   />
                   <span className="text-xs text-gray-500 transition-colors group-hover:text-gray-700">
                     [필수] 이용약관 동의
@@ -178,7 +178,7 @@ export default function RegisterUserPage() {
                 <button
                   type="button"
                   onClick={() => openModal('terms')}
-                  className="text-[11px] text-gray-400 underline hover:text-[#D4A373]"
+                  className="text-[11px] text-gray-400 underline hover:text-[var(--portal-brand)]"
                 >
                   보기
                 </button>
@@ -193,7 +193,7 @@ export default function RegisterUserPage() {
                       setAgreements((current) => ({ ...current, privacy: event.target.checked }));
                       setError(null);
                     }}
-                    className="accent-[#D4A373]"
+                    className="accent-[var(--portal-brand)]"
                   />
                   <span className="text-xs text-gray-500 transition-colors group-hover:text-gray-700">
                     [필수] 개인정보 수집 및 이용 동의
@@ -202,7 +202,7 @@ export default function RegisterUserPage() {
                 <button
                   type="button"
                   onClick={() => openModal('privacy')}
-                  className="text-[11px] text-gray-400 underline hover:text-[#D4A373]"
+                  className="text-[11px] text-gray-400 underline hover:text-[var(--portal-brand)]"
                 >
                   보기
                 </button>
@@ -216,7 +216,7 @@ export default function RegisterUserPage() {
                     onChange={(event) =>
                       setAgreements((current) => ({ ...current, marketing: event.target.checked }))
                     }
-                    className="accent-[#D4A373]"
+                    className="accent-[var(--portal-brand)]"
                   />
                   <span className="text-xs text-gray-500 transition-colors group-hover:text-gray-700">
                     [선택] 마케팅 정보 수신 동의
@@ -231,7 +231,7 @@ export default function RegisterUserPage() {
               className={clsx(
                 'w-full rounded py-2.5 text-sm font-bold shadow-sm transition-all active:scale-95',
                 isRequiredChecked
-                  ? 'bg-[#D4A373] text-white hover:bg-[#C29262]'
+                  ? 'bg-[var(--portal-brand)] text-white hover:bg-[var(--portal-brand-hover)]'
                   : 'cursor-not-allowed bg-gray-200 text-gray-400',
               )}
             >
@@ -244,7 +244,7 @@ export default function RegisterUserPage() {
             <span className="text-gray-400">이미 계정이 있으신가요? </span>
             <Link
               href="/auth/login"
-              className="font-semibold text-[#D4A373] transition-colors hover:underline"
+              className="font-semibold text-[var(--portal-brand)] transition-colors hover:underline"
             >
               로그인
             </Link>

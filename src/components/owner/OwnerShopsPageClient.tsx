@@ -40,7 +40,7 @@ export default function OwnerShopsPageClient({ initialShops }: { initialShops: A
         </Link>
       </div>
 
-      <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+      <div className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,white)] bg-[var(--portal-brand-soft)] px-3 py-2 text-xs text-[var(--portal-brand-dark)]">
         오너 계정으로 연결된 업소만 표시됩니다. 노출 여부와 프리미엄 상태는 관리자 승인 후 반영됩니다.
       </div>
 
