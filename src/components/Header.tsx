@@ -77,9 +77,9 @@ export default function Header() {
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--portal-brand)] shadow-sm">
               <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
             </div>
-            <div className="hidden sm:block leading-tight">
-              <span className="text-base font-black text-[var(--portal-brand)]">{siteSettings.siteName}</span>
-              <span className="text-gray-400 text-[10px] block -mt-0.5">HEALING DIRECTORY</span>
+            <div className="block leading-tight">
+              <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">{siteSettings.siteName}</span>
+              <span className="block -mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">HEALING DIRECTORY</span>
             </div>
           </Link>
 
@@ -147,6 +147,38 @@ export default function Header() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-gray-100 bg-white px-3 py-2 md:hidden">
+        {!isAuthed ? (
+          <div className="mx-auto flex max-w-[1400px] items-center justify-end gap-2 text-[11px]">
+            <Link href="/auth/login" prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
+              로그인
+            </Link>
+            <Link href="/auth/register" prefetch={false} className="rounded bg-[var(--portal-brand)] px-2.5 py-1 font-semibold text-white">
+              회원가입
+            </Link>
+            <Link href="/admin" prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
+              관리자
+            </Link>
+          </div>
+        ) : (
+          <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 text-[11px]">
+            <span className="truncate font-semibold text-gray-500">{user?.name}</span>
+            <div className="flex items-center gap-2">
+              <Link href={myHref} prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
+                {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
+              </Link>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                className="rounded border border-gray-300 px-2.5 py-1 text-gray-600"
+              >
+                {loggingOut ? '로그아웃 중...' : '로그아웃'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="hidden border-t border-[var(--portal-gnb-hover)] bg-[var(--portal-gnb)] shadow-md md:block">
@@ -314,12 +346,12 @@ export default function Header() {
               ))}
             </div>
             {!isAuthed ? (
-              <div className="flex gap-2 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-2">
                 <Link
                   href="/auth/login"
                   prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+                  className="text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
                 >
                   로그인
                 </Link>
@@ -327,9 +359,17 @@ export default function Header() {
                   href="/auth/register"
                   prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 rounded bg-[var(--portal-brand)] py-2 text-center text-xs font-semibold text-white hover:bg-[var(--portal-brand-hover)]"
+                  className="rounded bg-[var(--portal-brand)] py-2 text-center text-xs font-semibold text-white hover:bg-[var(--portal-brand-hover)]"
                 >
                   회원가입
+                </Link>
+                <Link
+                  href="/admin"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+                >
+                  관리자
                 </Link>
               </div>
             ) : (
