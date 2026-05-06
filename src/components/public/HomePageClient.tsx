@@ -223,7 +223,7 @@ export default function HomePageClient({
             >
               전체
             </Link>
-            {REGIONS.filter((region) => region.code !== 'all').slice(0, 6).map((region) => (
+            {REGIONS.filter((region) => ['seoul', 'gyeonggi', 'incheon', 'busan', 'daegu', 'jeju'].includes(region.code)).map((region) => (
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code })}
