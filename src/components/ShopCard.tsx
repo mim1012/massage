@@ -25,14 +25,14 @@ const themeEmoji: Record<string, string> = {
 };
 
 const gradients = [
-  'from-orange-100 to-amber-50',
-  'from-rose-100 to-pink-50',
-  'from-[#FEFAE0] to-white',
-  'from-yellow-100 to-amber-50',
-  'from-amber-100 to-orange-50',
-  'from-[#FEFAE0] to-[#FCF9F5]',
-  'from-peach-100 to-pink-50',
-  'from-lime-100 to-green-50',
+  'from-blue-100 to-indigo-50',
+  'from-cyan-100 to-blue-50',
+  'from-indigo-100 to-blue-50',
+  'from-blue-50 to-slate-50',
+  'from-sky-100 to-blue-50',
+  'from-blue-100 to-sky-50',
+  'from-slate-100 to-blue-50',
+  'from-cyan-50 to-indigo-50',
 ];
 
 function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
@@ -45,8 +45,8 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
       href={detailHref}
       prefetch={false}
       className={clsx(
-        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
-        isPremium ? 'border-[var(--portal-premium-border)]' : 'border-gray-200 border-opacity-70',
+        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-blue-300',
+        isPremium ? 'border-blue-300' : 'border-gray-200 border-opacity-70',
       )}
     >
       <div
@@ -67,7 +67,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
         <div className="mb-1 flex items-start justify-between gap-1">
           <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{shop.name}</h3>
           {isPremium ? (
-            <span className="shrink-0 rounded bg-[var(--portal-premium-border)] px-1 py-0.5 text-[9px] font-black text-white">AD</span>
+            <span className="shrink-0 rounded bg-blue-600 px-1 py-0.5 text-[9px] font-black text-white">AD</span>
           ) : null}
         </div>
 

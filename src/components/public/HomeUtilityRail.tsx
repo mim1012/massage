@@ -16,9 +16,9 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
       <Link
         href="/board/partnership"
         prefetch={false}
-        className="group block cursor-pointer overflow-hidden rounded-lg border-2 border-blue-600 bg-gradient-to-b from-blue-700 to-blue-900 text-white shadow-sm transition-shadow hover:shadow-md"
+        className="group block cursor-pointer overflow-hidden rounded-lg border-2 border-blue-700 bg-gradient-to-b from-blue-800 to-slate-900 text-white shadow-sm transition-shadow hover:shadow-md"
       >
-        <div className="animate-pulse bg-pink-500 py-1 text-center text-[11px] font-black text-white">프리미엄 입점센터</div>
+        <div className="bg-sky-500 py-1 text-center text-[11px] font-black text-white">프리미엄 입점센터</div>
         <div className="p-2 text-center">
           <div className="text-[10px] text-blue-200">전국 제휴업소</div>
           <div className="mt-1 text-sm font-black leading-tight transition-transform group-hover:scale-105">
@@ -36,14 +36,14 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
             : 'grid gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm sm:grid-cols-3'
         }
       >
-        {isSidebar ? <div className="bg-gray-100 py-1.5 text-[11px] font-bold text-gray-700">QUICK MENU</div> : null}
+        {isSidebar ? <div className="bg-slate-100 py-1.5 text-[11px] font-bold text-slate-700">QUICK MENU</div> : null}
         <Link
           href={buildBrowseHref({ mode: 'region' })}
           prefetch={false}
           className={
             isSidebar
-              ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'
-              : 'group flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-3 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'
+              ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-blue-50 hover:text-[var(--portal-brand)]'
+              : 'group flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-3 transition-colors hover:bg-blue-50 hover:text-[var(--portal-brand)]'
           }
         >
           <span className="text-xl transition-transform group-hover:-translate-y-0.5">📋</span>
@@ -57,8 +57,8 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
           prefetch={false}
           className={
             isSidebar
-              ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'
-              : 'group flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-3 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]'
+              ? 'group flex flex-col items-center gap-1 py-2 transition-colors hover:bg-blue-50 hover:text-[var(--portal-brand)]'
+              : 'group flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-3 transition-colors hover:bg-blue-50 hover:text-[var(--portal-brand)]'
           }
         >
           <span className="text-xl transition-transform group-hover:-translate-y-0.5">🏆</span>
@@ -89,7 +89,7 @@ export default function HomeUtilityRail({ mode, directoryMode = 'region' }: Home
       {isSidebar ? (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex w-full items-center justify-center gap-1 rounded-lg bg-gray-800 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-gray-700"
+          className="flex w-full items-center justify-center gap-1 rounded-lg bg-slate-800 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-700"
         >
           ▲ TOP
         </button>

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  Crown,
   LayoutGrid,
   List as ListIcon,
   MapPin,
@@ -197,7 +196,7 @@ export default function HomePageClient({
         <Sidebar />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] to-[var(--portal-brand)] p-4 text-white shadow-md">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-4 text-white shadow-md">
             <div>
               <p className="text-base font-black">{initialSiteSettings.heroMainText}</p>
               <p className="mt-0.5 text-sm text-white/80">{initialSiteSettings.heroSubText}</p>
@@ -224,7 +223,7 @@ export default function HomePageClient({
             >
               전체
             </Link>
-            {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+            {REGIONS.filter((region) => region.code !== 'all').slice(0, 6).map((region) => (
               <Link
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code })}
@@ -243,10 +242,10 @@ export default function HomePageClient({
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
               <div className="mb-3 flex items-center gap-2">
-                <Crown className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-black text-amber-700">PREMIUM 추천업소</span>
-                <div className="h-px flex-1 bg-amber-200" />
-                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-500">광고 · 최대 4개</span>
+                <span className="text-blue-600 text-base">👑</span>
+                <span className="text-sm font-black text-blue-800">PREMIUM 추천업소</span>
+                <div className="h-px flex-1 bg-blue-200" />
+                <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-500 border border-blue-100">광고 · 최대 4개</span>
               </div>
 
               <div className="premium-shop-grid">
@@ -260,10 +259,10 @@ export default function HomePageClient({
                       theme: selectedTheme !== 'all' ? selectedTheme : undefined,
                     })}
                     prefetch={false}
-                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-amber-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
+                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-blue-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-blue-500"
                   >
                     <div
-                      className="premium-shop-media flex aspect-[4/3] shrink-0 items-center justify-center border-amber-100 bg-gradient-to-br from-amber-100 to-orange-50 bg-cover bg-center"
+                      className="premium-shop-media flex aspect-[4/3] shrink-0 items-center justify-center border-blue-100 bg-gradient-to-br from-blue-100 to-sky-50 bg-cover bg-center"
                       style={shop.bannerUrl?.trim() ? { backgroundImage: `url(${shop.bannerUrl})` } : undefined}
                     >
                       {!shop.bannerUrl?.trim() ? (
@@ -274,14 +273,14 @@ export default function HomePageClient({
                       <div className="mb-2 flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center gap-1.5">
-                            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
+                            <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
                             <h3 className="truncate text-base font-bold text-gray-900 sm:text-lg">{shop.name}</h3>
                           </div>
                           <p className="line-clamp-1 text-xs text-gray-500 sm:text-sm">{shop.tagline}</p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1">
-                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-                          <span className="text-sm font-bold text-amber-700">{formatRating(shop.rating)}</span>
+                        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
+                          <Star className="h-4 w-4 fill-blue-500 text-blue-500" />
+                          <span className="text-sm font-bold text-blue-700">{formatRating(shop.rating)}</span>
                         </div>
                       </div>
                       <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
@@ -415,13 +414,13 @@ export default function HomePageClient({
           <MobileBannerRail />
 
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
-            <h1 className="mb-3 text-xl font-bold">{initialHomeSeo.section1Title}</h1>
+            <h1 className="mb-3 text-xl font-bold text-slate-800">{initialHomeSeo.section1Title}</h1>
             <p className="mb-6 text-sm leading-relaxed text-gray-600">{initialHomeSeo.section1Content}</p>
 
-            <h2 className="mb-2 text-lg font-bold">{initialHomeSeo.section2Title}</h2>
+            <h2 className="mb-2 text-lg font-bold text-slate-800">{initialHomeSeo.section2Title}</h2>
             <p className="mb-6 text-sm leading-relaxed text-gray-600">{initialHomeSeo.section2Content}</p>
 
-            <h2 className="mb-2 text-lg font-bold">{initialHomeSeo.section3Title}</h2>
+            <h2 className="mb-2 text-lg font-bold text-slate-800">{initialHomeSeo.section3Title}</h2>
             <p className="text-sm leading-relaxed text-gray-600">{initialHomeSeo.section3Content}</p>
           </div>
 

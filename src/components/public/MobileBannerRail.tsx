@@ -10,7 +10,7 @@ export default function MobileBannerRail() {
         prefetch={false}
         className="mobile-banner-card mobile-premium-center"
       >
-        <div className="bg-pink-500 py-1 text-center text-[11px] font-black text-white">프리미엄 입점센터</div>
+        <div className="bg-sky-500 py-1 text-center text-[11px] font-black text-white">프리미엄 입점센터</div>
         <div className="p-3 text-center text-white">
           <div className="text-[10px] text-blue-200">전국 제휴업소</div>
           <div className="mt-1 text-lg font-black leading-tight">선착순 모집중</div>
@@ -18,7 +18,7 @@ export default function MobileBannerRail() {
       </Link>
 
       <Link href="/board/notice" prefetch={false} className="mobile-banner-card mobile-ad-guide">
-        <div className="mb-0.5 text-[10px] text-blue-200">건마에반하다</div>
+        <div className="mb-0.5 text-[10px] text-blue-200">힐링찾기</div>
         <div className="mb-1 text-[15px] font-black">광고 안내</div>
         <div className="inline-block rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-bold text-black">바로가기 &gt;</div>
       </Link>
