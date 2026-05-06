@@ -66,6 +66,8 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
 
   const { shop, reviews } = data;
   const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
+  const shopGalleryImages = Array.from(new Set([shop.thumbnailUrl, ...shop.images].map((value) => value.trim()).filter(Boolean)));
+  const primaryImage = shop.bannerUrl.trim() || shopGalleryImages[0] || '';
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
   const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
   const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
@@ -144,6 +146,31 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
               </div>
             </div>
           </div>
+
+          {primaryImage ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
+                <h2 className="text-sm font-black text-gray-800">📸 업소 사진</h2>
+                <span className="text-[11px] text-gray-400">썸네일/갤러리 {shopGalleryImages.length}장</span>
+              </div>
+              <div className="space-y-3">
+                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
+                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="aspect-[16/9] w-full object-cover" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {shopGalleryImages.map((imageUrl, index) => (
+                    <div key={`${imageUrl.slice(0, 40)}-${index}`} className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                      <img src={imageUrl} alt={`${shop.name} 갤러리 ${index + 1}`} className="aspect-square w-full object-cover" />
+                      <div className="flex items-center justify-between border-t border-gray-100 px-2 py-1 text-[11px] text-gray-500">
+                        <span>{index === 0 ? '썸네일' : `사진 ${index + 1}`}</span>
+                        {imageUrl === primaryImage ? <span className="font-semibold text-[var(--portal-brand)]">대표 노출</span> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>
