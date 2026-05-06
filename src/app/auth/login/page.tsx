@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 import { getPostLoginRedirect } from '@/lib/auth/redirects';
+import { useAuthSession } from '@/lib/use-auth-session';
 
 type LoginResult = {
   user?: {
@@ -26,6 +27,15 @@ function LoginContent() {
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user, authChecked } = useAuthSession();
+
+  useEffect(() => {
+    if (!authChecked || !user || loading) {
+      return;
+    }
+
+    router.replace(getPostLoginRedirect(user.role, redirectTo));
+  }, [authChecked, loading, redirectTo, router, user]);
 
   const resetFormState = (tab: 'user' | 'owner') => {
     setActiveTab(tab);

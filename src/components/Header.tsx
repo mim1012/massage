@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Search, Menu, X } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
+import { useAuthSession } from '@/lib/use-auth-session';
+import { getMyHref, getMyLabel } from '@/lib/auth/navigation';
 import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
 
@@ -14,13 +16,19 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
+  const [loggingOut, setLoggingOut] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
   const currentTheme = searchParams.get('theme');
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const { siteSettings } = useSiteContent();
+  const { user, authChecked } = useAuthSession();
+  const myHref = getMyHref(user?.role);
+  const myLabel = getMyLabel(user?.role);
+  const isAuthed = authChecked && Boolean(user);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -32,6 +40,29 @@ export default function Header() {
       }),
     );
     setMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+    } finally {
+      setMobileMenuOpen(false);
+      if (pathname?.startsWith('/owner') || pathname?.startsWith('/my') || pathname?.startsWith('/admin')) {
+        router.replace('/auth/login');
+      } else {
+        router.refresh();
+      }
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -80,17 +111,37 @@ export default function Header() {
           </form>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <Link href="/auth/login" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
-              로그인
-            </Link>
-            <span className="text-gray-300 hidden sm:block">|</span>
-            <Link href="/auth/register" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
-              회원가입
-            </Link>
-            <span className="text-gray-300 hidden sm:block">|</span>
-            <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
-              관리자
-            </Link>
+            {!isAuthed ? (
+              <>
+                <Link href="/auth/login" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+                  로그인
+                </Link>
+                <span className="text-gray-300 hidden sm:block">|</span>
+                <Link href="/auth/register" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+                  회원가입
+                </Link>
+                <span className="text-gray-300 hidden sm:block">|</span>
+                <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+                  관리자
+                </Link>
+              </>
+            ) : (
+              <>
+                <span className="hidden text-xs font-semibold text-gray-500 sm:block">{user?.name}</span>
+                <span className="text-gray-300 hidden sm:block">|</span>
+                <Link href={myHref} prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+                  {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
+                </Link>
+                <span className="text-gray-300 hidden sm:block">|</span>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block"
+                >
+                  {loggingOut ? '로그아웃 중...' : '로그아웃'}
+                </button>
+              </>
+            )}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-1.5 text-gray-600">
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -262,24 +313,47 @@ export default function Header() {
                 </Link>
               ))}
             </div>
-            <div className="flex gap-2 pt-2 border-t border-gray-100">
-              <Link
-                href="/auth/login"
-                prefetch={false}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
-              >
-                로그인
-              </Link>
-              <Link
-                href="/auth/register"
-                prefetch={false}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 rounded bg-[var(--portal-brand)] py-2 text-center text-xs font-semibold text-white hover:bg-[var(--portal-brand-hover)]"
-              >
-                회원가입
-              </Link>
-            </div>
+            {!isAuthed ? (
+              <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <Link
+                  href="/auth/login"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-2 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+                >
+                  로그인
+                </Link>
+                <Link
+                  href="/auth/register"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 rounded bg-[var(--portal-brand)] py-2 text-center text-xs font-semibold text-white hover:bg-[var(--portal-brand-hover)]"
+                >
+                  회원가입
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
+                <p className="font-semibold text-gray-500">{user?.name} ({user?.email})</p>
+                <div className="flex gap-2">
+                  <Link
+                    href={myHref}
+                    prefetch={false}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex-1 rounded border border-gray-300 py-2 text-center text-gray-700 hover:bg-gray-50"
+                  >
+                    {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void handleLogout()}
+                    className="flex-1 rounded bg-gray-100 py-2 text-center font-semibold text-gray-700 hover:bg-gray-200"
+                  >
+                    {loggingOut ? '로그아웃 중...' : '로그아웃'}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="mt-3 border-t border-gray-100 pt-3">
               <p className="mb-2 text-xs font-bold text-gray-400">광고/입점</p>
               <SidebarPromoBanners mode="inline" onNavigate={() => setMobileMenuOpen(false)} />
@@ -295,7 +369,7 @@ export default function Header() {
             { href: '/?view=list', label: '업소', emoji: '📋' },
             { href: '/board', label: '게시판', emoji: '💬' },
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
-            { href: '/auth/login', label: 'MY', emoji: '👤' },
+            { href: myHref, label: myLabel, emoji: '👤' },
           ].map((item) => (
             <Link key={`${item.label}-${item.href}`} href={item.href} prefetch={false} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
               <span className="text-base">{item.emoji}</span>
