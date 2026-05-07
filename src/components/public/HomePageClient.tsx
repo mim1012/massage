@@ -17,9 +17,8 @@ import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import MobileBannerRail from '@/components/public/MobileBannerRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
-import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 import { shouldAutoLoadDeferredHomeDirectory } from '@/lib/home-directory-fetch-strategy';
-import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
+import { buildBrowseHref, buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { HomeSeoContent, Shop, SiteSettings } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
@@ -83,18 +82,17 @@ export default function HomePageClient({
     setIsLoading(true);
     setError(null);
 
-    const params = new URLSearchParams();
-    const searchIntent = deriveStructuredSearchIntent(searchQuery);
-    const resolvedRegion = selectedRegion !== 'all' ? selectedRegion : searchIntent.region;
-    const resolvedSubRegion = selectedSubRegion !== 'all' ? selectedSubRegion : searchIntent.subRegion;
-    const resolvedTheme = selectedTheme !== 'all' ? selectedTheme : searchIntent.theme;
-    if (resolvedRegion && resolvedRegion !== 'all') params.set('region', resolvedRegion);
-    if (resolvedSubRegion && resolvedSubRegion !== 'all') params.set('subRegion', resolvedSubRegion);
-    if (resolvedTheme && resolvedTheme !== 'all') params.set('theme', resolvedTheme);
-    if (searchIntent.freeText) params.set('q', searchIntent.freeText);
-    params.set('sort', sortType);
-    params.set('regularOffset', '0');
-    params.set('regularLimit', String(REGULAR_PAGE_SIZE));
+    const params = buildDirectorySearchParams({
+      region: selectedRegion,
+      subRegion: selectedSubRegion,
+      theme: selectedTheme,
+      q: searchQuery,
+      sort: sortType,
+      extraParams: {
+        regularOffset: 0,
+        regularLimit: REGULAR_PAGE_SIZE,
+      },
+    });
 
     try {
       const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
@@ -119,18 +117,17 @@ export default function HomePageClient({
     setIsLoadingMore(true);
     setError(null);
 
-    const params = new URLSearchParams();
-    const searchIntent = deriveStructuredSearchIntent(searchQuery);
-    const resolvedRegion = selectedRegion !== 'all' ? selectedRegion : searchIntent.region;
-    const resolvedSubRegion = selectedSubRegion !== 'all' ? selectedSubRegion : searchIntent.subRegion;
-    const resolvedTheme = selectedTheme !== 'all' ? selectedTheme : searchIntent.theme;
-    if (resolvedRegion && resolvedRegion !== 'all') params.set('region', resolvedRegion);
-    if (resolvedSubRegion && resolvedSubRegion !== 'all') params.set('subRegion', resolvedSubRegion);
-    if (resolvedTheme && resolvedTheme !== 'all') params.set('theme', resolvedTheme);
-    if (searchIntent.freeText) params.set('q', searchIntent.freeText);
-    params.set('sort', sortType);
-    params.set('regularOffset', String(regularShops.length));
-    params.set('regularLimit', String(REGULAR_PAGE_SIZE));
+    const params = buildDirectorySearchParams({
+      region: selectedRegion,
+      subRegion: selectedSubRegion,
+      theme: selectedTheme,
+      q: searchQuery,
+      sort: sortType,
+      extraParams: {
+        regularOffset: regularShops.length,
+        regularLimit: REGULAR_PAGE_SIZE,
+      },
+    });
 
     try {
       const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
