@@ -83,6 +83,27 @@ export default function AdminShopsPage() {
     }
   }
 
+  async function updatePremiumOrder(shop: AdminShopListItem, order: number) {
+    if (shop.premiumOrder === order) return;
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/shops/${shop.id}/premium`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isPremium: true,
+          premiumOrder: order,
+        }),
+      });
+      if (!response.ok) throw new Error('순서 변경 실패');
+      await loadShops();
+    } catch (updateError) {
+      setError('프리미엄 순서를 변경하지 못했습니다.');
+      console.error(updateError);
+    }
+  }
+
   const filteredShops = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -104,11 +125,11 @@ export default function AdminShopsPage() {
     <div className="max-w-[1200px] space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <Store className="h-5 w-5 text-[var(--portal-brand)]" /> 업소 목록 관리
+          <Store className="h-5 w-5 text-[#D4A373]" /> 업소 목록 관리
         </h1>
         <Link
           href="/admin/shops/new"
-          className="flex items-center gap-1 rounded bg-[var(--portal-brand)] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[var(--portal-brand-hover)]"
+          className="flex items-center gap-1 rounded bg-[#D4A373] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[#C29262]"
         >
           <Plus className="h-4 w-4" /> 업소 등록
         </Link>
@@ -122,13 +143,13 @@ export default function AdminShopsPage() {
             placeholder="업소명, 지역, 전화번호 검색"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded border border-gray-300 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-[var(--portal-brand)]"
+            className="w-full rounded border border-gray-300 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-[#D4A373]"
           />
         </div>
         <select
           value={regionFilter}
           onChange={(event) => setRegionFilter(event.target.value)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[var(--portal-brand)]"
+          className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#D4A373]"
         >
           {REGIONS.map((region) => (
             <option key={region.code} value={region.code}>
@@ -175,19 +196,30 @@ export default function AdminShopsPage() {
                       </span>
                     </td>
                     <td data-label="AD" className="px-4 py-2 text-center">
-                      <button
-                        onClick={() => void togglePremium(shop)}
-                        className={clsx(
-                          'rounded p-1 text-white transition-colors',
-                          shop.isPremium ? 'bg-amber-500' : 'bg-gray-300 hover:bg-gray-400',
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => void togglePremium(shop)}
+                          className={clsx(
+                            'rounded p-1 text-white transition-colors',
+                            shop.isPremium ? 'bg-amber-500' : 'bg-gray-300 hover:bg-gray-400',
+                          )}
+                          title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
+                        >
+                          <Crown className="h-3.5 w-3.5" />
+                        </button>
+                        {shop.isPremium && (
+                          <input
+                            type="number"
+                            defaultValue={shop.premiumOrder ?? 0}
+                            onBlur={(e) => updatePremiumOrder(shop, parseInt(e.target.value))}
+                            className="w-10 rounded border border-amber-200 bg-amber-50 text-center text-[10px] font-bold text-amber-700 outline-none focus:border-amber-500"
+                            title="노출 순서 (낮을수록 먼저 노출)"
+                          />
                         )}
-                        title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
-                      >
-                        <Crown className="h-3.5 w-3.5" />
-                      </button>
+                      </div>
                     </td>
                     <td data-label="업소명" className="px-4 py-2 font-bold text-gray-800">
-                      <Link href={`/admin/shops/${shop.id}`} className="hover:text-[var(--portal-brand)] hover:underline">
+                      <Link href={`/admin/shops/${shop.id}`} className="hover:text-[#D4A373] hover:underline">
                         {shop.name}
                       </Link>
                       {!shop.isVisible ? (
@@ -202,7 +234,7 @@ export default function AdminShopsPage() {
                     <td data-label="관리" className="px-4 py-2 text-center whitespace-nowrap">
                       <Link
                         href={`/admin/shops/${shop.id}`}
-                        className="inline-flex items-center gap-1 rounded border border-[var(--portal-brand)]/30 bg-white px-2 py-1 text-xs font-bold text-[var(--portal-brand)] shadow-sm hover:bg-[var(--portal-brand-soft)]"
+                        className="inline-flex items-center gap-1 rounded border border-[#D4A373]/30 bg-white px-2 py-1 text-xs font-bold text-[#D4A373] shadow-sm hover:bg-[#FEFAE0]"
                       >
                         <Edit2 className="h-3 w-3" /> 버튼 수정
                       </Link>

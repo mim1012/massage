@@ -13,14 +13,13 @@ import {
   Plus,
   Save,
   Trash2,
+  Crown,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { createSubmissionLock } from '@/lib/client/submission-lock';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import type { Course, Shop, User } from '@/lib/types';
-import RichTextEditor from '@/components/admin/RichTextEditor';
-import { normalizeShopDescription } from '@/lib/shop-description';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -29,8 +28,9 @@ type Props = {
 
 const STEPS = [
   { label: '기본 정보', desc: '업체명·지역·테마' },
-  { label: '상세 정보', desc: '설명·태그·이미지' },
+  { label: '상세 정보', desc: '설명·시간·연락처' },
   { label: '코스 등록', desc: '요금표 설정' },
+  { label: '태그·이미지', desc: '태그·썸네일' },
   { label: '미리보기', desc: '최종 확인' },
 ] as const;
 
@@ -268,7 +268,6 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     try {
       const nextShop: Shop = {
         ...form,
-        description: normalizeShopDescription(form.description),
         courses,
         tags: tagsStr
           .split(',')
@@ -407,6 +406,35 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                 placeholder="예: 강남 최고의 프리미엄 스웨디시 마사지"
               />
             </div>
+
+            {currentUser.role === 'ADMIN' && (
+              <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isPremium"
+                    checked={form.isPremium}
+                    onChange={(event) => setForm({ ...form, isPremium: event.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-[#D4A373] focus:ring-[#D4A373]"
+                  />
+                  <label htmlFor="isPremium" className="flex items-center gap-1 text-sm font-bold text-gray-700">
+                    <Crown className="h-4 w-4 text-amber-500" /> 프리미엄 업소(AD) 설정
+                  </label>
+                </div>
+                {form.isPremium && (
+                  <div>
+                    <label className={labelClassName}>프리미엄 노출 순서 (낮을수록 먼저 노출)</label>
+                    <input
+                      type="number"
+                      value={form.premiumOrder ?? 0}
+                      onChange={(event) => setForm({ ...form, premiumOrder: parseInt(event.target.value) })}
+                      className={inputClassName}
+                      placeholder="예: 1"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -415,11 +443,13 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
             <h2 className="border-b border-gray-100 pb-2 text-base font-black text-gray-800">② 상세 정보</h2>
 
             <div>
-              <RichTextEditor
-                label="상세 설명"
+              <label className={labelClassName}>상세 설명</label>
+              <textarea
+                rows={5}
                 value={form.description}
-                onChange={(description) => setForm({ ...form, description })}
-                helperText="상세 설명과 업소 이미지를 함께 정리하세요. 글자 색상, 크기, 글꼴, 좌/중/우 정렬, 본문 이미지 첨부를 사용할 수 있습니다."
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                className={`${inputClassName} resize-none`}
+                placeholder="업소 소개, 특장점, 서비스 안내 등"
               />
             </div>
 
@@ -457,170 +487,6 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                 className={inputClassName}
                 placeholder="서울특별시 강남구 테헤란로 123"
               />
-            </div>
-
-            <div>
-              <label className={labelClassName}>태그 (쉼표로 구분)</label>
-              <input
-                type="text"
-                value={tagsStr}
-                onChange={(event) => setTagsStr(event.target.value)}
-                className={inputClassName}
-                placeholder="예: 무료주차, 카드결제, 여성전용"
-              />
-              <div className="mt-1 text-[11px] text-gray-400">
-                미리보기 태그:{' '}
-                {tagsStr
-                  .split(',')
-                  .map((tag) => tag.trim())
-                  .filter(Boolean)
-                  .map((tag) => (
-                    <span key={tag} className="mr-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
-                      {tag}
-                    </span>
-                  ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-              <div>
-                <h3 className="text-sm font-black text-gray-800">업소 사진</h3>
-                <p className="mt-1 text-xs text-gray-500">목록 썸네일, 상세 상단 배너, 상세 갤러리를 여기서 함께 등록합니다.</p>
-              </div>
-
-              <div>
-                <label className={labelClassName}>
-                  썸네일 이미지 <span className="font-normal text-gray-400">(목록 대표 이미지 / 1:1 비율 권장)</span>
-                </label>
-                <div
-                  onClick={() => thumbRef.current?.click()}
-                  className="relative flex h-32 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-red-400"
-                >
-                  {thumbPreview ? (
-                    <img src={thumbPreview} alt="썸네일" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="text-center text-gray-400">
-                      <div className="mb-1 text-2xl">🖼️</div>
-                      <div className="text-[11px]">클릭하여 업로드</div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={thumbRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) {
-                      return;
-                    }
-                    const preview = await readFileAsDataUrl(file);
-                    const nextForm = { ...form, thumbnailUrl: preview };
-                    syncPreviewState(nextForm);
-                    event.target.value = '';
-                  }}
-                />
-                {thumbPreview ? (
-                  <button
-                    type="button"
-                    onClick={() => syncPreviewState({ ...form, thumbnailUrl: '' })}
-                    className="mt-1 text-[11px] text-red-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
-                ) : null}
-              </div>
-
-              <div>
-                <label className={labelClassName}>
-                  배너 이미지 <span className="font-normal text-gray-400">(상세 상단 대표 이미지 / 2:1 비율 권장)</span>
-                </label>
-                <div
-                  onClick={() => bannerRef.current?.click()}
-                  className="relative flex h-32 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-red-400"
-                >
-                  {bannerPreview ? (
-                    <img src={bannerPreview} alt="배너" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="text-center text-gray-400">
-                      <div className="mb-1 text-2xl">🌄</div>
-                      <div className="text-[11px]">클릭하여 배너 업로드</div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={bannerRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) {
-                      return;
-                    }
-                    const preview = await readFileAsDataUrl(file);
-                    const nextForm = { ...form, bannerUrl: preview };
-                    syncPreviewState(nextForm);
-                    event.target.value = '';
-                  }}
-                />
-                {bannerPreview ? (
-                  <button
-                    type="button"
-                    onClick={() => syncPreviewState({ ...form, bannerUrl: '' })}
-                    className="mt-1 text-[11px] text-red-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
-                ) : null}
-              </div>
-
-              <div>
-                <label className={labelClassName}>
-                  갤러리 사진 <span className="font-normal text-gray-400">(상세 페이지 사진 / 여러 장 선택 가능)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {galleryPreviews.map((src, index) => (
-                    <div key={`${src.slice(0, 20)}-${index}`} className="relative h-24 w-24 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                      <img src={src} alt={`갤러리 ${index + 1}`} className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextImages = galleryPreviews.filter((_, imageIndex) => imageIndex !== index);
-                          syncPreviewState({ ...form, images: nextImages });
-                        }}
-                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] text-white hover:bg-red-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <div
-                    onClick={() => galleryRef.current?.click()}
-                    className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white text-2xl text-gray-400 transition-colors hover:border-red-400"
-                  >
-                    +
-                  </div>
-                </div>
-                <input
-                  ref={galleryRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={async (event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    if (files.length === 0) {
-                      return;
-                    }
-                    const previews = await Promise.all(files.map(readFileAsDataUrl));
-                    const nextImages = [...galleryPreviews, ...previews];
-                    syncPreviewState({ ...form, images: nextImages });
-                    event.target.value = '';
-                  }}
-                />
-              </div>
             </div>
           </div>
         ) : null}
@@ -695,10 +561,173 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
         ) : null}
 
         {step === 3 ? (
+          <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+            <h2 className="border-b border-gray-100 pb-2 text-base font-black text-gray-800">④ 태그·이미지</h2>
+
+            <div>
+              <label className={labelClassName}>태그 (쉼표로 구분)</label>
+              <input
+                type="text"
+                value={tagsStr}
+                onChange={(event) => setTagsStr(event.target.value)}
+                className={inputClassName}
+                placeholder="예: 무료주차, 카드결제, 여성전용"
+              />
+              <div className="mt-1 text-[11px] text-gray-400">
+                미리보기 태그:{' '}
+                {tagsStr
+                  .split(',')
+                  .map((tag) => tag.trim())
+                  .filter(Boolean)
+                  .map((tag) => (
+                    <span key={tag} className="mr-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
+                      {tag}
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClassName}>
+                썸네일 이미지 <span className="font-normal text-gray-400">(1:1 비율 권장)</span>
+              </label>
+              <div
+                onClick={() => thumbRef.current?.click()}
+                className="relative flex h-32 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-red-400"
+              >
+                {thumbPreview ? (
+                  <img src={thumbPreview} alt="썸네일" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="text-center text-gray-400">
+                    <div className="mb-1 text-2xl">🖼️</div>
+                    <div className="text-[11px]">클릭하여 업로드</div>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={thumbRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+                  const preview = await readFileAsDataUrl(file);
+                  const nextForm = { ...form, thumbnailUrl: preview };
+                  syncPreviewState(nextForm);
+                  event.target.value = '';
+                }}
+              />
+              {thumbPreview ? (
+                <button
+                  type="button"
+                  onClick={() => syncPreviewState({ ...form, thumbnailUrl: '' })}
+                  className="mt-1 text-[11px] text-red-400 hover:text-red-600"
+                >
+                  삭제
+                </button>
+              ) : null}
+            </div>
+
+            <div>
+              <label className={labelClassName}>
+                배너 이미지 <span className="font-normal text-gray-400">(2:1 비율 권장)</span>
+              </label>
+              <div
+                onClick={() => bannerRef.current?.click()}
+                className="relative flex h-32 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-red-400"
+              >
+                {bannerPreview ? (
+                  <img src={bannerPreview} alt="배너" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="text-center text-gray-400">
+                    <div className="mb-1 text-2xl">🌄</div>
+                    <div className="text-[11px]">클릭하여 배너 업로드</div>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={bannerRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+                  const preview = await readFileAsDataUrl(file);
+                  const nextForm = { ...form, bannerUrl: preview };
+                  syncPreviewState(nextForm);
+                  event.target.value = '';
+                }}
+              />
+              {bannerPreview ? (
+                <button
+                  type="button"
+                  onClick={() => syncPreviewState({ ...form, bannerUrl: '' })}
+                  className="mt-1 text-[11px] text-red-400 hover:text-red-600"
+                >
+                  삭제
+                </button>
+              ) : null}
+            </div>
+
+            <div>
+              <label className={labelClassName}>
+                갤러리 사진 <span className="font-normal text-gray-400">(여러 장 선택 가능)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {galleryPreviews.map((src, index) => (
+                  <div key={`${src.slice(0, 20)}-${index}`} className="relative h-24 w-24 overflow-hidden rounded-lg border border-gray-200">
+                    <img src={src} alt={`갤러리 ${index + 1}`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextImages = galleryPreviews.filter((_, imageIndex) => imageIndex !== index);
+                        syncPreviewState({ ...form, images: nextImages });
+                      }}
+                      className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] text-white hover:bg-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div
+                  onClick={() => galleryRef.current?.click()}
+                  className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-2xl text-gray-400 transition-colors hover:border-red-400"
+                >
+                  +
+                </div>
+              </div>
+              <input
+                ref={galleryRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={async (event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  if (files.length === 0) {
+                    return;
+                  }
+                  const previews = await Promise.all(files.map(readFileAsDataUrl));
+                  const nextImages = [...galleryPreviews, ...previews];
+                  syncPreviewState({ ...form, images: nextImages });
+                  event.target.value = '';
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {step === 4 ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-gray-200 bg-white p-5">
               <h2 className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-2 text-base font-black text-gray-800">
-                <Eye className="h-4 w-4 text-[var(--portal-brand)]" /> ④ 미리보기
+                <Eye className="h-4 w-4 text-blue-500" /> 미리보기
               </h2>
 
               <div className="mb-6">
@@ -748,7 +777,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">업소명</span><span className="font-semibold">{form.name || '-'}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">지역</span><span>{form.regionLabel} {form.subRegionLabel}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">테마</span><span>{form.themeLabel}</span></div>
-                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">슬러그</span><span className="font-mono text-xs text-[var(--portal-brand)]">/shop/{form.slug || '...'}</span></div>
+                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">슬러그</span><span className="font-mono text-xs text-blue-600">/shop/{form.slug || '...'}</span></div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p className="border-b pb-1 text-xs font-bold text-gray-500">연락·운영</p>
@@ -757,16 +786,6 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <div className="flex gap-2"><MapPin className="h-4 w-4 shrink-0 text-gray-400" /><span className="text-xs">{form.address || '-'}</span></div>
                 </div>
               </div>
-
-              {form.description ? (
-                <div className="mt-4">
-                  <p className="mb-2 border-b pb-1 text-xs font-bold text-gray-500">상세 설명 미리보기</p>
-                  <div
-                    className="prose prose-sm max-w-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-gray-700 prose-img:rounded-xl prose-img:shadow-sm"
-                    dangerouslySetInnerHTML={{ __html: normalizeShopDescription(form.description) }}
-                  />
-                </div>
-              ) : null}
 
               {courses.length > 0 ? (
                 <div className="mt-4">

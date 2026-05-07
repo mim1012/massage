@@ -9,7 +9,6 @@ import {
   type Review as DbReview,
   type SiteSettings as DbSiteSettings,
 } from '@prisma/client';
-import { unstable_cache } from 'next/cache';
 import type {
   HomeSeoContent,
   Notice,
@@ -28,10 +27,8 @@ import {
   normalizeSiteSettings,
 } from '@/lib/site-content-defaults';
 import { mapShop, shopInclude } from '@/lib/server/shop-store';
-import { normalizeShopDescription } from '@/lib/shop-description';
 
 const SITE_SETTINGS_ID = 'default';
-const BOARD_LANDING_CACHE_REVALIDATE_SECONDS = 30;
 
 let cachedPublicSiteContent:
   | {
@@ -403,7 +400,7 @@ function buildShopPayload(input: Shop) {
     theme: input.theme,
     themeLabel: input.themeLabel,
     tagline: input.tagline.trim(),
-    description: normalizeShopDescription(input.description),
+    description: input.description.trim(),
     address: input.address.trim(),
     phone: input.phone.trim(),
     hours: input.hours.trim(),
@@ -418,22 +415,29 @@ function buildShopPayload(input: Shop) {
   };
 }
 
-export async function listAdminShops() {
-  const shops = await prisma.shop.findMany({
-    include: shopInclude,
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-  });
+export async function listManagedShops(
+  user: { id: string; role: UserRole },
+  filters: { region?: string; q?: string } = {},
+) {
+  const where: Prisma.ShopWhereInput = {};
 
-  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
-}
+  if (user.role === 'OWNER') {
+    where.ownerId = user.id;
+  }
 
-export async function listManagedShops(user: { id: string; role: UserRole }) {
-  if (user.role === 'ADMIN') {
-    return listAdminShops();
+  if (filters.region && filters.region !== 'all') {
+    where.region = filters.region;
+  }
+
+  if (filters.q) {
+    where.OR = [
+      { name: { contains: filters.q, mode: 'insensitive' } },
+      { phone: { contains: filters.q, mode: 'insensitive' } },
+    ];
   }
 
   const shops = await prisma.shop.findMany({
-    where: { ownerId: user.id },
+    where,
     include: shopInclude,
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
   });
@@ -463,7 +467,7 @@ export async function updatePremiumOrder(orderedIds: string[]) {
 }
 
 export async function getPremiumBoardData(): Promise<PremiumBoardData> {
-  const shops = await listAdminShops();
+  const shops = await listManagedShops({ id: 'admin', role: 'ADMIN' });
 
   return {
     premiumShops: shops.filter((shop) => shop.isPremium),
@@ -640,7 +644,7 @@ type BoardLandingOptions = {
   viewer?: ViewerContext;
 };
 
-async function queryBoardLandingData(options: BoardLandingOptions = {}) {
+export async function getBoardLandingData(options: BoardLandingOptions = {}) {
   const includeReviews = options.includeReviews ?? false;
 
   const [summary, notices, qnaEntries, reviews] = await Promise.all([
@@ -692,22 +696,6 @@ async function queryBoardLandingData(options: BoardLandingOptions = {}) {
     qnaEntries,
     reviews,
   };
-}
-
-const getAnonymousBoardLandingDataCached = unstable_cache(
-  async () => queryBoardLandingData({ includeReviews: false }),
-  ['board-landing-anon-v1'],
-  { revalidate: BOARD_LANDING_CACHE_REVALIDATE_SECONDS },
-);
-
-export async function getBoardLandingData(options: BoardLandingOptions = {}) {
-  const includeReviews = options.includeReviews ?? false;
-
-  if (!includeReviews && !options.viewer) {
-    return await getAnonymousBoardLandingDataCached();
-  }
-
-  return await queryBoardLandingData(options);
 }
 
 export async function createQnaComment(

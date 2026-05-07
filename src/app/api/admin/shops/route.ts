@@ -4,10 +4,15 @@ import { normalizeShopInputForSave } from '@/lib/server/admin-shop-access';
 import { createAdminShop, listManagedShops } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireRole('ADMIN', 'OWNER');
-    return Response.json({ shops: await listManagedShops(user) });
+    const { searchParams } = new URL(request.url);
+    const filters = {
+      region: searchParams.get('region') ?? undefined,
+      q: searchParams.get('q') ?? undefined,
+    };
+    return Response.json({ shops: await listManagedShops(user, filters) });
   } catch (error) {
     return errorResponse(error);
   }
