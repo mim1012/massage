@@ -15,6 +15,7 @@ type SearchParamValue = string | string[] | undefined;
 
 type PageProps = {
   searchParams?: Promise<{
+    view?: SearchParamValue;
     region?: SearchParamValue;
     subRegion?: SearchParamValue;
     theme?: SearchParamValue;
@@ -30,7 +31,7 @@ function pickFirst(value: SearchParamValue) {
 export default async function HomePage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const directoryQuery = parseDirectoryQuery({
-    view: undefined,
+    view: pickFirst(resolvedSearchParams?.view),
     region: pickFirst(resolvedSearchParams?.region),
     subRegion: pickFirst(resolvedSearchParams?.subRegion),
     theme: pickFirst(resolvedSearchParams?.theme),

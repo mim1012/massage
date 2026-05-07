@@ -10,14 +10,14 @@ function makeShop(partial: Partial<Shop>): Shop {
     name: partial.name ?? 'Shop',
     region: partial.region ?? 'seoul',
     regionLabel: partial.regionLabel ?? '서울',
-    district: partial.district,
-    districtLabel: partial.districtLabel,
+    subRegion: partial.subRegion,
+    subRegionLabel: partial.subRegionLabel,
     theme: partial.theme ?? 'swedish',
     themeLabel: partial.themeLabel ?? '스웨디시',
     tagline: partial.tagline ?? '',
     description: partial.description ?? '',
     address: partial.address ?? '',
-    contact: partial.contact ?? '',
+    phone: partial.phone ?? '',
     images: partial.images ?? [],
     tags: partial.tags ?? [],
     courses: partial.courses ?? [],
@@ -26,6 +26,10 @@ function makeShop(partial: Partial<Shop>): Shop {
     isPremium: partial.isPremium ?? false,
     isVisible: partial.isVisible ?? true,
     createdAt: partial.createdAt ?? '2026-01-01T00:00:00.000Z',
+    updatedAt: partial.updatedAt ?? '2026-01-01T00:00:00.000Z',
+    thumbnailUrl: partial.thumbnailUrl ?? '/images/thumb.jpg',
+    bannerUrl: partial.bannerUrl ?? '/images/banner.jpg',
+    hours: partial.hours ?? '',
   } satisfies Shop;
 }
 
