@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
 import type { Review, Shop } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
@@ -80,6 +80,7 @@ export type ShopListRecord = Prisma.ShopGetPayload<{
 
 const publicShopListCache = new Map<string, Promise<ShopListResponse>>();
 const publicDirectoryShopListCache = new Map<string, Promise<ShopListResponse>>();
+const PUBLIC_DIRECTORY_SHOPS_CACHE_TAG = 'public-directory-shops';
 
 function normalizeShopListCacheKey(filters: ShopFilters) {
   return JSON.stringify({
@@ -113,6 +114,7 @@ function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
 export function invalidatePublicShopListCache() {
   publicShopListCache.clear();
   publicDirectoryShopListCache.clear();
+  revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
 }
 
 export function mapShop(record: ShopRecord): Shop {
@@ -365,8 +367,8 @@ const getPersistentDirectoryShopList = unstable_cache(
       includePremium: normalized.includePremium,
     });
   },
-  ['public-directory-shops'],
-  { revalidate: 30 },
+  [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG],
+  { revalidate: 30, tags: [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG] },
 );
 
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
