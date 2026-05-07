@@ -22,7 +22,13 @@ export default function Sidebar() {
       <div className="sticky top-[110px] space-y-3">
         {/* 지역별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white">📍 지역별 업소</div>
+          <Link
+            href={buildBrowseHref({ mode: 'region', basePath: baseUrl })}
+            prefetch={false}
+            className="block bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--portal-brand-hover)]"
+          >
+            📍 지역별 업소
+          </Link>
           <div>
             <Link href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} prefetch={false} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
               전체보기
@@ -69,9 +75,13 @@ export default function Sidebar() {
 
         {/* 인기순위 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="flex items-center gap-1 bg-[var(--portal-rank)] px-3 py-2 text-xs font-bold text-white">
+          <Link
+            href="/top100"
+            prefetch={false}
+            className="flex items-center gap-1 bg-[var(--portal-rank)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
+          >
             <span>🏆</span> 인기순위 (TOP 100)
-          </div>
+          </Link>
           <div>
             <Link
               href="/top100"
@@ -91,7 +101,13 @@ export default function Sidebar() {
 
         {/* 테마별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white">🏷️ 테마별 업소</div>
+          <Link
+            href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, region: currentRegion, subRegion: currentSubRegion })}
+            prefetch={false}
+            className="block bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
+          >
+            🏷️ 테마별 업소
+          </Link>
           <div>
             {THEMES.filter((t) => t.code !== 'all').map((t) => (
               <Link
@@ -108,7 +124,13 @@ export default function Sidebar() {
 
         {/* 고객센터 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-[var(--portal-support)] px-3 py-2 text-xs font-bold text-white">📞 고객센터</div>
+          <Link
+            href="/board/qna"
+            prefetch={false}
+            className="block bg-[var(--portal-support)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
+          >
+            📞 고객센터
+          </Link>
           <div>
             <Link href="/board/notice" prefetch={false} className="lnb-menu-item">
               &rsaquo; 공지사항
