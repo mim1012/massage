@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from 'next/cache';
 import {
   Prisma,
   QnaCommentRole,
@@ -51,6 +52,7 @@ type ManagedShopListRecord = Prisma.ShopGetPayload<{
 }>;
 
 const SITE_SETTINGS_ID = 'default';
+const PUBLIC_SITE_CONTENT_CACHE_TAG = 'public-site-content';
 
 let cachedPublicSiteContent:
   | {
@@ -62,6 +64,18 @@ let cachedPublicSiteContent:
 let cachedBoardSummary: Promise<{ notices: number; qna: number; reviews: number }> | null = null;
 const cachedPublicNoticeLists = new Map<string, Promise<Notice[]>>();
 const cachedPublicReviewLists = new Map<string, Promise<Review[]>>();
+
+const getPersistentPublicSiteContent = unstable_cache(
+  async () => {
+    const loaded = await loadSiteContentRecord();
+    return loaded?.content ?? null;
+  },
+  [PUBLIC_SITE_CONTENT_CACHE_TAG],
+  {
+    revalidate: 60,
+    tags: [PUBLIC_SITE_CONTENT_CACHE_TAG],
+  },
+);
 
 function invalidatePublicBoardCaches() {
   cachedBoardSummary = null;
@@ -1283,9 +1297,7 @@ export async function getPublicSiteContent() {
     return cachedPublicSiteContent;
   }
 
-  const loaded = await loadSiteContentRecord();
-
-  cachedPublicSiteContent = loaded?.content ?? null;
+  cachedPublicSiteContent = await getPersistentPublicSiteContent();
 
   return cachedPublicSiteContent;
 }
@@ -1328,6 +1340,7 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
 
   const content = mapSiteSettings(record);
   cachedPublicSiteContent = content;
+  revalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG, 'max');
 
   return content;
 }

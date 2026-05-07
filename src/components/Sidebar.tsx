@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import SmartPrefetchLink from '@/components/SmartPrefetchLink';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref } from '@/lib/directory-mode';
@@ -22,33 +23,33 @@ export default function Sidebar() {
       <div className="sticky top-[110px] space-y-3">
         {/* 지역별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <Link
+          <SmartPrefetchLink
             href={buildBrowseHref({ mode: 'region', basePath: baseUrl })}
             prefetch={false}
             className="block bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--portal-brand-hover)]"
           >
             📍 지역별 업소
-          </Link>
+          </SmartPrefetchLink>
           <div>
-            <Link href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} prefetch={false} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
+            <SmartPrefetchLink href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} prefetch={false} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
               전체보기
-            </Link>
+            </SmartPrefetchLink>
             {REGIONS.filter((r) => r.code !== 'all').map((r) => (
               <div key={r.code}>
-                <Link
+                <SmartPrefetchLink
                   href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, theme: currentTheme })}
                   prefetch={false}
                   className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
                 >
                   &rsaquo; {r.label}
-                </Link>
+                </SmartPrefetchLink>
                 {/* 해당 지역이 선택되었고 세부 구가 있다면 표시 */}
                 {currentRegion === r.code && DISTRICTS[r.code] && (
                   <div className="bg-gray-50/80 border-b border-gray-100 pb-1">
                     {DISTRICTS[r.code]
                       .filter((d) => d.code !== 'all')
                       .map((d) => (
-                        <Link
+                        <SmartPrefetchLink
                           key={d.code}
                           href={buildBrowseHref({
                             mode: 'region',
@@ -64,7 +65,7 @@ export default function Sidebar() {
                           )}
                         >
                           - {d.label}
-                        </Link>
+                        </SmartPrefetchLink>
                       ))}
                   </div>
                 )}
@@ -101,23 +102,23 @@ export default function Sidebar() {
 
         {/* 테마별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <Link
+          <SmartPrefetchLink
             href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, region: currentRegion, subRegion: currentSubRegion })}
             prefetch={false}
             className="block bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
           >
             🏷️ 테마별 업소
-          </Link>
+          </SmartPrefetchLink>
           <div>
             {THEMES.filter((t) => t.code !== 'all').map((t) => (
-              <Link
+              <SmartPrefetchLink
                 key={t.code}
                 href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}
                 prefetch={false}
                 className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
               >
                 &rsaquo; {t.label}
-              </Link>
+              </SmartPrefetchLink>
             ))}
           </div>
         </div>

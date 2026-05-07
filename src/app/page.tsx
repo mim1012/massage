@@ -48,7 +48,13 @@ export default async function HomePage({ searchParams }: PageProps) {
   }
 
   const sortType = getDirectorySortType(directoryQuery.sort);
-  const deferInitialDirectoryFetch = shouldDeferInitialHomeDirectoryFetch({ query: directoryQuery.q });
+  const deferInitialDirectoryFetch = shouldDeferInitialHomeDirectoryFetch({
+    mode: directoryQuery.mode,
+    region: directoryQuery.region,
+    subRegion: directoryQuery.subRegion,
+    theme: directoryQuery.theme,
+    query: directoryQuery.q,
+  });
 
   const [shopResponse, siteContent] = await Promise.all([
     deferInitialDirectoryFetch

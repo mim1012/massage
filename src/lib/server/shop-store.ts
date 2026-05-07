@@ -368,7 +368,7 @@ const getPersistentDirectoryShopList = unstable_cache(
     });
   },
   [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG],
-  { revalidate: 30, tags: [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG] },
+  { revalidate: 120, tags: [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG] },
 );
 
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
