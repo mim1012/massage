@@ -28,6 +28,28 @@ import {
 } from '@/lib/site-content-defaults';
 import { invalidatePublicShopListCache, mapShop, shopInclude } from '@/lib/server/shop-store';
 
+const managedShopListSelect = {
+  id: true,
+  name: true,
+  region: true,
+  regionLabel: true,
+  subRegion: true,
+  subRegionLabel: true,
+  theme: true,
+  themeLabel: true,
+  phone: true,
+  isVisible: true,
+  isPremium: true,
+  premiumOrder: true,
+  ownerId: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.ShopSelect;
+
+type ManagedShopListRecord = Prisma.ShopGetPayload<{
+  select: typeof managedShopListSelect;
+}>;
+
 const SITE_SETTINGS_ID = 'default';
 
 let cachedPublicSiteContent:
@@ -47,23 +69,23 @@ function invalidatePublicBoardCaches() {
   cachedPublicReviewLists.clear();
 }
 
-function mapShopForAdmin(shop: Shop): AdminShopListItem {
+function mapManagedShopRecordForAdmin(shop: ManagedShopListRecord): AdminShopListItem {
   return {
     id: shop.id,
     name: shop.name,
     region: shop.region,
     regionLabel: shop.regionLabel,
-    subRegion: shop.subRegion,
-    subRegionLabel: shop.subRegionLabel,
+    subRegion: shop.subRegion ?? undefined,
+    subRegionLabel: shop.subRegionLabel ?? undefined,
     theme: shop.theme,
     themeLabel: shop.themeLabel,
     phone: shop.phone,
     isVisible: shop.isVisible,
     isPremium: shop.isPremium,
-    premiumOrder: shop.premiumOrder,
-    ownerId: shop.ownerId,
-    createdAt: shop.createdAt,
-    updatedAt: shop.updatedAt,
+    premiumOrder: shop.premiumOrder ?? undefined,
+    ownerId: shop.ownerId ?? undefined,
+    createdAt: shop.createdAt.toISOString(),
+    updatedAt: shop.updatedAt.toISOString(),
   };
 }
 
@@ -447,11 +469,11 @@ export async function listManagedShops(
 
   const shops = await prisma.shop.findMany({
     where,
-    include: shopInclude,
+    select: managedShopListSelect,
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
   });
 
-  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
+  return shops.map(mapManagedShopRecordForAdmin);
 }
 
 export async function updatePremiumOrder(orderedIds: string[]) {
