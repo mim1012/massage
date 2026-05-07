@@ -119,10 +119,6 @@ export default function Header() {
                 <Link href="/auth/register" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
                   회원가입
                 </Link>
-                <span className="text-gray-300 hidden sm:block">|</span>
-                <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
-                  관리자
-                </Link>
               </>
             ) : (
               <>
@@ -131,6 +127,14 @@ export default function Header() {
                 <Link href={myHref} prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
                   {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
                 </Link>
+                {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
+                  <>
+                    <span className="text-gray-300 hidden sm:block">|</span>
+                    <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
+                      관리자
+                    </Link>
+                  </>
+                )}
                 <span className="text-gray-300 hidden sm:block">|</span>
                 <button
                   type="button"
@@ -157,9 +161,6 @@ export default function Header() {
             <Link href="/auth/register" prefetch={false} className="rounded bg-[var(--portal-brand)] px-2.5 py-1 font-semibold text-white">
               회원가입
             </Link>
-            <Link href="/admin" prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
-              관리자
-            </Link>
           </div>
         ) : (
           <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 text-[11px]">
@@ -168,6 +169,11 @@ export default function Header() {
               <Link href={myHref} prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
                 {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
               </Link>
+              {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
+                <Link href="/admin" prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
+                  관리자
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => void handleLogout()}
@@ -232,7 +238,7 @@ export default function Header() {
             {REGIONS.filter((region) => region.code !== 'all').map((region) => (
               <Link
                 key={region.code}
-                href={buildBrowseHref({ mode: 'region', region: region.code, theme: currentTheme })}
+                href={buildBrowseHref({ mode: directoryMode, region: region.code, theme: currentTheme })}
                 prefetch={false}
                 className={clsx(
                   'shrink-0 border-b-2 px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
@@ -266,6 +272,48 @@ export default function Header() {
                 </Link>
               ))}
           </nav>
+
+          {directoryMode === 'theme' && currentRegion && (
+            <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded flex flex-wrap gap-2">
+              <Link
+                href={buildBrowseHref({
+                  mode: directoryMode,
+                  region: currentRegion,
+                  subRegion: currentSubRegion,
+                  theme: 'all',
+                })}
+                prefetch={false}
+                className={clsx(
+                  'text-[13px] text-center rounded py-1 px-4 border',
+                  !currentTheme || currentTheme === 'all'
+                    ? 'bg-[var(--portal-brand)] text-white font-bold border-[var(--portal-brand)]'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-200',
+                )}
+              >
+                전체
+              </Link>
+              {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                <Link
+                  key={theme.code}
+                  href={buildBrowseHref({
+                    mode: directoryMode,
+                    region: currentRegion,
+                    subRegion: currentSubRegion,
+                    theme: theme.code,
+                  })}
+                  prefetch={false}
+                  className={clsx(
+                    'text-[13px] text-center rounded py-1 px-4 border',
+                    currentTheme === theme.code
+                      ? 'bg-[var(--portal-brand)] text-white font-bold border-[var(--portal-brand)]'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-200',
+                  )}
+                >
+                  {theme.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {currentRegion && DISTRICTS[currentRegion] && (
             <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded grid grid-cols-8 gap-y-2 gap-x-2">

@@ -20,6 +20,8 @@ import clsx from 'clsx';
 import { createSubmissionLock } from '@/lib/client/submission-lock';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import type { Course, Shop, User } from '@/lib/types';
+import RichTextEditor from '@/components/admin/RichTextEditor';
+
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -443,13 +445,11 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
             <h2 className="border-b border-gray-100 pb-2 text-base font-black text-gray-800">② 상세 정보</h2>
 
             <div>
-              <label className={labelClassName}>상세 설명</label>
-              <textarea
-                rows={5}
+              <RichTextEditor
+                label="상세 설명"
                 value={form.description}
-                onChange={(event) => setForm({ ...form, description: event.target.value })}
-                className={`${inputClassName} resize-none`}
-                placeholder="업소 소개, 특장점, 서비스 안내 등"
+                onChange={(html) => setForm({ ...form, description: html })}
+                helperText="업소 소개, 특장점, 서비스 안내 등을 글꼴, 색상, 정렬 기능과 함께 자유롭게 작성해주세요."
               />
             </div>
 

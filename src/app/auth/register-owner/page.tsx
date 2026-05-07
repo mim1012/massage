@@ -20,21 +20,8 @@ export default function RegisterOwnerPage() {
     businessNumber: '',
     phone: '',
   });
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isSubmitted) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      router.push('/auth/login');
-    }, 1500);
-
-    return () => window.clearTimeout(timeout);
-  }, [isSubmitted, router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -67,7 +54,7 @@ export default function RegisterOwnerPage() {
         return;
       }
 
-      setIsSubmitted(true);
+      window.location.href = '/owner/shops/new';
     } finally {
       setLoading(false);
     }
@@ -76,32 +63,6 @@ export default function RegisterOwnerPage() {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
-
-  if (isSubmitted) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md space-y-6 rounded-xl bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]">
-            <Store className="h-8 w-8" />
-          </div>
-          <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-800">입점 신청이 완료되었습니다</h2>
-            <p className="text-gray-600">
-              관리자 승인 후 로그인하여 업체 정보를 등록할 수 있습니다.
-              <br />
-              <span className="text-sm text-gray-400">로그인 페이지로 자동 이동합니다.</span>
-            </p>
-          </div>
-          <button
-            onClick={() => router.push('/auth/login')}
-            className="inline-block w-full rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700"
-          >
-            로그인 페이지로 이동
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">

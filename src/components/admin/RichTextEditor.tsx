@@ -2,7 +2,6 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ImagePlus, Palette, Type } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
-import { normalizeShopDescription } from '@/lib/shop-description';
 
 type Props = {
   value: string;
@@ -41,10 +40,22 @@ function ensureEditorDocument() {
   }
 }
 
+function clientNormalize(input: string) {
+  const trimmed = (input || '').trim();
+  if (!trimmed) return '';
+  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(trimmed);
+  if (!looksLikeHtml) {
+    return `<p>${trimmed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br />')}</p>`;
+  }
+  return trimmed
+    .replace(/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/gi, '<p><br /></p>')
+    .replace(/<div>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/gi, '<div><br /></div>');
+}
+
 export default function RichTextEditor({ value, onChange, label, helperText }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const normalizedValue = useMemo(() => normalizeShopDescription(value), [value]);
+  const normalizedValue = useMemo(() => clientNormalize(value), [value]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -64,7 +75,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
     }
 
     const html = editor.innerHTML === '<br>' ? '' : editor.innerHTML;
-    onChange(normalizeShopDescription(html));
+    onChange(clientNormalize(html));
   };
 
   const focusEditor = () => {

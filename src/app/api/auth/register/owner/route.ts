@@ -1,5 +1,6 @@
 import { errorResponse } from '@/lib/auth/http';
-import { registerOwner } from '@/lib/server/auth-store';
+import { setSessionCookie } from '@/lib/auth/session';
+import { login, registerOwner } from '@/lib/server/auth-store';
 
 export async function POST(request: Request) {
   try {
@@ -31,6 +32,13 @@ export async function POST(request: Request) {
       businessNumber: body.businessNumber,
       phone: body.phone,
     });
+
+    const result = await login({
+      email: body.email,
+      password: body.password,
+    });
+    await setSessionCookie(result.token);
+
     return Response.json({ user }, { status: 201 });
   } catch (error) {
     return errorResponse(error);

@@ -143,7 +143,7 @@ export async function registerOwner(input: {
       email: normalizeEmail(input.email),
       name: input.name.trim(),
       role: UserRole.OWNER,
-      status: UserStatus.PENDING,
+      status: UserStatus.APPROVED,
       phone: input.phone.trim(),
       passwordHash: hashPassword(input.password),
       ownerProfile: {
