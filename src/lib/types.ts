@@ -1,7 +1,7 @@
 export { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 
 // ===== 업소(Shop) 관련 타입 =====
-export interface Shop {
+export interface ShopListItem {
   id: string;
   name: string;              // 업소명
   slug: string;              // URL slug
@@ -14,20 +14,23 @@ export interface Shop {
   isPremium: boolean;        // 프리미엄(고정 상단) 여부
   premiumOrder?: number;     // 프리미엄 순서
   thumbnailUrl: string;      // 썸네일 이미지
-  bannerUrl: string;         // 상세 배너 이미지
-  images: string[];          // 갤러리 이미지
+  bannerUrl: string;         // 리스트 배너 이미지
   tagline: string;           // 짧은 소개 문구
-  description: string;       // 상세 소개
-  address: string;           // 주소
-  phone: string;             // 전화번호
-  hours: string;             // 영업시간
   rating: number;            // 평점 (0~5)
   reviewCount: number;       // 후기 수
   courses: Course[];         // 코스/요금표
   tags: string[];            // 태그
+  createdAt: string;
+}
+
+export interface Shop extends ShopListItem {
+  images: string[];          // 갤러리 이미지
+  description: string;       // 상세 소개
+  address: string;           // 주소
+  phone: string;             // 전화번호
+  hours: string;             // 영업시간
   isVisible: boolean;        // 노출 여부 (어드민 제어)
   ownerId?: string;          // 제휴업체 관리자 계정 ID
-  createdAt: string;
   updatedAt: string;
 }
 

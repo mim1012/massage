@@ -7,7 +7,7 @@ import PaginationControls from '@/components/public/PaginationControls';
 import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
-import type { Review, Shop, User } from '@/lib/types';
+import type { Review, ShopListItem, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 type SessionResponse = {
@@ -50,7 +50,7 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
   );
 }
 
-function ReviewContent({ initialReviews, initialShops }: { initialReviews: ReviewWithRegion[]; initialShops: Shop[] }) {
+function ReviewContent({ initialReviews, initialShops }: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -65,7 +65,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   const [submitted, setSubmitted] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [reviews, setReviews] = useState<ReviewWithRegion[]>(initialReviews);
-  const [shops, setShops] = useState<Shop[]>(initialShops);
+  const [shops, setShops] = useState<ShopListItem[]>(initialShops);
   const [searchQuery, setSearchQuery] = useState(initialKeyword);
   const [searchType, setSearchType] = useState<'all' | 'shop' | 'author' | 'content'>('all');
   const [regionTab, setRegionTab] = useState('all');
@@ -557,7 +557,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   );
 }
 
-export default function ReviewPageClient(props: { initialReviews: ReviewWithRegion[]; initialShops: Shop[] }) {
+export default function ReviewPageClient(props: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <ReviewContent {...props} />

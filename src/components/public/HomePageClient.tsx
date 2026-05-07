@@ -20,13 +20,13 @@ import { buildShopDetailHref } from '@/lib/browse-context';
 import { shouldAutoLoadDeferredHomeDirectory } from '@/lib/home-directory-fetch-strategy';
 import { buildBrowseHref, buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
-import type { HomeSeoContent, Shop, SiteSettings } from '@/lib/types';
+import type { HomeSeoContent, ShopListItem, SiteSettings } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 
 type ShopListResponse = {
-  allShops: Shop[];
-  premiumShops: Shop[];
-  regularShops: Shop[];
+  allShops: ShopListItem[];
+  premiumShops: ShopListItem[];
+  regularShops: ShopListItem[];
   regularTotal?: number;
   total: number;
 };
@@ -54,8 +54,8 @@ export default function HomePageClient({
   initialHomeSeo,
   deferInitialDirectoryFetch = false,
 }: {
-  initialPremiumShops: Shop[];
-  initialRegularShops: Shop[];
+  initialPremiumShops: ShopListItem[];
+  initialRegularShops: ShopListItem[];
   initialRegularTotal: number;
   initialSiteSettings: SiteSettings;
   initialHomeSeo: HomeSeoContent;
@@ -70,8 +70,8 @@ export default function HomePageClient({
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const viewParam = searchParams.get('viewMode') === 'list' ? 'list' : 'card';
 
-  const [premiumShops, setPremiumShops] = useState<Shop[]>(initialPremiumShops);
-  const [regularShops, setRegularShops] = useState<Shop[]>(initialRegularShops);
+  const [premiumShops, setPremiumShops] = useState<ShopListItem[]>(initialPremiumShops);
+  const [regularShops, setRegularShops] = useState<ShopListItem[]>(initialRegularShops);
   const [regularTotal, setRegularTotal] = useState(initialRegularTotal);
   const [isLoading, setIsLoading] = useState(deferInitialDirectoryFetch);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

@@ -1,6 +1,6 @@
 import { revalidateTag, unstable_cache } from 'next/cache';
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
-import type { Review, Shop } from '@/lib/types';
+import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
 
@@ -19,9 +19,9 @@ interface DirectoryShopFilters extends ShopFilters {
 }
 
 type ShopListResponse = {
-  allShops: Shop[];
-  premiumShops: Shop[];
-  regularShops: Shop[];
+  allShops: ShopListItem[];
+  premiumShops: ShopListItem[];
+  regularShops: ShopListItem[];
   regularTotal: number;
   total: number;
 };
@@ -40,7 +40,6 @@ export const shopInclude = {
 
 const shopListSelect = {
   id: true,
-  ownerId: true,
   name: true,
   slug: true,
   region: true,
@@ -54,22 +53,14 @@ const shopListSelect = {
   thumbnailUrl: true,
   bannerUrl: true,
   tagline: true,
-  description: true,
-  address: true,
-  phone: true,
-  hours: true,
   rating: true,
   tags: true,
   createdAt: true,
-  updatedAt: true,
   courses: {
     orderBy: { sortOrder: 'asc' },
     take: 1,
     select: {
-      name: true,
-      durationMinutes: true,
       price: true,
-      description: true,
     },
   },
   _count: {
@@ -181,7 +172,7 @@ function mapReview(review: DbReview, shopName: string): Review {
   };
 }
 
-function mapShopList(record: ShopListRecord): Shop {
+function mapShopList(record: ShopListRecord): ShopListItem {
   return {
     id: record.id,
     name: record.name,
@@ -196,25 +187,16 @@ function mapShopList(record: ShopListRecord): Shop {
     premiumOrder: record.premiumOrder ?? undefined,
     thumbnailUrl: record.thumbnailUrl ?? '',
     bannerUrl: record.bannerUrl ?? '',
-    images: [],
     tagline: record.tagline,
-    description: record.description,
-    address: record.address,
-    phone: record.phone,
-    hours: record.hours,
     rating: record.rating,
     reviewCount: record._count.reviews,
     courses: record.courses.map((course) => ({
-      name: course.name,
-      duration: `${course.durationMinutes} min`,
+      name: '',
+      duration: '',
       price: `${course.price}`,
-      description: course.description ?? undefined,
     })),
     tags: record.tags,
-    isVisible: true,
-    ownerId: record.ownerId ?? undefined,
     createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
   };
 }
 
@@ -242,18 +224,18 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
-function sortByPopularity(left: Shop, right: Shop) {
+function sortByPopularity(left: ShopListItem, right: ShopListItem) {
   if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
   if (right.rating !== left.rating) return right.rating - left.rating;
   return right.createdAt.localeCompare(left.createdAt);
 }
 
-function balancePremiumShops(shops: Shop[], region?: string) {
+function balancePremiumShops(shops: ShopListItem[], region?: string) {
   if (region && region !== 'all') {
     return [...shops].sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
   }
 
-  const regionGroups = new Map<string, Shop[]>();
+  const regionGroups = new Map<string, ShopListItem[]>();
   shops.forEach((shop) => {
     const list = regionGroups.get(shop.region) || [];
     list.push(shop);
@@ -263,7 +245,7 @@ function balancePremiumShops(shops: Shop[], region?: string) {
     );
   });
 
-  const balanced: Shop[] = [];
+  const balanced: ShopListItem[] = [];
   const regions = Array.from(regionGroups.keys());
   const maxLen = Math.max(...Array.from(regionGroups.values()).map((list) => list.length), 0);
 

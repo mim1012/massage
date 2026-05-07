@@ -1,10 +1,10 @@
 import { sortRegularShops, type DirectorySortType } from '@/lib/directory-sort';
-import type { HomeSeoContent, Review, Shop, SiteSettings } from '@/lib/types';
+import type { HomeSeoContent, Review, ShopListItem, SiteSettings } from '@/lib/types';
 
 export type ShopListResponse = {
-  allShops: Shop[];
-  premiumShops: Shop[];
-  regularShops: Shop[];
+  allShops: ShopListItem[];
+  premiumShops: ShopListItem[];
+  regularShops: ShopListItem[];
   regularTotal?: number;
   total: number;
 };
@@ -19,7 +19,7 @@ export type ReviewWithRegion = Review & {
   regionLabel: string;
 };
 
-function sortShopsByPopularity(shops: Shop[]) {
+function sortShopsByPopularity(shops: ShopListItem[]) {
   return [...shops].sort((left, right) => {
     if (right.reviewCount !== left.reviewCount) {
       return right.reviewCount - left.reviewCount;
@@ -53,7 +53,7 @@ export function buildTop100PageData(shopResponse: ShopListResponse) {
   return sortShopsByPopularity(shopResponse.allShops).slice(0, 100);
 }
 
-export function mapReviewsWithRegion(reviews: Review[], shops: Shop[]): ReviewWithRegion[] {
+export function mapReviewsWithRegion(reviews: Review[], shops: ShopListItem[]): ReviewWithRegion[] {
   const shopMap = new Map(shops.map((shop) => [shop.id, shop]));
 
   return reviews.map((review) => {
