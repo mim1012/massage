@@ -26,7 +26,7 @@ import {
   normalizeHomeSeo,
   normalizeSiteSettings,
 } from '@/lib/site-content-defaults';
-import { mapShop, shopInclude } from '@/lib/server/shop-store';
+import { invalidatePublicShopListCache, mapShop, shopInclude } from '@/lib/server/shop-store';
 
 const SITE_SETTINGS_ID = 'default';
 
@@ -37,6 +37,15 @@ let cachedPublicSiteContent:
     }
   | null
   | undefined;
+let cachedBoardSummary: Promise<{ notices: number; qna: number; reviews: number }> | null = null;
+const cachedPublicNoticeLists = new Map<string, Promise<Notice[]>>();
+const cachedPublicReviewLists = new Map<string, Promise<Review[]>>();
+
+function invalidatePublicBoardCaches() {
+  cachedBoardSummary = null;
+  cachedPublicNoticeLists.clear();
+  cachedPublicReviewLists.clear();
+}
 
 function mapShopForAdmin(shop: Shop): AdminShopListItem {
   return {
@@ -481,16 +490,30 @@ type NoticeListOptions = {
 
 export async function listNotices(options: NoticeListOptions = {}) {
   const search = options.search?.trim();
-  const notices = await prisma.notice.findMany({
-    where: search
-      ? {
-          OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
-        }
-      : undefined,
-    orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-  });
+  const cacheKey = search ?? '__all__';
+  const cached = cachedPublicNoticeLists.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-  return notices.map(mapNotice);
+  const pending = prisma.notice
+    .findMany({
+      where: search
+        ? {
+            OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
+          }
+        : undefined,
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+    })
+    .then((notices) => notices.map(mapNotice))
+    .catch((error) => {
+      cachedPublicNoticeLists.delete(cacheKey);
+      throw error;
+    });
+
+  cachedPublicNoticeLists.set(cacheKey, pending);
+
+  return pending;
 }
 
 export async function getNoticeById(id: string) {
@@ -509,6 +532,8 @@ export async function createNotice(
       createdBy: input.createdBy,
     },
   });
+
+  invalidatePublicBoardCaches();
 
   return mapNotice(notice);
 }
@@ -532,11 +557,16 @@ export async function updateNotice(id: string, input: Pick<Notice, 'title' | 'co
     },
   });
 
+  invalidatePublicBoardCaches();
+
   return mapNotice(notice);
 }
 
 export async function deleteNotice(id: string) {
   const result = await prisma.notice.deleteMany({ where: { id } });
+  if (result.count > 0) {
+    invalidatePublicBoardCaches();
+  }
   return result.count > 0;
 }
 
@@ -787,6 +817,8 @@ export async function createQna(
       include: qnaInclude,
     });
 
+    cachedBoardSummary = null;
+
     return mapQna(entry, viewer);
   } catch (error) {
     if (!isQnaCommentStorageUnavailable(error)) {
@@ -811,6 +843,8 @@ export async function createQna(
         },
       },
     });
+
+    cachedBoardSummary = null;
 
     return mapQna({ ...entry, comments: [] }, viewer);
   }
@@ -880,6 +914,8 @@ export async function createReview(input: {
   });
 
   await refreshShopReviewRating(input.shopId);
+  invalidatePublicShopListCache();
+  invalidatePublicBoardCaches();
   return mapReview(review);
 }
 
@@ -890,27 +926,41 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
       : options;
   const shopId = normalizedOptions.shopId?.trim();
   const search = normalizedOptions.search?.trim();
+  const limit = typeof normalizedOptions.limit === 'number' ? normalizedOptions.limit : null;
+  const cacheKey = JSON.stringify({ shopId: shopId ?? '', search: search ?? '', limit });
+  const cached = cachedPublicReviewLists.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-  const reviews = await prisma.review.findMany({
-    where: {
-      isHidden: false,
-      ...(shopId ? { shopId } : {}),
-      ...(search
-        ? {
-            OR: [
-              { content: buildContainsFilter(search) },
-              { authorName: buildContainsFilter(search) },
-              { shop: { name: buildContainsFilter(search) } },
-            ],
-          }
-        : {}),
-    },
-    include: { shop: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-    ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
-  });
+  const pending = prisma.review
+    .findMany({
+      where: {
+        isHidden: false,
+        ...(shopId ? { shopId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { content: buildContainsFilter(search) },
+                { authorName: buildContainsFilter(search) },
+                { shop: { name: buildContainsFilter(search) } },
+              ],
+            }
+          : {}),
+      },
+      include: { shop: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
+    })
+    .then((reviews) => reviews.map(mapReview))
+    .catch((error) => {
+      cachedPublicReviewLists.delete(cacheKey);
+      throw error;
+    });
 
-  return reviews.map(mapReview);
+  cachedPublicReviewLists.set(cacheKey, pending);
+
+  return pending;
 }
 
 export async function listManagedReviews(user: { id: string; role: UserRole }, search?: string) {
@@ -985,6 +1035,10 @@ export async function setReviewHiddenState(
     include: { shop: { select: { name: true } } },
   });
 
+  await refreshShopReviewRating(review.shopId);
+  invalidatePublicShopListCache();
+  invalidatePublicBoardCaches();
+
   return mapReview(updated);
 }
 
@@ -1010,6 +1064,8 @@ export async function deleteManagedReview(user: { id: string; role: UserRole }, 
 
   await prisma.review.delete({ where: { id: reviewId } });
   await refreshShopReviewRating(review.shopId);
+  invalidatePublicShopListCache();
+  invalidatePublicBoardCaches();
   return true;
 }
 
@@ -1058,6 +1114,8 @@ export async function createAdminShop(input: Shop) {
     include: shopInclude,
   });
 
+  invalidatePublicShopListCache();
+
   return mapShop(shop);
 }
 
@@ -1079,6 +1137,8 @@ export async function updateAdminShop(id: string, input: Shop) {
       include: shopInclude,
     });
 
+    invalidatePublicShopListCache();
+
     return mapShop(shop);
   } catch {
     return null;
@@ -1086,17 +1146,27 @@ export async function updateAdminShop(id: string, input: Shop) {
 }
 
 export async function getBoardSummary() {
-  const [notices, qna, reviews] = await Promise.all([
+  if (cachedBoardSummary) {
+    return cachedBoardSummary;
+  }
+
+  const pending = Promise.all([
     prisma.notice.count(),
     prisma.qnA.count(),
     prisma.review.count({ where: { isHidden: false } }),
-  ]);
+  ])
+    .then(([notices, qna, reviews]) => ({
+      notices,
+      qna,
+      reviews,
+    }))
+    .catch((error) => {
+      cachedBoardSummary = null;
+      throw error;
+    });
 
-  return {
-    notices,
-    qna,
-    reviews,
-  };
+  cachedBoardSummary = pending;
+  return pending;
 }
 
 export async function listPartnershipInquiries() {

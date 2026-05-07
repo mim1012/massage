@@ -13,6 +13,14 @@ interface ShopFilters {
   regularLimit?: number;
 }
 
+type ShopListResponse = {
+  allShops: Shop[];
+  premiumShops: Shop[];
+  regularShops: Shop[];
+  regularTotal: number;
+  total: number;
+};
+
 export type ShopRecord = DbShop & {
   images: ShopImage[];
   courses: ShopCourse[];
@@ -64,6 +72,24 @@ const shopListSelect = {
 export type ShopListRecord = Prisma.ShopGetPayload<{
   select: typeof shopListSelect;
 }>;
+
+const publicShopListCache = new Map<string, Promise<ShopListResponse>>();
+
+function normalizeShopListCacheKey(filters: ShopFilters) {
+  return JSON.stringify({
+    region: filters.region ?? '',
+    subRegion: filters.subRegion ?? '',
+    theme: filters.theme ?? '',
+    query: filters.query?.trim() ?? '',
+    sort: filters.sort ?? '',
+    regularOffset: Math.max(0, filters.regularOffset ?? 0),
+    regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : null,
+  });
+}
+
+export function invalidatePublicShopListCache() {
+  publicShopListCache.clear();
+}
 
 export function mapShop(record: ShopRecord): Shop {
   const visibleReviews = record.reviews.filter((review) => !review.isHidden);
@@ -181,7 +207,7 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
-export async function listShops(filters: ShopFilters = {}) {
+async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
   const regularOffset = Math.max(0, filters.regularOffset ?? 0);
   const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
   const shops = await prisma.shop.findMany({
@@ -262,6 +288,22 @@ export async function listShops(filters: ShopFilters = {}) {
   };
 }
 
+export async function listShops(filters: ShopFilters = {}) {
+  const cacheKey = normalizeShopListCacheKey(filters);
+  const cached = publicShopListCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = listShopsUncached(filters).catch((error) => {
+    publicShopListCache.delete(cacheKey);
+    throw error;
+  });
+
+  publicShopListCache.set(cacheKey, pending);
+  return pending;
+}
+
 export async function getShopBySlug(slug: string) {
   const shop = await prisma.shop.findFirst({
     where: { slug, isVisible: true },
@@ -288,6 +330,7 @@ export async function updateShopVisibility(shopId: string, isVisible: boolean) {
       data: { isVisible },
       include: shopInclude,
     });
+    invalidatePublicShopListCache();
     return mapShop(shop);
   } catch {
     return null;
@@ -304,6 +347,7 @@ export async function updateShopPremium(shopId: string, isPremium: boolean, prem
       },
       include: shopInclude,
     });
+    invalidatePublicShopListCache();
     return mapShop(shop);
   } catch {
     return null;
