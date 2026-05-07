@@ -23,6 +23,7 @@ export default function Header() {
   const currentSubRegion = searchParams.get('subRegion');
   const currentTheme = searchParams.get('theme');
   const directoryMode = getDirectoryMode(searchParams.get('view'));
+  const themeEntryRegion = currentRegion ?? 'seoul';
   const { siteSettings } = useSiteContent();
   const { user, authChecked } = useAuthSession();
   const myHref = getMyHref(user?.role);
@@ -191,7 +192,7 @@ export default function Header() {
             </li>
             <li>
               <Link
-                href="/?view=theme"
+                href={buildBrowseHref({ mode: 'theme', region: themeEntryRegion, theme: currentTheme })}
                 prefetch={false}
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
@@ -244,8 +245,8 @@ export default function Header() {
                   key={theme.code}
                   href={buildBrowseHref({
                     mode: 'theme',
-                    region: currentRegion,
-                    subRegion: currentSubRegion,
+                    region: themeEntryRegion,
+                    subRegion: currentRegion ? currentSubRegion : undefined,
                     theme: theme.code,
                   })}
                   prefetch={false}
@@ -368,8 +369,8 @@ export default function Header() {
                   key={theme.code}
                   href={buildBrowseHref({
                     mode: 'theme',
-                    region: currentRegion,
-                    subRegion: currentSubRegion,
+                    region: themeEntryRegion,
+                    subRegion: currentRegion ? currentSubRegion : undefined,
                     theme: theme.code,
                   })}
                   prefetch={false}
