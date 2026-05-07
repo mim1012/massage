@@ -14,6 +14,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import HomeUtilityRail from '@/components/public/HomeUtilityRail';
+import MobileBannerRail from '@/components/public/MobileBannerRail';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { deriveStructuredSearchIntent } from '@/lib/structured-search';
@@ -413,6 +414,8 @@ export default function HomePageClient({
             )}
           </div>
 
+
+          <MobileBannerRail />
 
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold text-slate-800">{initialHomeSeo.section1Title}</h1>
