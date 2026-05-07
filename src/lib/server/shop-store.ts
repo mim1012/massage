@@ -72,6 +72,15 @@ const shopListSelect = {
       description: true,
     },
   },
+  _count: {
+    select: {
+      reviews: {
+        where: {
+          isHidden: false,
+        },
+      },
+    },
+  },
 } satisfies Prisma.ShopSelect;
 
 export type ShopListRecord = Prisma.ShopGetPayload<{
@@ -172,7 +181,7 @@ function mapReview(review: DbReview, shopName: string): Review {
   };
 }
 
-function mapShopList(record: ShopListRecord, reviewCount: number): Shop {
+function mapShopList(record: ShopListRecord): Shop {
   return {
     id: record.id,
     name: record.name,
@@ -194,7 +203,7 @@ function mapShopList(record: ShopListRecord, reviewCount: number): Shop {
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount,
+    reviewCount: record._count.reviews,
     courses: record.courses.map((course) => ({
       name: course.name,
       duration: `${course.durationMinutes} min`,
@@ -270,25 +279,6 @@ function balancePremiumShops(shops: Shop[], region?: string) {
   return balanced;
 }
 
-async function getReviewCountMap(shopIds: string[]) {
-  if (shopIds.length === 0) {
-    return new Map<string, number>();
-  }
-
-  const reviewCounts = await prisma.review.groupBy({
-    by: ['shopId'],
-    where: {
-      isHidden: false,
-      shopId: { in: shopIds },
-    },
-    _count: {
-      _all: true,
-    },
-  });
-
-  return new Map<string, number>(reviewCounts.map((item) => [item.shopId, Number(item._count._all)]));
-}
-
 function getRegularOrderBy(sort?: string): Prisma.ShopOrderByWithRelationInput[] {
   if (sort === 'new') {
     return [{ createdAt: 'desc' }];
@@ -333,16 +323,11 @@ async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): P
     prisma.shop.count({ where: regularWhere }),
   ]);
 
-  const reviewCountMap = await getReviewCountMap([
-    ...premiumRecords.map((shop) => shop.id),
-    ...regularRecords.map((shop) => shop.id),
-  ]);
-
   const premiumShops = balancePremiumShops(
-    premiumRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0)),
+    premiumRecords.map((shop) => mapShopList(shop)),
     filters.region,
   );
-  const regularShops = regularRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+  const regularShops = regularRecords.map((shop) => mapShopList(shop));
 
   return {
     allShops: [...premiumShops, ...regularShops],
@@ -396,9 +381,7 @@ async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListRes
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  const reviewCountMap = await getReviewCountMap(shops.map((shop) => shop.id));
-
-  const allShops = shops.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+  const allShops = shops.map((shop) => mapShopList(shop));
   const sortedShops = [...allShops];
 
   if (filters.sort === 'popular') {
