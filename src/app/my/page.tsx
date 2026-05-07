@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/guards';
+import { getRoleHomeHref } from '@/lib/auth/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +12,8 @@ export default async function MyPage() {
     redirect('/auth/login?redirect=/my');
   }
 
-  if (user.role === 'ADMIN') {
-    redirect('/admin');
-  }
-
-  if (user.role === 'OWNER') {
-    redirect('/owner/shops');
+  if (user.role !== 'USER') {
+    redirect(getRoleHomeHref(user.role));
   }
 
   return (

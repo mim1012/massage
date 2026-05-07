@@ -8,7 +8,7 @@ import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
 import { useAuthSession } from '@/lib/use-auth-session';
-import { getMyHref, getMyLabel } from '@/lib/auth/navigation';
+import { getMyHref, getMyLabel, isAdminAreaPath, isOwnerAreaPath } from '@/lib/auth/navigation';
 import clsx from 'clsx';
 
 export default function Header() {
@@ -55,7 +55,7 @@ export default function Header() {
       });
     } finally {
       setMobileMenuOpen(false);
-      if (pathname?.startsWith('/owner') || pathname?.startsWith('/my') || pathname?.startsWith('/admin')) {
+      if (isOwnerAreaPath(pathname) || pathname?.startsWith('/my') || isAdminAreaPath(pathname)) {
         router.replace('/auth/login');
       } else {
         router.refresh();

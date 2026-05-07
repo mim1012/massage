@@ -19,27 +19,26 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
-import type { User } from '@/lib/types';
 
-type AdminLayoutUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
+type AdminLayoutUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN';
+};
 
-const ALL_NAV_ITEMS: Array<{
-  href: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  roles: Array<User['role']>;
-}> = [
-  { href: '/admin', label: '대시보드', icon: LayoutDashboard, roles: ['ADMIN'] },
-  { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck, roles: ['ADMIN'] },
-  { href: '/admin/partnerships', label: '입점 문의 관리', icon: ClipboardList, roles: ['ADMIN'] },
-  { href: '/admin/shops', label: '업소 관리', icon: Store, roles: ['ADMIN', 'OWNER'] },
-  { href: '/admin/reviews', label: '후기 관리', icon: MessageSquare, roles: ['ADMIN', 'OWNER'] },
-  { href: '/admin/premium', label: '프리미엄 배너', icon: Crown, roles: ['ADMIN'] },
-  { href: '/admin/notice', label: '공지 관리', icon: Bell, roles: ['ADMIN'] },
-  { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle, roles: ['ADMIN', 'OWNER'] },
-  { href: '/admin/stats', label: '통계', icon: BarChart2, roles: ['ADMIN'] },
-  { href: '/admin/users', label: '회원 관리', icon: Users, roles: ['ADMIN'] },
-  { href: '/admin/settings', label: '사이트 설정', icon: Settings, roles: ['ADMIN'] },
+const ADMIN_NAV_ITEMS = [
+  { href: '/admin', label: '대시보드', icon: LayoutDashboard },
+  { href: '/admin/approvals', label: '입점 승인 관리', icon: UserCheck },
+  { href: '/admin/partnerships', label: '입점 문의 관리', icon: ClipboardList },
+  { href: '/admin/shops', label: '업소 관리', icon: Store },
+  { href: '/admin/reviews', label: '후기 관리', icon: MessageSquare },
+  { href: '/admin/premium', label: '프리미엄 배너', icon: Crown },
+  { href: '/admin/notice', label: '공지 관리', icon: Bell },
+  { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle },
+  { href: '/admin/stats', label: '통계', icon: BarChart2 },
+  { href: '/admin/users', label: '회원 관리', icon: Users },
+  { href: '/admin/settings', label: '사이트 설정', icon: Settings },
 ] as const;
 
 export default function AdminShell({
@@ -53,7 +52,7 @@ export default function AdminShell({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const navItems = ALL_NAV_ITEMS.filter((item) => item.roles.includes(currentUser.role));
+  const navItems = ADMIN_NAV_ITEMS;
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -130,9 +129,9 @@ export default function AdminShell({
           <button type="button" onClick={() => setSidebarOpen(true)} className="text-gray-600 md:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="text-sm font-bold text-gray-800">{currentUser.role === 'ADMIN' ? '어드민 모드' : '내 업소 관리 모드'}</div>
+          <div className="text-sm font-bold text-gray-800">어드민 모드</div>
           <div className="ml-auto text-xs text-gray-500">
-            {currentUser.role === 'ADMIN' ? '최고관리자' : currentUser.name} ({currentUser.email})
+            최고관리자 ({currentUser.email})
           </div>
         </header>
         <main className="flex-1 p-4">{children}</main>
