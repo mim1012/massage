@@ -13,6 +13,10 @@ interface ShopFilters {
   regularLimit?: number;
 }
 
+interface DirectoryShopFilters extends ShopFilters {
+  includePremium?: boolean;
+}
+
 type ShopListResponse = {
   allShops: Shop[];
   premiumShops: Shop[];
@@ -74,6 +78,7 @@ export type ShopListRecord = Prisma.ShopGetPayload<{
 }>;
 
 const publicShopListCache = new Map<string, Promise<ShopListResponse>>();
+const publicDirectoryShopListCache = new Map<string, Promise<ShopListResponse>>();
 
 function normalizeShopListCacheKey(filters: ShopFilters) {
   return JSON.stringify({
@@ -87,8 +92,22 @@ function normalizeShopListCacheKey(filters: ShopFilters) {
   });
 }
 
+function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
+  return JSON.stringify({
+    region: filters.region ?? '',
+    subRegion: filters.subRegion ?? '',
+    theme: filters.theme ?? '',
+    query: filters.query?.trim() ?? '',
+    sort: filters.sort ?? '',
+    regularOffset: Math.max(0, filters.regularOffset ?? 0),
+    regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : null,
+    includePremium: filters.includePremium !== false,
+  });
+}
+
 export function invalidatePublicShopListCache() {
   publicShopListCache.clear();
+  publicDirectoryShopListCache.clear();
 }
 
 export function mapShop(record: ShopRecord): Shop {
@@ -207,6 +226,142 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
+function sortByPopularity(left: Shop, right: Shop) {
+  if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
+  if (right.rating !== left.rating) return right.rating - left.rating;
+  return right.createdAt.localeCompare(left.createdAt);
+}
+
+function balancePremiumShops(shops: Shop[], region?: string) {
+  if (region && region !== 'all') {
+    return [...shops].sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
+  }
+
+  const regionGroups = new Map<string, Shop[]>();
+  shops.forEach((shop) => {
+    const list = regionGroups.get(shop.region) || [];
+    list.push(shop);
+    regionGroups.set(
+      shop.region,
+      list.sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999)),
+    );
+  });
+
+  const balanced: Shop[] = [];
+  const regions = Array.from(regionGroups.keys());
+  const maxLen = Math.max(...Array.from(regionGroups.values()).map((list) => list.length), 0);
+
+  for (let index = 0; index < maxLen; index += 1) {
+    for (const currentRegion of regions) {
+      const list = regionGroups.get(currentRegion);
+      if (list?.[index]) {
+        balanced.push(list[index]);
+      }
+    }
+  }
+
+  return balanced;
+}
+
+async function getReviewCountMap(shopIds: string[]) {
+  if (shopIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const reviewCounts = await prisma.review.groupBy({
+    by: ['shopId'],
+    where: {
+      isHidden: false,
+      shopId: { in: shopIds },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  return new Map<string, number>(reviewCounts.map((item) => [item.shopId, Number(item._count._all)]));
+}
+
+function getRegularOrderBy(sort?: string): Prisma.ShopOrderByWithRelationInput[] {
+  if (sort === 'new') {
+    return [{ createdAt: 'desc' }];
+  }
+
+  return [{ createdAt: 'desc' }];
+}
+
+async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): Promise<ShopListResponse> {
+  if (filters.sort === 'popular') {
+    return listShopsUncached(filters);
+  }
+
+  const regularOffset = Math.max(0, filters.regularOffset ?? 0);
+  const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
+  const includePremium = filters.includePremium !== false;
+  const baseWhere = buildShopWhere(filters);
+  const premiumWhere: Prisma.ShopWhereInput = {
+    ...baseWhere,
+    isPremium: true,
+  };
+  const regularWhere: Prisma.ShopWhereInput = {
+    ...baseWhere,
+    isPremium: false,
+  };
+
+  const [premiumRecords, regularRecords, regularTotal] = await Promise.all([
+    includePremium
+      ? prisma.shop.findMany({
+          where: premiumWhere,
+          select: shopListSelect,
+          orderBy: [{ premiumOrder: 'asc' }, { createdAt: 'desc' }],
+        })
+      : Promise.resolve([] as ShopListRecord[]),
+    prisma.shop.findMany({
+      where: regularWhere,
+      select: shopListSelect,
+      orderBy: getRegularOrderBy(filters.sort),
+      skip: regularOffset,
+      ...(regularLimit ? { take: regularLimit } : {}),
+    }),
+    prisma.shop.count({ where: regularWhere }),
+  ]);
+
+  const reviewCountMap = await getReviewCountMap([
+    ...premiumRecords.map((shop) => shop.id),
+    ...regularRecords.map((shop) => shop.id),
+  ]);
+
+  const premiumShops = balancePremiumShops(
+    premiumRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0)),
+    filters.region,
+  );
+  const regularShops = regularRecords.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
+
+  return {
+    allShops: [...premiumShops, ...regularShops],
+    premiumShops,
+    regularShops,
+    regularTotal,
+    total: premiumShops.length + regularTotal,
+  };
+}
+
+export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
+  const cacheKey = normalizeDirectoryShopListCacheKey(filters);
+  const cached = publicDirectoryShopListCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = listDirectoryShopsUncached(filters).catch((error) => {
+    publicDirectoryShopListCache.delete(cacheKey);
+    throw error;
+  });
+
+  publicDirectoryShopListCache.set(cacheKey, pending);
+  return pending;
+}
+
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
   const regularOffset = Math.max(0, filters.regularOffset ?? 0);
   const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
@@ -216,66 +371,21 @@ async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListRes
     orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  const reviewCounts =
-    shops.length > 0
-      ? await prisma.review.groupBy({
-          by: ['shopId'],
-          where: {
-            isHidden: false,
-            shopId: { in: shops.map((shop) => shop.id) },
-          },
-          _count: {
-            _all: true,
-          },
-        })
-      : [];
-
-  const reviewCountMap = new Map<string, number>(reviewCounts.map((item) => [item.shopId, Number(item._count._all)]));
+  const reviewCountMap = await getReviewCountMap(shops.map((shop) => shop.id));
 
   const allShops = shops.map((shop) => mapShopList(shop, reviewCountMap.get(shop.id) ?? 0));
   const sortedShops = [...allShops];
 
   if (filters.sort === 'popular') {
-    sortedShops.sort((left, right) => {
-      if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
-      if (right.rating !== left.rating) return right.rating - left.rating;
-      return right.createdAt.localeCompare(left.createdAt);
-    });
+    sortedShops.sort(sortByPopularity);
   } else if (filters.sort === 'new') {
     sortedShops.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  const premiumShopsRaw = sortedShops.filter((shop) => shop.isPremium);
-
-  // 전체 지역 조회 시 특정 지역 독점을 방지하기 위해 지역별 안배 로직 적용
-  let premiumShops: Shop[];
-  if (!filters.region || filters.region === 'all') {
-    const regionGroups = new Map<string, Shop[]>();
-    premiumShopsRaw.forEach((shop) => {
-      const list = regionGroups.get(shop.region) || [];
-      list.push(shop);
-      regionGroups.set(
-        shop.region,
-        list.sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999)),
-      );
-    });
-
-    const balanced: Shop[] = [];
-    const regions = Array.from(regionGroups.keys());
-    const maxLen = Math.max(...Array.from(regionGroups.values()).map((l) => l.length), 0);
-
-    for (let i = 0; i < maxLen; i++) {
-      for (const reg of regions) {
-        const list = regionGroups.get(reg);
-        if (list && list[i]) {
-          balanced.push(list[i]);
-        }
-      }
-    }
-    premiumShops = balanced;
-  } else {
-    premiumShops = premiumShopsRaw.sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
-  }
+  const premiumShops = balancePremiumShops(
+    sortedShops.filter((shop) => shop.isPremium),
+    filters.region,
+  );
   const allRegularShops = sortedShops.filter((shop) => !shop.isPremium);
   const regularShops = regularLimit ? allRegularShops.slice(regularOffset, regularOffset + regularLimit) : allRegularShops;
 

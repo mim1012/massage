@@ -8,7 +8,7 @@ import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 import { getDirectorySortType } from '@/lib/directory-sort';
 import { createDeferredHomeShopResponse, shouldDeferInitialHomeDirectoryFetch } from '@/lib/home-directory-fetch-strategy';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
-import { listShops } from '@/lib/server/shop-store';
+import { listDirectoryShops } from '@/lib/server/shop-store';
 
 const HOME_REGULAR_PAGE_SIZE = 24;
 
@@ -55,7 +55,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const [shopResponse, siteContent] = await Promise.all([
     deferInitialDirectoryFetch
       ? Promise.resolve(createDeferredHomeShopResponse())
-      : listShops({
+      : listDirectoryShops({
           region,
           subRegion,
           theme,
