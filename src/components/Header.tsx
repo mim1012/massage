@@ -127,14 +127,6 @@ export default function Header() {
                 <Link href={myHref} prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
                   {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
                 </Link>
-                {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
-                  <>
-                    <span className="text-gray-300 hidden sm:block">|</span>
-                    <Link href="/admin" prefetch={false} className="hidden px-2 py-1 text-xs text-gray-600 hover:text-[var(--portal-brand)] sm:block">
-                      관리자
-                    </Link>
-                  </>
-                )}
                 <span className="text-gray-300 hidden sm:block">|</span>
                 <button
                   type="button"
@@ -169,11 +161,7 @@ export default function Header() {
               <Link href={myHref} prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
                 {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
               </Link>
-              {(user?.role === 'OWNER' || user?.role === 'ADMIN') && (
-                <Link href="/admin" prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
-                  관리자
-                </Link>
-              )}
+
               <button
                 type="button"
                 onClick={() => void handleLogout()}
