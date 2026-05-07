@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
 import type { Review, Shop } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
@@ -92,8 +93,8 @@ function normalizeShopListCacheKey(filters: ShopFilters) {
   });
 }
 
-function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
-  return JSON.stringify({
+function normalizeDirectoryShopListFilters(filters: DirectoryShopFilters) {
+  return {
     region: filters.region ?? '',
     subRegion: filters.subRegion ?? '',
     theme: filters.theme ?? '',
@@ -102,7 +103,11 @@ function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
     regularOffset: Math.max(0, filters.regularOffset ?? 0),
     regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : null,
     includePremium: filters.includePremium !== false,
-  });
+  };
+}
+
+function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
+  return JSON.stringify(normalizeDirectoryShopListFilters(filters));
 }
 
 export function invalidatePublicShopListCache() {
@@ -346,6 +351,24 @@ async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): P
   };
 }
 
+const getPersistentDirectoryShopList = unstable_cache(
+  async (serializedFilters: string) => {
+    const normalized = JSON.parse(serializedFilters) as ReturnType<typeof normalizeDirectoryShopListFilters>;
+    return listDirectoryShopsUncached({
+      region: normalized.region || undefined,
+      subRegion: normalized.subRegion || undefined,
+      theme: normalized.theme || undefined,
+      query: normalized.query || undefined,
+      sort: normalized.sort || undefined,
+      regularOffset: normalized.regularOffset,
+      regularLimit: normalized.regularLimit ?? undefined,
+      includePremium: normalized.includePremium,
+    });
+  },
+  ['public-directory-shops'],
+  { revalidate: 30 },
+);
+
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
   const cacheKey = normalizeDirectoryShopListCacheKey(filters);
   const cached = publicDirectoryShopListCache.get(cacheKey);
@@ -353,7 +376,7 @@ export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
     return cached;
   }
 
-  const pending = listDirectoryShopsUncached(filters).catch((error) => {
+  const pending = getPersistentDirectoryShopList(cacheKey).catch((error) => {
     publicDirectoryShopListCache.delete(cacheKey);
     throw error;
   });
