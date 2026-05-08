@@ -15,10 +15,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function BoardPage() {
   const currentUser = await getSessionUser();
-  const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({
+  const data = await getBoardLandingData({
     includeReviews: Boolean(currentUser),
     viewer: currentUser ? { id: currentUser.id, role: currentUser.role } : undefined,
   });
+
+  const summary = data?.summary ?? { notices: 0, qna: 0, reviews: 0 };
+  const notices = data?.notices ?? [];
+  const qnaEntries = data?.qnaEntries ?? [];
+  const reviews = data?.reviews ?? [];
 
   return (
     <div className="mx-auto max-w-[1000px] px-3 py-4">
