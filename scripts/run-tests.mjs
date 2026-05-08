@@ -80,6 +80,18 @@ function createTestEnv() {
   return env;
 }
 
+function getNodeRunner() {
+  const major = Number.parseInt(process.versions.node.split('.')[0] ?? '0', 10);
+  if (major >= 22) {
+    return { command: process.execPath, baseArgs: [] };
+  }
+
+  return {
+    command: 'npx',
+    baseArgs: ['-y', 'node@22'],
+  };
+}
+
 function runCommand(command, args, env) {
   return spawnSync(command, args, {
     cwd: projectRoot,
@@ -88,6 +100,7 @@ function runCommand(command, args, env) {
   });
 }
 
+const nodeRunner = getNodeRunner();
 const testFiles = resolveTestFiles(process.argv.slice(2));
 if (testFiles.length === 0) {
   console.error('No test files found under tests/.');
@@ -95,7 +108,7 @@ if (testFiles.length === 0) {
 }
 
 const testEnv = createTestEnv();
-const seedResult = runCommand(process.execPath, ['--experimental-transform-types', 'prisma/seed.ts'], testEnv);
+const seedResult = runCommand(nodeRunner.command, [...nodeRunner.baseArgs, '--experimental-transform-types', 'prisma/seed.ts'], testEnv);
 if ((seedResult.status ?? 1) !== 0) {
   process.exit(seedResult.status ?? 1);
 }
@@ -108,8 +121,9 @@ for (const filePath of testFiles) {
 === Running ${relativePath} ===`);
 
   const result = runCommand(
-    process.execPath,
+    nodeRunner.command,
     [
+      ...nodeRunner.baseArgs,
       '--disable-warning=ExperimentalWarning',
       '--disable-warning=DeprecationWarning',
       '--experimental-transform-types',

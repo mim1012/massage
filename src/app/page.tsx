@@ -3,12 +3,11 @@ import HomePageClient from '@/components/public/HomePageClient';
 import { redirect } from 'next/navigation';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import { buildHomePageData } from '@/lib/public-page-data';
-import { buildBrowseHref } from '@/lib/directory-mode';
-import { deriveStructuredSearchIntent } from '@/lib/structured-search';
+import { getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
 import { getDirectorySortType } from '@/lib/directory-sort';
 import { createDeferredHomeShopResponse, shouldDeferInitialHomeDirectoryFetch } from '@/lib/home-directory-fetch-strategy';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
-import { listShops } from '@/lib/server/shop-store';
+import { listDirectoryShops } from '@/lib/server/shop-store';
 
 const HOME_REGULAR_PAGE_SIZE = 24;
 
@@ -16,6 +15,7 @@ type SearchParamValue = string | string[] | undefined;
 
 type PageProps = {
   searchParams?: Promise<{
+    view?: SearchParamValue;
     region?: SearchParamValue;
     subRegion?: SearchParamValue;
     theme?: SearchParamValue;
@@ -30,37 +30,41 @@ function pickFirst(value: SearchParamValue) {
 
 export default async function HomePage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const region = pickFirst(resolvedSearchParams?.region);
-  const subRegion = pickFirst(resolvedSearchParams?.subRegion);
-  const theme = pickFirst(resolvedSearchParams?.theme);
-  const q = pickFirst(resolvedSearchParams?.q);
-  const sort = pickFirst(resolvedSearchParams?.sort);
-  const canonicalSearchIntent = !region && !subRegion && !theme ? deriveStructuredSearchIntent(q) : {};
+  const directoryQuery = parseDirectoryQuery({
+    view: pickFirst(resolvedSearchParams?.view),
+    region: pickFirst(resolvedSearchParams?.region),
+    subRegion: pickFirst(resolvedSearchParams?.subRegion),
+    theme: pickFirst(resolvedSearchParams?.theme),
+    q: pickFirst(resolvedSearchParams?.q),
+    sort: pickFirst(resolvedSearchParams?.sort),
+  });
+  const canonicalRedirect = getDirectoryCanonicalRedirect({
+    ...directoryQuery,
+    basePath: '/',
+  });
 
-  if (q?.trim() && !canonicalSearchIntent.freeText && (canonicalSearchIntent.region || canonicalSearchIntent.subRegion || canonicalSearchIntent.theme)) {
-    redirect(
-      buildBrowseHref({
-        basePath: '/',
-        region: canonicalSearchIntent.region,
-        subRegion: canonicalSearchIntent.subRegion,
-        theme: canonicalSearchIntent.theme,
-        sort,
-      }),
-    );
+  if (canonicalRedirect) {
+    redirect(canonicalRedirect);
   }
 
-  const sortType = getDirectorySortType(sort);
-  const deferInitialDirectoryFetch = shouldDeferInitialHomeDirectoryFetch({ query: q });
+  const sortType = getDirectorySortType(directoryQuery.sort);
+  const deferInitialDirectoryFetch = shouldDeferInitialHomeDirectoryFetch({
+    mode: directoryQuery.mode,
+    region: directoryQuery.region,
+    subRegion: directoryQuery.subRegion,
+    theme: directoryQuery.theme,
+    query: directoryQuery.q,
+  });
 
   const [shopResponse, siteContent] = await Promise.all([
     deferInitialDirectoryFetch
       ? Promise.resolve(createDeferredHomeShopResponse())
-      : listShops({
-          region,
-          subRegion,
-          theme,
-          query: q,
-          sort,
+      : listDirectoryShops({
+          region: directoryQuery.region,
+          subRegion: directoryQuery.subRegion,
+          theme: directoryQuery.theme,
+          query: directoryQuery.q,
+          sort: directoryQuery.sort,
           regularOffset: 0,
           regularLimit: HOME_REGULAR_PAGE_SIZE,
         }),

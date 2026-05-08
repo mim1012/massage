@@ -7,11 +7,18 @@ import {
 } from '@/lib/home-directory-fetch-strategy';
 
 test('shouldDeferInitialHomeDirectoryFetch defers only real free-text queries', () => {
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ query: '힐링' }), true);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ query: '  힐링  ' }), true);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ query: '서울' }), false);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ query: '' }), false);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ query: undefined }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '힐링' }), true);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '  힐링  ' }), true);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '서울' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: undefined }), false);
+});
+
+test('shouldDeferInitialHomeDirectoryFetch defers broad theme landing but not narrowed theme routes', () => {
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', query: undefined }), true);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', region: 'seoul', query: undefined }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', theme: 'swedish', query: undefined }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', subRegion: 'gangnam', query: undefined }), false);
 });
 
 test('createDeferredHomeShopResponse returns an empty first-paint payload', () => {

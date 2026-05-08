@@ -1,13 +1,28 @@
 
+import type { DirectoryMode } from '@/lib/directory-mode';
 import { type ShopListResponse } from '@/lib/public-page-data';
 import { deriveStructuredSearchIntent } from '@/lib/structured-search';
 
 export function shouldDeferInitialHomeDirectoryFetch({
+  mode,
+  region,
+  subRegion,
+  theme,
   query,
 }: {
+  mode: DirectoryMode;
+  region?: string | null;
+  subRegion?: string | null;
+  theme?: string | null;
   query?: string | null;
 }) {
-  return Boolean(deriveStructuredSearchIntent(query).freeText);
+  const freeTextQuery = deriveStructuredSearchIntent(query).freeText;
+
+  if (freeTextQuery) {
+    return true;
+  }
+
+  return mode === 'theme' && !region && !subRegion && !theme;
 }
 
 export function createDeferredHomeShopResponse(): ShopListResponse {

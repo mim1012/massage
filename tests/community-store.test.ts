@@ -18,7 +18,7 @@ import {
   getQnaShopOwnerId,
   getSiteContent,
   listManagedReviews,
-  listAdminShops,
+  listManagedShops,
   listNotices,
   listPartnershipInquiries,
   listQna,
@@ -233,7 +233,7 @@ dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', 
     ],
   );
 
-  const shops = await listAdminShops();
+  const shops = await listManagedShops({ id: 'admin', role: 'ADMIN' });
   const premiumShops = shops.filter((shop) => shop.isPremium);
   assert.deepEqual(
     premiumShops.slice(0, 2).map((shop) => [shop.id, shop.premiumOrder]),

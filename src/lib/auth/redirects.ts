@@ -1,17 +1,10 @@
 import type { UserRole } from '@/lib/types';
+import { canAccessPathForRole, getRoleHomeHref } from '@/lib/auth/navigation';
 
 export function getPostLoginRedirect(role: UserRole, redirectTo?: string | null) {
-  if (role === 'ADMIN') {
-    return redirectTo?.startsWith('/admin') ? redirectTo : '/admin';
-  }
-
-  if (role === 'OWNER') {
-    return redirectTo?.startsWith('/owner') ? redirectTo : '/owner/shops';
-  }
-
-  if (redirectTo && !redirectTo.startsWith('/admin') && !redirectTo.startsWith('/owner')) {
+  if (redirectTo && canAccessPathForRole(role, redirectTo)) {
     return redirectTo;
   }
 
-  return '/';
+  return role === 'USER' ? '/' : getRoleHomeHref(role);
 }

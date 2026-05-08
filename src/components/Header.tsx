@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search, Menu, X } from 'lucide-react';
+import SmartPrefetchLink from '@/components/SmartPrefetchLink';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
 import { useAuthSession } from '@/lib/use-auth-session';
-import { getMyHref, getMyLabel } from '@/lib/auth/navigation';
+import { getMyHref, getMyLabel, isAdminAreaPath, isOwnerAreaPath } from '@/lib/auth/navigation';
 import clsx from 'clsx';
 
 export default function Header() {
@@ -23,6 +24,7 @@ export default function Header() {
   const currentSubRegion = searchParams.get('subRegion');
   const currentTheme = searchParams.get('theme');
   const directoryMode = getDirectoryMode(searchParams.get('view'));
+  const themeEntryRegion = currentRegion ?? 'seoul';
   const { siteSettings } = useSiteContent();
   const { user, authChecked } = useAuthSession();
   const myHref = getMyHref(user?.role);
@@ -66,7 +68,7 @@ export default function Header() {
       });
     } finally {
       setMobileMenuOpen(false);
-      if (pathname?.startsWith('/owner') || pathname?.startsWith('/my') || pathname?.startsWith('/admin')) {
+      if (isOwnerAreaPath(pathname) || pathname?.startsWith('/my') || isAdminAreaPath(pathname)) {
         router.replace('/auth/login');
       } else {
         router.refresh();
@@ -189,7 +191,7 @@ export default function Header() {
         <div className="max-w-[1400px] mx-auto px-3">
           <ul className="flex items-center text-white text-base font-bold">
             <li>
-              <Link
+              <SmartPrefetchLink
                 href="/?view=list"
                 prefetch={false}
                 className={clsx(
@@ -198,11 +200,11 @@ export default function Header() {
                 )}
               >
                 지역별업소
-              </Link>
+              </SmartPrefetchLink>
             </li>
             <li>
-              <Link
-                href="/?view=theme"
+              <SmartPrefetchLink
+                href={buildBrowseHref({ mode: 'theme', region: themeEntryRegion, theme: currentTheme })}
                 prefetch={false}
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
@@ -210,7 +212,7 @@ export default function Header() {
                 )}
               >
                 테마별업소
-              </Link>
+              </SmartPrefetchLink>
             </li>
             <li>
               <Link href="/top100" prefetch={false} className="block px-6 py-3 text-sky-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
@@ -235,7 +237,7 @@ export default function Header() {
         <div className="hidden md:block">
           <nav className="flex items-center border-t border-gray-200 -mx-3 px-3 overflow-x-auto scrollbar-hide bg-white">
             {REGIONS.filter((region) => region.code !== 'all').map((region) => (
-              <Link
+              <SmartPrefetchLink
                 key={region.code}
                 href={buildBrowseHref({ mode: directoryMode, region: region.code, theme: currentTheme })}
                 prefetch={false}
@@ -245,18 +247,18 @@ export default function Header() {
                 )}
               >
                 {region.label}
-              </Link>
+              </SmartPrefetchLink>
             ))}
             <div className="mx-1 h-4 w-px self-center bg-gray-300" />
             {THEMES.filter((theme) => theme.code !== 'all')
               .slice(0, 5)
               .map((theme) => (
-                <Link
+                <SmartPrefetchLink
                   key={theme.code}
                   href={buildBrowseHref({
                     mode: 'theme',
-                    region: currentRegion,
-                    subRegion: currentSubRegion,
+                    region: themeEntryRegion,
+                    subRegion: currentRegion ? currentSubRegion : undefined,
                     theme: theme.code,
                   })}
                   prefetch={false}
@@ -268,13 +270,13 @@ export default function Header() {
                   )}
                 >
                   {theme.label}
-                </Link>
+                </SmartPrefetchLink>
               ))}
           </nav>
 
           {directoryMode === 'theme' && currentRegion && (
             <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded flex flex-wrap gap-2">
-              <Link
+              <SmartPrefetchLink
                 href={buildBrowseHref({
                   mode: directoryMode,
                   region: currentRegion,
@@ -290,9 +292,9 @@ export default function Header() {
                 )}
               >
                 전체
-              </Link>
+              </SmartPrefetchLink>
               {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
-                <Link
+                <SmartPrefetchLink
                   key={theme.code}
                   href={buildBrowseHref({
                     mode: directoryMode,
@@ -309,7 +311,7 @@ export default function Header() {
                   )}
                 >
                   {theme.label}
-                </Link>
+                </SmartPrefetchLink>
               ))}
             </div>
           )}
@@ -317,7 +319,7 @@ export default function Header() {
           {currentRegion && DISTRICTS[currentRegion] && (
             <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded grid grid-cols-8 gap-y-2 gap-x-2">
               {DISTRICTS[currentRegion].map((district) => (
-                <Link
+                <SmartPrefetchLink
                   key={district.code}
                   href={buildBrowseHref({
                     mode: directoryMode,
@@ -336,7 +338,7 @@ export default function Header() {
                   )}
                 >
                   {district.label}
-                </Link>
+                </SmartPrefetchLink>
               ))}
             </div>
           )}
@@ -379,8 +381,8 @@ export default function Header() {
                   key={theme.code}
                   href={buildBrowseHref({
                     mode: 'theme',
-                    region: currentRegion,
-                    subRegion: currentSubRegion,
+                    region: themeEntryRegion,
+                    subRegion: currentRegion ? currentSubRegion : undefined,
                     theme: theme.code,
                   })}
                   prefetch={false}

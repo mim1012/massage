@@ -3,12 +3,12 @@
 import { memo } from 'react';
 import Link from 'next/link';
 import { Star, MapPin } from 'lucide-react';
-import { Shop } from '@/lib/types';
+import type { ShopListItem } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
 
 interface ShopCardProps {
-  shop: Shop;
+  shop: ShopListItem;
   variant?: 'premium' | 'regular';
   detailHref?: string;
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/guards';
+import { getRoleHomeHref, isOwnerAreaRole } from '@/lib/auth/navigation';
 
 export const metadata: Metadata = {
   robots: {
@@ -14,11 +15,11 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const currentUser = await getSessionUser();
 
   if (!currentUser) {
-    redirect('/auth/login');
+    redirect('/auth/login?redirect=/owner/shops');
   }
 
-  if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') {
-    redirect('/');
+  if (!isOwnerAreaRole(currentUser.role)) {
+    redirect(getRoleHomeHref(currentUser.role));
   }
 
   return (

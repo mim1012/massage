@@ -2,8 +2,7 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import Top100PageClient from '@/components/public/Top100PageClient';
 import { buildTop100PageData } from '@/lib/public-page-data';
-import { buildBrowseHref } from '@/lib/directory-mode';
-import { deriveStructuredSearchIntent } from '@/lib/structured-search';
+import { getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
 import { listShops } from '@/lib/server/shop-store';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +11,12 @@ type SearchParamValue = string | string[] | undefined;
 
 type PageProps = {
   searchParams?: Promise<{
+    view?: SearchParamValue;
     region?: SearchParamValue;
     subRegion?: SearchParamValue;
     theme?: SearchParamValue;
     q?: SearchParamValue;
+    sort?: SearchParamValue;
   }>;
 };
 
@@ -25,28 +26,28 @@ function pickFirst(value: SearchParamValue) {
 
 export default async function Top100Page({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const region = pickFirst(resolvedSearchParams?.region);
-  const subRegion = pickFirst(resolvedSearchParams?.subRegion);
-  const theme = pickFirst(resolvedSearchParams?.theme);
-  const q = pickFirst(resolvedSearchParams?.q);
-  const canonicalSearchIntent = !region && !subRegion && !theme ? deriveStructuredSearchIntent(q) : {};
+  const directoryQuery = parseDirectoryQuery({
+    view: pickFirst(resolvedSearchParams?.view),
+    region: pickFirst(resolvedSearchParams?.region),
+    subRegion: pickFirst(resolvedSearchParams?.subRegion),
+    theme: pickFirst(resolvedSearchParams?.theme),
+    q: pickFirst(resolvedSearchParams?.q),
+    sort: pickFirst(resolvedSearchParams?.sort),
+  });
+  const canonicalRedirect = getDirectoryCanonicalRedirect({
+    ...directoryQuery,
+    basePath: '/top100',
+  });
 
-  if (q?.trim() && !canonicalSearchIntent.freeText && (canonicalSearchIntent.region || canonicalSearchIntent.subRegion || canonicalSearchIntent.theme)) {
-    redirect(
-      buildBrowseHref({
-        basePath: '/top100',
-        region: canonicalSearchIntent.region,
-        subRegion: canonicalSearchIntent.subRegion,
-        theme: canonicalSearchIntent.theme,
-      }),
-    );
+  if (canonicalRedirect) {
+    redirect(canonicalRedirect);
   }
 
   const shopResponse = await listShops({
-    region,
-    subRegion,
-    theme,
-    query: q,
+    region: directoryQuery.region,
+    subRegion: directoryQuery.subRegion,
+    theme: directoryQuery.theme,
+    query: directoryQuery.q,
   });
 
   return (

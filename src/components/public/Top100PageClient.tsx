@@ -8,19 +8,18 @@ import ShopCard from '@/components/ShopCard';
 
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref, getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
-import { deriveStructuredSearchIntent } from '@/lib/structured-search';
-import { getDirectoryMode } from '@/lib/directory-mode';
+import { buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
 import { buildTop100PageData } from '@/lib/public-page-data';
-import type { Shop } from '@/lib/types';
+import type { ShopListItem } from '@/lib/types';
 
 type ShopListResponse = {
-  allShops: Shop[];
-  premiumShops: Shop[];
-  regularShops: Shop[];
+  allShops: ShopListItem[];
+  premiumShops: ShopListItem[];
+  regularShops: ShopListItem[];
   total: number;
 };
 
-export default function Top100PageClient({ initialShops }: { initialShops: Shop[] }) {
+export default function Top100PageClient({ initialShops }: { initialShops: ShopListItem[] }) {
   const searchParams = useSearchParams();
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
@@ -28,22 +27,19 @@ export default function Top100PageClient({ initialShops }: { initialShops: Shop[
   const searchQuery = searchParams.get('q') ?? '';
   const directoryMode = getDirectoryMode(searchParams.get('view'));
 
-  const [shops, setShops] = useState<Shop[]>(initialShops);
+  const [shops, setShops] = useState<ShopListItem[]>(initialShops);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const updateData = useCallback(async () => {
     setIsRefreshing(true);
 
-    const params = new URLSearchParams();
-    const searchIntent = deriveStructuredSearchIntent(searchQuery);
-    const resolvedRegion = selectedRegion !== 'all' ? selectedRegion : searchIntent.region;
-    const resolvedSubRegion = selectedSubRegion !== 'all' ? selectedSubRegion : searchIntent.subRegion;
-    const resolvedTheme = selectedTheme !== 'all' ? selectedTheme : searchIntent.theme;
-    if (resolvedRegion && resolvedRegion !== 'all') params.set('region', resolvedRegion);
-    if (resolvedSubRegion && resolvedSubRegion !== 'all') params.set('subRegion', resolvedSubRegion);
-    if (resolvedTheme && resolvedTheme !== 'all') params.set('theme', resolvedTheme);
-    if (searchIntent.freeText) params.set('q', searchIntent.freeText);
+    const params = buildDirectorySearchParams({
+      region: selectedRegion,
+      subRegion: selectedSubRegion,
+      theme: selectedTheme,
+      q: searchQuery,
+    });
 
     try {
       const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });

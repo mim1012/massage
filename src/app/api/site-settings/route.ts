@@ -1,8 +1,8 @@
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
-import { getSiteContent } from '@/lib/server/communityStore';
+import { getPublicSiteContent } from '@/lib/server/communityStore';
 
 export async function GET() {
-  const content = await getSiteContent();
+  const content = await getPublicSiteContent();
 
   return Response.json(
     content ?? {
