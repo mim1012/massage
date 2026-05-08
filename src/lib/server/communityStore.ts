@@ -521,7 +521,7 @@ export async function getBoardLandingData(options: { includeReviews?: boolean; v
     return {
       summary,
       notices: notices.slice(0, 5),
-      qna: (qnaEntries as any[]).map((entry) => mapBoardLandingQna(entry, options.viewer)),
+      qnaEntries: (qnaEntries as any[]).map((entry) => mapBoardLandingQna(entry, options.viewer)),
       reviews: reviews.slice(0, 5),
     };
   } catch {
