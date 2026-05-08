@@ -316,9 +316,9 @@ export default function HomePageClient({
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-gray-800">
-                  📋 {sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}
-                  {regionLabel !== '전체' && ` · ${regionLabel} ${subRegionLabel}`}
-                  {themeLabel && ` · ${themeLabel}`}
+                  {searchQuery ? `🔍 '${searchQuery}' 검색 결과` : `📋 ${sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}`}
+                  {regionLabel !== '전체' && !searchQuery && ` · ${regionLabel} ${subRegionLabel}`}
+                  {themeLabel && !searchQuery && ` · ${themeLabel}`}
                 </span>
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
                   ({regularShops.length}/{regularTotal}개)

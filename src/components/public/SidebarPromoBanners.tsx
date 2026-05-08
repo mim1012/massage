@@ -32,13 +32,13 @@ export default function SidebarPromoBanners({ mode = 'sidebar', onNavigate }: Si
         prefetch={false}
         onClick={onNavigate}
         className={clsx(
-          'block w-full cursor-pointer text-center text-gray-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5',
-          'rounded border-2 border-[var(--color-border)] bg-[var(--portal-brand-soft)] p-3 hover:border-[var(--portal-blue-banner-border)] hover:bg-white',
+          'block w-full cursor-pointer text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5',
+          'rounded border-2 border-[var(--portal-brand-hover)] bg-gradient-to-br from-white to-[var(--portal-brand-soft)] p-3 hover:bg-white',
         )}
       >
-        <div className="mb-0.5 text-[10px] text-gray-500">힐링찾기</div>
-        <div className="mb-1 text-[15px] font-black text-[var(--portal-brand)]">입점 문의</div>
-        <div className="inline-block rounded-full bg-[var(--portal-gnb)] px-2 py-0.5 text-[10px] font-bold text-white">모집중 &gt;</div>
+        <div className="mb-0.5 text-[10px] font-bold text-[var(--portal-brand-dark)] opacity-70">BUSINESS PARTNER</div>
+        <div className="mb-1 text-[16px] font-black text-[var(--portal-brand-dark)]">제휴 입점 문의</div>
+        <div className="inline-block rounded-full bg-[var(--portal-brand)] px-3 py-0.5 text-[10px] font-black text-white">상담 신청하기 &gt;</div>
       </Link>
 
       <div className="flex h-[150px] flex-col items-center justify-center rounded border border-[var(--color-border)] bg-[var(--portal-brand-soft)] text-[var(--color-text-secondary)]">

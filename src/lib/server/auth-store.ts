@@ -85,45 +85,58 @@ function readSessionPayload(token: string) {
   }
 
   try {
-    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
-      userId?: string;
-      expiresAt?: number;
-    };
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
 
-    if (!parsed.userId || typeof parsed.expiresAt !== 'number' || parsed.expiresAt <= Date.now()) {
+    if (
+      !parsed.userId ||
+      typeof parsed.userId !== 'string' ||
+      typeof parsed.expiresAt !== 'number' ||
+      parsed.expiresAt <= Date.now()
+    ) {
       return null;
     }
 
-    return parsed;
+    return parsed as { userId: string; expiresAt: number };
   } catch {
     return null;
   }
 }
 
 export async function findUserByEmail(email: string) {
-  return prisma.user.findUnique({
-    where: { email: normalizeEmail(email) },
-    include: { ownerProfile: true },
-  });
+  try {
+    return await prisma.user.findUnique({
+      where: { email: normalizeEmail(email) },
+      include: { ownerProfile: true },
+    });
+  } catch (error) {
+    console.error(`Failed to find user by email ${email}:`, error);
+    return null;
+  }
 }
 
 export async function registerUser(input: { name: string; email: string; password: string }) {
-  if (await findUserByEmail(input.email)) {
-    throw new Error('EMAIL_IN_USE');
+  try {
+    if (await findUserByEmail(input.email)) {
+      throw new Error('EMAIL_IN_USE');
+    }
+
+    const createdUser = await prisma.user.create({
+      data: {
+        email: normalizeEmail(input.email),
+        name: input.name.trim(),
+        role: UserRole.USER,
+        status: UserStatus.APPROVED,
+        passwordHash: hashPassword(input.password),
+      },
+      include: { ownerProfile: true },
+    });
+
+    return sanitizeUser(createdUser);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'EMAIL_IN_USE') throw error;
+    console.error('Failed to register user:', error);
+    throw new Error('DATABASE_ERROR');
   }
-
-  const createdUser = await prisma.user.create({
-    data: {
-      email: normalizeEmail(input.email),
-      name: input.name.trim(),
-      role: UserRole.USER,
-      status: UserStatus.APPROVED,
-      passwordHash: hashPassword(input.password),
-    },
-    include: { ownerProfile: true },
-  });
-
-  return sanitizeUser(createdUser);
 }
 
 export async function registerOwner(input: {
@@ -134,29 +147,35 @@ export async function registerOwner(input: {
   businessNumber: string;
   phone: string;
 }) {
-  if (await findUserByEmail(input.email)) {
-    throw new Error('EMAIL_IN_USE');
-  }
+  try {
+    if (await findUserByEmail(input.email)) {
+      throw new Error('EMAIL_IN_USE');
+    }
 
-  const createdUser = await prisma.user.create({
-    data: {
-      email: normalizeEmail(input.email),
-      name: input.name.trim(),
-      role: UserRole.OWNER,
-      status: UserStatus.APPROVED,
-      phone: input.phone.trim(),
-      passwordHash: hashPassword(input.password),
-      ownerProfile: {
-        create: {
-          businessName: input.businessName.trim(),
-          businessNumber: input.businessNumber.trim(),
+    const createdUser = await prisma.user.create({
+      data: {
+        email: normalizeEmail(input.email),
+        name: input.name.trim(),
+        role: UserRole.OWNER,
+        status: UserStatus.PENDING,
+        phone: input.phone.trim(),
+        passwordHash: hashPassword(input.password),
+        ownerProfile: {
+          create: {
+            businessName: input.businessName.trim(),
+            businessNumber: input.businessNumber.trim(),
+          },
         },
       },
-    },
-    include: { ownerProfile: true },
-  });
+      include: { ownerProfile: true },
+    });
 
-  return sanitizeUser(createdUser);
+    return sanitizeUser(createdUser);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'EMAIL_IN_USE') throw error;
+    console.error('Failed to register owner:', error);
+    throw new Error('DATABASE_ERROR');
+  }
 }
 
 export function createSession(userId: string) {
@@ -172,55 +191,84 @@ export async function getUserBySessionToken(token: string | undefined) {
     return null;
   }
 
-  const payload = readSessionPayload(token);
-  if (!payload) {
+  try {
+    const payload = readSessionPayload(token);
+    if (!payload || !payload.userId) {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { ownerProfile: true },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return sanitizeUser(user);
+  } catch (error) {
+    console.error('Error in getUserBySessionToken:', error);
     return null;
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    include: { ownerProfile: true },
-  });
-
-  return user ? sanitizeUser(user) : null;
 }
 
 export async function login(input: { email: string; password: string }) {
-  const user = await findUserByEmail(input.email);
-  if (!user || !verifyPassword(input.password, user.passwordHash)) {
-    throw new Error('INVALID_CREDENTIALS');
-  }
-  if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
-    throw new Error('OWNER_NOT_APPROVED');
-  }
+  try {
+    const user = await findUserByEmail(input.email);
+    if (!user || !verifyPassword(input.password, user.passwordHash)) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
+    if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
+      throw new Error('OWNER_NOT_APPROVED');
+    }
 
-  return {
-    user: sanitizeUser(user),
-    token: createSession(user.id),
-  };
+    return {
+      user: sanitizeUser(user),
+      token: createSession(user.id),
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : '';
+    if (['INVALID_CREDENTIALS', 'OWNER_NOT_APPROVED'].includes(msg)) throw error;
+    console.error('Login error:', error);
+    throw new Error('DATABASE_ERROR');
+  }
 }
 
 export async function listOwnerApprovals() {
-  const owners = await prisma.user.findMany({
-    where: { role: UserRole.OWNER },
-    include: { ownerProfile: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  const serializedOwners = owners.map(sanitizeUser);
+  try {
+    const owners = await prisma.user.findMany({
+      where: { role: UserRole.OWNER },
+      include: { ownerProfile: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const serializedOwners = owners.map(sanitizeUser);
 
-  return {
-    pendingUsers: serializedOwners.filter((user) => user.status === 'pending'),
-    processedUsers: serializedOwners.filter((user) => user.status !== 'pending'),
-  };
+    return {
+      pendingUsers: serializedOwners.filter((user) => user.status === 'pending'),
+      processedUsers: serializedOwners.filter((user) => user.status !== 'pending'),
+    };
+  } catch (error) {
+    console.error('Failed to list owner approvals:', error);
+    return {
+      pendingUsers: [],
+      processedUsers: [],
+    };
+  }
 }
 
 export async function listUsers() {
-  const users = await prisma.user.findMany({
-    include: { ownerProfile: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const users = await prisma.user.findMany({
+      include: { ownerProfile: true },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return users.map(sanitizeUser);
+    return users.map(sanitizeUser);
+  } catch (error) {
+    console.error('Failed to list users:', error);
+    return [];
+  }
 }
 
 export async function updateOwnerStatus(userId: string, status: 'approved' | 'rejected') {

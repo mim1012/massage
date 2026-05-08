@@ -53,18 +53,59 @@ export function deriveStructuredSearchIntent(query?: string | null): StructuredS
     return {};
   }
 
-  const key = normalizeStructuredSearchKey(trimmedQuery);
-  const region = regionSearchMap.get(key);
-  const theme = themeSearchMap.get(key);
-  const district = districtSearchMap.get(key);
+  // First, try matching the full query as a single key (legacy behavior)
+  const fullKey = normalizeStructuredSearchKey(trimmedQuery);
+  const fullRegion = regionSearchMap.get(fullKey);
+  const fullTheme = themeSearchMap.get(fullKey);
+  const fullDistrict = districtSearchMap.get(fullKey);
 
-  if (!region && !theme && !district) {
+  if (fullRegion || fullTheme || fullDistrict) {
+    return {
+      region: fullRegion ?? fullDistrict?.region,
+      subRegion: fullDistrict?.subRegion,
+      theme: fullTheme,
+    };
+  }
+
+  // If no full match, try matching tokens (e.g., "Gangnam Swedish")
+  const tokens = trimmedQuery.split(/\s+/);
+  const intent: StructuredSearchIntent = {};
+  const unmatchedTokens: string[] = [];
+
+  for (const token of tokens) {
+    const tokenKey = normalizeStructuredSearchKey(token);
+    const tokenRegion = regionSearchMap.get(tokenKey);
+    const tokenTheme = themeSearchMap.get(tokenKey);
+    const tokenDistrict = districtSearchMap.get(tokenKey);
+
+    let matched = false;
+    if (tokenRegion && !intent.region) {
+      intent.region = tokenRegion;
+      matched = true;
+    }
+    if (tokenDistrict) {
+      if (!intent.region) intent.region = tokenDistrict.region;
+      if (!intent.subRegion) intent.subRegion = tokenDistrict.subRegion;
+      matched = true;
+    }
+    if (tokenTheme && !intent.theme) {
+      intent.theme = tokenTheme;
+      matched = true;
+    }
+
+    if (!matched) {
+      unmatchedTokens.push(token);
+    }
+  }
+
+  if (unmatchedTokens.length > 0) {
+    intent.freeText = unmatchedTokens.join(' ');
+  }
+
+  // If we found nothing structured, return as free text
+  if (!intent.region && !intent.theme && !intent.subRegion) {
     return { freeText: trimmedQuery };
   }
 
-  return {
-    region: region ?? district?.region,
-    subRegion: district?.subRegion,
-    theme,
-  };
+  return intent;
 }

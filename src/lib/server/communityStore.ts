@@ -353,18 +353,22 @@ function hasLegacySiteContent(
 }
 
 async function loadSiteContentRecord() {
-  const record = await prisma.siteSettings.findUnique({
-    where: { id: SITE_SETTINGS_ID },
-  });
+  try {
+    const record = await prisma.siteSettings.findUnique({
+      where: { id: SITE_SETTINGS_ID },
+    });
 
-  if (!record) {
+    if (!record) {
+      return null;
+    }
+
+    return {
+      record,
+      content: mapSiteSettings(record),
+    };
+  } catch (error) {
     return null;
   }
-
-  return {
-    record,
-    content: mapSiteSettings(record),
-  };
 }
 
 function parseInteger(value: string) {
@@ -419,30 +423,35 @@ export async function listManagedShops(
   user: { id: string; role: UserRole },
   filters: { region?: string; q?: string } = {},
 ) {
-  const where: Prisma.ShopWhereInput = {};
+  try {
+    const where: Prisma.ShopWhereInput = {};
 
-  if (user.role === 'OWNER') {
-    where.ownerId = user.id;
+    if (user.role === 'OWNER') {
+      where.ownerId = user.id;
+    }
+
+    if (filters.region && filters.region !== 'all') {
+      where.region = filters.region;
+    }
+
+    if (filters.q) {
+      where.OR = [
+        { name: { contains: filters.q, mode: 'insensitive' } },
+        { phone: { contains: filters.q, mode: 'insensitive' } },
+      ];
+    }
+
+    const shops = await prisma.shop.findMany({
+      where,
+      include: shopInclude,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
+  } catch (error) {
+    console.error('Failed to list managed shops:', error);
+    return [];
   }
-
-  if (filters.region && filters.region !== 'all') {
-    where.region = filters.region;
-  }
-
-  if (filters.q) {
-    where.OR = [
-      { name: { contains: filters.q, mode: 'insensitive' } },
-      { phone: { contains: filters.q, mode: 'insensitive' } },
-    ];
-  }
-
-  const shops = await prisma.shop.findMany({
-    where,
-    include: shopInclude,
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-  });
-
-  return shops.map((shop) => mapShopForAdmin(mapShop(shop)));
 }
 
 export async function updatePremiumOrder(orderedIds: string[]) {
@@ -480,22 +489,32 @@ type NoticeListOptions = {
 };
 
 export async function listNotices(options: NoticeListOptions = {}) {
-  const search = options.search?.trim();
-  const notices = await prisma.notice.findMany({
-    where: search
-      ? {
-          OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
-        }
-      : undefined,
-    orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-  });
+  try {
+    const search = options.search?.trim();
+    const notices = await prisma.notice.findMany({
+      where: search
+        ? {
+            OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
+          }
+        : undefined,
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+    });
 
-  return notices.map(mapNotice);
+    return notices.map(mapNotice);
+  } catch (error) {
+    console.error('Failed to list notices:', error);
+    return [];
+  }
 }
 
 export async function getNoticeById(id: string) {
-  const notice = await prisma.notice.findUnique({ where: { id } });
-  return notice ? mapNotice(notice) : null;
+  try {
+    const notice = await prisma.notice.findUnique({ where: { id } });
+    return notice ? mapNotice(notice) : null;
+  } catch (error) {
+    console.error(`Failed to get notice ${id}:`, error);
+    return null;
+  }
 }
 
 export async function createNotice(
@@ -618,24 +637,26 @@ export async function listQna(options: string | QnaListOptions = {}) {
 
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
   } catch (error) {
-    if (!isQnaCommentStorageUnavailable(error)) {
-      throw error;
+    console.error('Failed to list Q&A:', error);
+
+    try {
+      const legacyWhere: Prisma.QnAWhereInput = {
+        ...(shopId ? { shopId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { question: buildContainsFilter(search) },
+                { authorName: buildContainsFilter(search) },
+              ],
+            }
+          : {}),
+      };
+
+      const entries = await loadLegacyQnaRecords(legacyWhere);
+      return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+    } catch {
+      return [];
     }
-
-    const legacyWhere: Prisma.QnAWhereInput = {
-      ...(shopId ? { shopId } : {}),
-      ...(search
-        ? {
-            OR: [
-              { question: buildContainsFilter(search) },
-              { authorName: buildContainsFilter(search) },
-            ],
-          }
-        : {}),
-    };
-
-    const entries = await loadLegacyQnaRecords(legacyWhere);
-    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
   }
 }
 
@@ -660,34 +681,41 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
 
         return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
       } catch (error) {
-        if (!isQnaCommentStorageUnavailable(error)) {
-          throw error;
-        }
-
-        const entries = await prisma.qnA.findMany({
-          select: {
-            id: true,
-            shopId: true,
-            question: true,
-            authorName: true,
-            status: true,
-            createdAt: true,
-            shop: {
-              select: {
-                ownerId: true,
-                name: true,
-                regionLabel: true,
+        console.error('Failed to load board landing Q&A:', error);
+        
+        try {
+          const entries = await prisma.qnA.findMany({
+            select: {
+              id: true,
+              shopId: true,
+              question: true,
+              authorName: true,
+              status: true,
+              createdAt: true,
+              shop: {
+                select: {
+                  ownerId: true,
+                  name: true,
+                  regionLabel: true,
+                },
               },
             },
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        });
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+          });
 
-        return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
+          return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
+        } catch {
+          return [];
+        }
       }
     })(),
-    includeReviews ? listReviews(3) : Promise.resolve([]),
+    includeReviews
+      ? listReviews(3).catch((error) => {
+          console.error('Failed to list landing reviews:', error);
+          return [];
+        })
+      : Promise.resolve([]),
   ]);
 
   return {
@@ -884,75 +912,85 @@ export async function createReview(input: {
 }
 
 export async function listReviews(options: number | ReviewListOptions = {}) {
-  const normalizedOptions =
-    typeof options === 'number'
-      ? { limit: options }
-      : options;
-  const shopId = normalizedOptions.shopId?.trim();
-  const search = normalizedOptions.search?.trim();
+  try {
+    const normalizedOptions =
+      typeof options === 'number'
+        ? { limit: options }
+        : options;
+    const shopId = normalizedOptions.shopId?.trim();
+    const search = normalizedOptions.search?.trim();
 
-  const reviews = await prisma.review.findMany({
-    where: {
-      isHidden: false,
-      ...(shopId ? { shopId } : {}),
-      ...(search
-        ? {
-            OR: [
-              { content: buildContainsFilter(search) },
-              { authorName: buildContainsFilter(search) },
-              { shop: { name: buildContainsFilter(search) } },
-            ],
-          }
-        : {}),
-    },
-    include: { shop: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-    ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
-  });
+    const reviews = await prisma.review.findMany({
+      where: {
+        isHidden: false,
+        ...(shopId ? { shopId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { content: buildContainsFilter(search) },
+                { authorName: buildContainsFilter(search) },
+                { shop: { name: buildContainsFilter(search) } },
+              ],
+            }
+          : {}),
+      },
+      include: { shop: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
+    });
 
-  return reviews.map(mapReview);
+    return reviews.map(mapReview);
+  } catch (error) {
+    console.error('Failed to list reviews:', error);
+    return [];
+  }
 }
 
 export async function listManagedReviews(user: { id: string; role: UserRole }, search?: string) {
-  const normalizedSearch = search?.trim();
-  const reviewWhere =
-    user.role === 'ADMIN'
-      ? {
-          ...(normalizedSearch
-            ? {
-                OR: [
-                  { content: buildContainsFilter(normalizedSearch) },
-                  { authorName: buildContainsFilter(normalizedSearch) },
-                  { shop: { name: buildContainsFilter(normalizedSearch) } },
-                ],
-              }
-            : {}),
-        }
-      : {
-          shop: {
-            ownerId: user.id,
-            ...(normalizedSearch ? { name: buildContainsFilter(normalizedSearch) } : {}),
-          },
-          ...(normalizedSearch
-            ? {
-                OR: [
-                  { content: buildContainsFilter(normalizedSearch) },
-                  { authorName: buildContainsFilter(normalizedSearch) },
-                ],
-              }
-            : {}),
-        };
+  try {
+    const normalizedSearch = search?.trim();
+    const reviewWhere =
+      user.role === 'ADMIN'
+        ? {
+            ...(normalizedSearch
+              ? {
+                  OR: [
+                    { content: buildContainsFilter(normalizedSearch) },
+                    { authorName: buildContainsFilter(normalizedSearch) },
+                    { shop: { name: buildContainsFilter(normalizedSearch) } },
+                  ],
+                }
+              : {}),
+          }
+        : {
+            shop: {
+              ownerId: user.id,
+              ...(normalizedSearch ? { name: buildContainsFilter(normalizedSearch) } : {}),
+            },
+            ...(normalizedSearch
+              ? {
+                  OR: [
+                    { content: buildContainsFilter(normalizedSearch) },
+                    { authorName: buildContainsFilter(normalizedSearch) },
+                  ],
+                }
+              : {}),
+          };
 
-  const reviews = await prisma.review.findMany({
-    where: reviewWhere,
-    include: { shop: { select: { name: true, regionLabel: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+    const reviews = await prisma.review.findMany({
+      where: reviewWhere,
+      include: { shop: { select: { name: true, regionLabel: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return reviews.map((review) => ({
-    ...mapReview(review),
-    shopRegionLabel: review.shop.regionLabel,
-  }));
+    return reviews.map((review) => ({
+      ...mapReview(review),
+      shopRegionLabel: review.shop.regionLabel,
+    }));
+  } catch (error) {
+    console.error('Failed to list managed reviews:', error);
+    return [];
+  }
 }
 
 export async function setReviewHiddenState(
@@ -960,88 +998,108 @@ export async function setReviewHiddenState(
   reviewId: string,
   isHidden: boolean,
 ) {
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId },
-    include: {
-      shop: {
-        select: {
-          ownerId: true,
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!review) {
+    if (!review) {
+      return null;
+    }
+
+    if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+      return null;
+    }
+
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: { isHidden },
+      include: { shop: { select: { name: true } } },
+    });
+
+    return mapReview(updated);
+  } catch (error) {
+    console.error(`Failed to set review hidden state for ${reviewId}:`, error);
     return null;
   }
-
-  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-    return null;
-  }
-
-  const updated = await prisma.review.update({
-    where: { id: reviewId },
-    data: { isHidden },
-    include: { shop: { select: { name: true } } },
-  });
-
-  return mapReview(updated);
 }
 
 export async function deleteManagedReview(user: { id: string; role: UserRole }, reviewId: string) {
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId },
-    include: {
-      shop: {
-        select: {
-          ownerId: true,
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!review) {
+    if (!review) {
+      return false;
+    }
+
+    if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+      return false;
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+    await refreshShopReviewRating(review.shopId);
+    return true;
+  } catch (error) {
+    console.error(`Failed to delete managed review ${reviewId}:`, error);
     return false;
   }
-
-  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-    return false;
-  }
-
-  await prisma.review.delete({ where: { id: reviewId } });
-  await refreshShopReviewRating(review.shopId);
-  return true;
 }
 
 export async function getAdminShopById(id: string) {
-  const shop = await prisma.shop.findUnique({
-    where: { id },
-    include: shopInclude,
-  });
+  try {
+    const shop = await prisma.shop.findUnique({
+      where: { id },
+      include: shopInclude,
+    });
 
-  return shop ? mapShop(shop) : null;
+    return shop ? mapShop(shop) : null;
+  } catch (error) {
+    console.error(`Failed to get admin shop by ID ${id}:`, error);
+    return null;
+  }
 }
 
 export async function getQnaShopOwnerId(id: string) {
-  const qna = await prisma.qnA.findUnique({
-    where: { id },
-    select: {
-      shop: {
-        select: {
-          ownerId: true,
+  try {
+    const qna = await prisma.qnA.findUnique({
+      where: { id },
+      select: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!qna) {
+    if (!qna) {
+      return { exists: false, ownerId: null };
+    }
+
+    return {
+      exists: true,
+      ownerId: qna.shop?.ownerId ?? null,
+    };
+  } catch (error) {
+    console.error(`Failed to get Q&A shop owner ID for ${id}:`, error);
     return { exists: false, ownerId: null };
   }
-
-  return {
-    exists: true,
-    ownerId: qna.shop?.ownerId ?? null,
-  };
 }
 
 export async function createAdminShop(input: Shop) {
@@ -1086,45 +1144,64 @@ export async function updateAdminShop(id: string, input: Shop) {
 }
 
 export async function getBoardSummary() {
-  const [notices, qna, reviews] = await Promise.all([
-    prisma.notice.count(),
-    prisma.qnA.count(),
-    prisma.review.count({ where: { isHidden: false } }),
-  ]);
+  try {
+    const [notices, qna, reviews] = await Promise.all([
+      prisma.notice.count(),
+      prisma.qnA.count(),
+      prisma.review.count({ where: { isHidden: false } }),
+    ]);
 
-  return {
-    notices,
-    qna,
-    reviews,
-  };
+    return {
+      notices,
+      qna,
+      reviews,
+    };
+  } catch (error) {
+    console.error('Failed to load board summary, using fallbacks:', error);
+    return {
+      notices: 0,
+      qna: 0,
+      reviews: 0,
+    };
+  }
 }
 
 export async function listPartnershipInquiries() {
-  const entries = await prisma.partnershipInquiry.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const entries = await prisma.partnershipInquiry.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return entries.map(mapPartnershipInquiry);
+    return entries.map(mapPartnershipInquiry);
+  } catch (error) {
+    console.error('Failed to list partnership inquiries:', error);
+    return [];
+  }
 }
 
 export async function createPartnershipInquiry(
   input: Omit<PartnershipInquiry, 'id' | 'createdAt' | 'status'> & { status?: PartnershipInquiry['status'] },
 ) {
-  const entry = await prisma.partnershipInquiry.create({
-    data: {
-      shopName: input.shopName.trim(),
-      region: input.region.trim(),
-      subRegion: input.subRegion.trim(),
-      theme: input.theme.trim(),
-      contactName: input.contactName.trim(),
-      phone: input.phone.trim(),
-      kakaoId: input.kakaoId?.trim() || null,
-      message: input.message.trim(),
-      status: mapPartnershipStatus(input.status ?? 'pending'),
-    },
-  });
+  try {
+    const entry = await prisma.partnershipInquiry.create({
+      data: {
+        shopName: input.shopName.trim(),
+        region: input.region.trim(),
+        subRegion: input.subRegion.trim(),
+        theme: input.theme.trim(),
+        contactName: input.contactName.trim(),
+        phone: input.phone.trim(),
+        kakaoId: input.kakaoId?.trim() || null,
+        message: input.message.trim(),
+        status: mapPartnershipStatus(input.status ?? 'pending'),
+      },
+    });
 
-  return mapPartnershipInquiry(entry);
+    return mapPartnershipInquiry(entry);
+  } catch (error) {
+    console.error('Failed to create partnership inquiry:', error);
+    return null;
+  }
 }
 
 export async function updatePartnershipInquiryStatus(
@@ -1144,46 +1221,59 @@ export async function updatePartnershipInquiryStatus(
 }
 
 export async function deletePartnershipInquiry(id: string) {
-  const result = await prisma.partnershipInquiry.deleteMany({
-    where: { id },
-  });
+  try {
+    const result = await prisma.partnershipInquiry.deleteMany({
+      where: { id },
+    });
 
-  return result.count > 0;
+    return result.count > 0;
+  } catch (error) {
+    console.error(`Failed to delete partnership inquiry ${id}:`, error);
+    return false;
+  }
 }
 
 export async function getSiteContent() {
-  const loaded = await loadSiteContentRecord();
+  try {
+    const loaded = await loadSiteContentRecord();
 
-  if (!loaded) {
+    if (!loaded) {
+      return null;
+    }
+
+    const { record, content } = loaded;
+
+    if (hasLegacySiteContent(record, content)) {
+      try {
+        await prisma.siteSettings.update({
+          where: { id: SITE_SETTINGS_ID },
+          data: {
+            siteName: content.siteSettings.siteName,
+            siteTitle: content.siteSettings.siteTitle,
+            siteDescription: content.siteSettings.siteDescription,
+            heroMainText: content.siteSettings.heroMainText,
+            heroSubText: content.siteSettings.heroSubText,
+            contactPhone: content.siteSettings.contactPhone,
+            footerInfo: content.siteSettings.footerInfo,
+            seoSection1Title: content.homeSeo.section1Title,
+            seoSection1Content: content.homeSeo.section1Content,
+            seoSection2Title: content.homeSeo.section2Title,
+            seoSection2Content: content.homeSeo.section2Content,
+            seoSection3Title: content.homeSeo.section3Title,
+            seoSection3Content: content.homeSeo.section3Content,
+          },
+        });
+      } catch (updateError) {
+        console.error('Failed to update legacy site content:', updateError);
+      }
+    }
+
+    cachedPublicSiteContent = content;
+    return content;
+  } catch (error) {
+    console.error('Failed to get site content:', error);
     return null;
   }
-
-  const { record, content } = loaded;
-
-  if (hasLegacySiteContent(record, content)) {
-    await prisma.siteSettings.update({
-      where: { id: SITE_SETTINGS_ID },
-      data: {
-        siteName: content.siteSettings.siteName,
-        siteTitle: content.siteSettings.siteTitle,
-        siteDescription: content.siteSettings.siteDescription,
-        heroMainText: content.siteSettings.heroMainText,
-        heroSubText: content.siteSettings.heroSubText,
-        contactPhone: content.siteSettings.contactPhone,
-        footerInfo: content.siteSettings.footerInfo,
-        seoSection1Title: content.homeSeo.section1Title,
-        seoSection1Content: content.homeSeo.section1Content,
-        seoSection2Title: content.homeSeo.section2Title,
-        seoSection2Content: content.homeSeo.section2Content,
-        seoSection3Title: content.homeSeo.section3Title,
-        seoSection3Content: content.homeSeo.section3Content,
-      },
-    });
-  }
-
-  cachedPublicSiteContent = content;
-
-  return content;
 }
 
 export async function getPublicSiteContent() {
@@ -1241,65 +1331,59 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
-  const [shopCount, premiumCount, unansweredCount, noticeCount, pendingQna, recentReviews] = await Promise.all([
-    prisma.shop.count(),
-    prisma.shop.count({ where: { isPremium: true } }),
-    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
-    prisma.notice.count(),
-    prisma.qnA.findMany({
-      where: { status: QnaStatus.OPEN },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-    }),
-    prisma.review.findMany({
-      include: { shop: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-    }),
-  ]);
+  try {
+    const [shopCount, premiumCount, unansweredCount, noticeCount, pendingQna, recentReviews] = await Promise.all([
+      prisma.shop.count(),
+      prisma.shop.count({ where: { isPremium: true } }),
+      prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
+      prisma.notice.count(),
+      prisma.qnA.findMany({
+        where: { status: QnaStatus.OPEN },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+      }),
+      prisma.review.findMany({
+        include: { shop: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+      }),
+    ]);
 
-  return {
-    summary: [
-      { label: '전체 업소', value: shopCount },
-      { label: '프리미엄 업소', value: premiumCount },
-      { label: '미답변 Q&A', value: unansweredCount },
-      { label: '공지 수', value: noticeCount },
-    ],
-    pendingQna: pendingQna.map((item) => ({
-      id: item.id,
-      question: item.question,
-      isAnswered: false,
-    })),
-    recentReviews: recentReviews.map((item) => ({
-      id: item.id,
-      shopName: item.shop.name,
-      rating: item.rating,
-      content: item.content,
-    })),
-  };
+    return {
+      summary: [
+        { label: '전체 업소', value: shopCount },
+        { label: '프리미엄 업소', value: premiumCount },
+        { label: '미답변 Q&A', value: unansweredCount },
+        { label: '공지 수', value: noticeCount },
+      ],
+      pendingQna: pendingQna.map((item) => ({
+        id: item.id,
+        question: item.question,
+        isAnswered: false,
+      })),
+      recentReviews: recentReviews.map((item) => ({
+        id: item.id,
+        shopName: item.shop.name,
+        rating: item.rating,
+        content: item.content,
+      })),
+    };
+  } catch (error) {
+    console.error('Failed to load admin dashboard data:', error);
+    return {
+      summary: [
+        { label: '전체 업소', value: 0 },
+        { label: '프리미엄 업소', value: 0 },
+        { label: '미답변 Q&A', value: 0 },
+        { label: '공지 수', value: 0 },
+      ],
+      pendingQna: [],
+      recentReviews: [],
+    };
+  }
 }
 
 export async function getAdminStatsData(): Promise<AdminStatsData> {
-  const [shopCount, premiumCount, unansweredCount, visibleReviewCount, topShops] = await Promise.all([
-    prisma.shop.count(),
-    prisma.shop.count({ where: { isPremium: true } }),
-    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
-    prisma.review.count({ where: { isHidden: false } }),
-    prisma.shop.findMany({
-      select: {
-        id: true,
-        name: true,
-        regionLabel: true,
-        _count: {
-          select: {
-            reviews: true,
-          },
-        },
-      },
-      orderBy: [{ reviews: { _count: 'desc' } }, { name: 'asc' }],
-      take: 5,
-    }),
-  ]);
 
   return {
     summary: [
