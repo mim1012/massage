@@ -464,30 +464,34 @@ export async function listManagedShops(
   user: { id: string; role: UserRole },
   filters: { region?: string; q?: string } = {},
 ) {
-  const where: Prisma.ShopWhereInput = {};
+  try {
+    const where: Prisma.ShopWhereInput = {};
 
-  if (user.role === 'OWNER') {
-    where.ownerId = user.id;
+    if (user.role === 'OWNER') {
+      where.ownerId = user.id;
+    }
+
+    if (filters.region && filters.region !== 'all') {
+      where.region = filters.region;
+    }
+
+    if (filters.q) {
+      where.OR = [
+        { name: { contains: filters.q, mode: 'insensitive' } },
+        { phone: { contains: filters.q, mode: 'insensitive' } },
+      ];
+    }
+
+    const shops = await prisma.shop.findMany({
+      where,
+      select: managedShopListSelect,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    return shops.map(mapManagedShopRecordForAdmin);
+  } catch {
+    return [];
   }
-
-  if (filters.region && filters.region !== 'all') {
-    where.region = filters.region;
-  }
-
-  if (filters.q) {
-    where.OR = [
-      { name: { contains: filters.q, mode: 'insensitive' } },
-      { phone: { contains: filters.q, mode: 'insensitive' } },
-    ];
-  }
-
-  const shops = await prisma.shop.findMany({
-    where,
-    select: managedShopListSelect,
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-  });
-
-  return shops.map(mapManagedShopRecordForAdmin);
 }
 
 export async function updatePremiumOrder(orderedIds: string[]) {
@@ -542,9 +546,9 @@ export async function listNotices(options: NoticeListOptions = {}) {
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
     })
     .then((notices) => notices.map(mapNotice))
-    .catch((error) => {
+    .catch(() => {
       cachedPublicNoticeLists.delete(cacheKey);
-      throw error;
+      return [];
     });
 
   cachedPublicNoticeLists.set(cacheKey, pending);
@@ -989,9 +993,9 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
       ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
     })
     .then((reviews) => reviews.map(mapReview))
-    .catch((error) => {
+    .catch(() => {
       cachedPublicReviewLists.delete(cacheKey);
-      throw error;
+      return [];
     });
 
   cachedPublicReviewLists.set(cacheKey, pending);
@@ -1046,63 +1050,71 @@ export async function setReviewHiddenState(
   reviewId: string,
   isHidden: boolean,
 ) {
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId },
-    include: {
-      shop: {
-        select: {
-          ownerId: true,
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!review) {
+    if (!review) {
+      return null;
+    }
+
+    if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+      return null;
+    }
+
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: { isHidden },
+      include: { shop: { select: { name: true } } },
+    });
+
+    await refreshShopReviewRating(review.shopId);
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+
+    return mapReview(updated);
+  } catch {
     return null;
   }
-
-  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-    return null;
-  }
-
-  const updated = await prisma.review.update({
-    where: { id: reviewId },
-    data: { isHidden },
-    include: { shop: { select: { name: true } } },
-  });
-
-  await refreshShopReviewRating(review.shopId);
-  invalidatePublicShopListCache();
-  invalidatePublicBoardCaches();
-
-  return mapReview(updated);
 }
 
 export async function deleteManagedReview(user: { id: string; role: UserRole }, reviewId: string) {
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId },
-    include: {
-      shop: {
-        select: {
-          ownerId: true,
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!review) {
+    if (!review) {
+      return false;
+    }
+
+    if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+      return false;
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+    await refreshShopReviewRating(review.shopId);
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return true;
+  } catch {
     return false;
   }
-
-  if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-    return false;
-  }
-
-  await prisma.review.delete({ where: { id: reviewId } });
-  await refreshShopReviewRating(review.shopId);
-  invalidatePublicShopListCache();
-  invalidatePublicBoardCaches();
-  return true;
 }
 
 export async function getAdminShopById(id: string) {
@@ -1196,9 +1208,13 @@ export async function getBoardSummary() {
       qna,
       reviews,
     }))
-    .catch((error) => {
+    .catch(() => {
       cachedBoardSummary = null;
-      throw error;
+      return {
+        notices: 0,
+        qna: 0,
+        reviews: 0,
+      };
     });
 
   cachedBoardSummary = pending;

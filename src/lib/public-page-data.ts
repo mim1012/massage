@@ -40,10 +40,13 @@ export function buildHomePageData({
   sortType: DirectorySortType;
   siteContent: SiteContent;
 }) {
+  const premiumShops = shopResponse?.premiumShops ?? [];
+  const regularShops = shopResponse?.regularShops ?? [];
+
   return {
-    premiumShops: shopResponse.premiumShops.slice(0, 4),
-    regularShops: sortRegularShops(shopResponse.regularShops, sortType),
-    regularTotal: shopResponse.regularTotal ?? shopResponse.regularShops.length,
+    premiumShops: premiumShops.slice(0, 4),
+    regularShops: sortRegularShops(regularShops, sortType),
+    regularTotal: shopResponse?.regularTotal ?? regularShops.length,
     siteSettings: siteContent.siteSettings,
     homeSeo: siteContent.homeSeo,
   };

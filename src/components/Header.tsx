@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search, Menu, X } from 'lucide-react';
 import SmartPrefetchLink from '@/components/SmartPrefetchLink';
@@ -33,8 +33,13 @@ export default function Header() {
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
+    
+    // If we're on a non-home page (like board or qna), always go back to home for search
+    const basePath = pathname === '/' || pathname === '/top100' ? pathname : '/';
+
     router.push(
       buildBrowseHref({
+        basePath,
         mode: directoryMode,
         region: selectedRegion,
         q: searchQuery,
@@ -42,6 +47,12 @@ export default function Header() {
     );
     setMobileMenuOpen(false);
   };
+
+  // Sync state with URL params
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') || '');
+    setSelectedRegion(searchParams.get('region') || 'all');
+  }, [searchParams]);
 
   const handleLogout = async () => {
     if (loggingOut) {

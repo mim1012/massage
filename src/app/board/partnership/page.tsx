@@ -67,7 +67,7 @@ export default function PartnershipPage() {
         </p>
         <Link
           href="/"
-          className="inline-block rounded-xl bg-red-600 px-8 py-3 font-bold text-white shadow-lg transition-all hover:bg-red-700 hover:shadow-red-200"
+          className="inline-block rounded-xl bg-[var(--portal-brand)] px-8 py-3 font-bold text-white shadow-lg transition-all hover:bg-[var(--portal-brand-hover)] hover:shadow-[var(--portal-brand-soft)]"
         >
           홈으로 돌아가기
         </Link>
@@ -78,17 +78,18 @@ export default function PartnershipPage() {
   return (
     <div className="mx-auto max-w-[800px] px-3 py-6">
       <div className="mb-4 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-red-600">홈</Link>
+        <Link href="/" className="hover:text-[var(--portal-brand)]">홈</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="text-gray-800">입점 문의</span>
+        <span className="text-gray-800 font-bold">입점 문의</span>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl sm:rounded-3xl">
-        <div className="bg-gradient-to-br from-red-600 to-rose-500 p-6 text-center text-white sm:p-8">
-          <h1 className="mb-2 text-xl font-black italic uppercase tracking-tight sm:mb-3 sm:text-3xl">Partnership</h1>
-          <p className="text-xs font-medium leading-relaxed opacity-90 sm:text-base">
-            대한민국 NO.1 마사지 플랫폼과
-            <br className="sm:hidden" /> 함께 성장할 파트너를 모십니다.
+        <div className="bg-gradient-to-br from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-6 text-center text-white sm:p-10">
+          <h1 className="mb-2 text-xl font-black italic uppercase tracking-wider sm:mb-4 sm:text-4xl">Partnership</h1>
+          <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-white/30" />
+          <p className="text-sm font-medium leading-relaxed opacity-95 sm:text-lg">
+            대한민국 대표 마사지 커뮤니티와
+            <br className="sm:hidden" /> 함께 성공할 파트너를 모십니다.
           </p>
         </div>
 
@@ -103,7 +104,7 @@ export default function PartnershipPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="ml-1 flex items-center gap-2 text-xs font-black text-gray-700">
-                  <Building2 className="h-3.5 w-3.5 text-red-500" /> 업체명 *
+                  <Building2 className="h-3.5 w-3.5 text-[var(--portal-brand)]" /> 업체명 *
                 </label>
                 <input
                   type="text"
@@ -111,7 +112,7 @@ export default function PartnershipPage() {
                   placeholder="정확한 업체명을 입력해 주세요"
                   value={form.shopName}
                   onChange={(event) => setForm((current) => ({ ...current, shopName: event.target.value }))}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all focus:border-red-500 focus:bg-white focus:outline-none"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all focus:border-[var(--portal-brand)] focus:bg-white focus:outline-none"
                 />
               </div>
 
@@ -243,13 +244,13 @@ export default function PartnershipPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-red-600 py-4 text-lg font-black text-white shadow-xl transition-all hover:bg-red-700 hover:shadow-red-200 active:scale-[0.98] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--portal-brand)] py-4 text-lg font-black text-white shadow-xl transition-all hover:bg-[var(--portal-brand-hover)] hover:shadow-[var(--portal-brand-soft)] active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-white border-t-transparent" />
               ) : (
                 <>
-                  <Send className="h-5 w-5" /> 입점 문의하기
+                  <Send className="h-5 w-5" /> 입점 문의 신청하기
                 </>
               )}
             </button>
