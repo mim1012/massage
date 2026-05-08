@@ -103,10 +103,16 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
 
     const editor = editorRef.current;
     if (editor) {
-      editor.querySelectorAll('font[size="7"]').forEach((node) => {
-        const element = node as HTMLElement;
-        element.removeAttribute('size');
-        element.style.fontSize = fontSize;
+      editor.querySelectorAll<HTMLElement>('font[size="7"], [style*="font-size"]').forEach((element) => {
+        const currentStyle = element.getAttribute('style') || '';
+        const nextStyle = /font-size\s*:/i.test(currentStyle)
+          ? currentStyle.replace(/font-size\s*:\s*[^;]+/gi, `font-size: ${fontSize}`)
+          : `${currentStyle.replace(/;?\s*$/, '')}${currentStyle.trim() ? '; ' : ''}font-size: ${fontSize}`;
+
+        element.setAttribute('style', nextStyle.trim());
+        if (element.tagName === 'FONT') {
+          element.removeAttribute('size');
+        }
       });
     }
 
