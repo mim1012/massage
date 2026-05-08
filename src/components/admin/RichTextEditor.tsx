@@ -57,13 +57,22 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
   const fileInputRef = useRef<HTMLInputElement>(null);
   const normalizedValue = useMemo(() => clientNormalize(value), [value]);
 
+  const getEditorValue = (editor: HTMLDivElement) => {
+    const html = editor.innerHTML.trim();
+    if (!html || html === '<br>' || html === '<p><br></p>' || html === '<p><br /></p>') {
+      return '';
+    }
+    return html;
+  };
+
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
-    if (editor.innerHTML !== normalizedValue) {
+    const currentNormalizedValue = clientNormalize(getEditorValue(editor));
+    if (currentNormalizedValue !== normalizedValue) {
       editor.innerHTML = normalizedValue || '<p><br /></p>';
     }
   }, [normalizedValue]);
@@ -74,8 +83,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
       return;
     }
 
-    const html = editor.innerHTML === '<br>' ? '' : editor.innerHTML;
-    onChange(clientNormalize(html));
+    onChange(clientNormalize(getEditorValue(editor)));
   };
 
   const focusEditor = () => {

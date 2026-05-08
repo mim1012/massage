@@ -448,7 +448,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
               <RichTextEditor
                 label="상세 설명"
                 value={form.description}
-                onChange={(html) => setForm({ ...form, description: html })}
+                onChange={(html) => setForm((current) => (current ? { ...current, description: html } : current))}
                 helperText="업소 소개, 특장점, 서비스 안내 등을 글꼴, 색상, 정렬 기능과 함께 자유롭게 작성해주세요."
               />
             </div>
