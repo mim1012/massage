@@ -26,7 +26,7 @@ const allowedAttributes: sanitizeHtml.IOptions['allowedAttributes'] = {
 const allowedStyles: sanitizeHtml.IOptions['allowedStyles'] = {
   '*': {
     color: [/^#[0-9a-fA-F]{3,8}$/, /^rgb\((?:\s*\d+\s*,){2}\s*\d+\s*\)$/],
-    'font-size': [/^\d+(?:px|rem|em|%)$/],
+    'font-size': [/^\d+(?:px|rem|em|%)$/, /^(?:xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|smaller|larger)$/i],
     'font-family': [/^[\w\s",'-]+$/],
     'text-align': [/^(left|center|right)$/],
   },

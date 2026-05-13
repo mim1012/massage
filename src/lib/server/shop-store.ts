@@ -4,7 +4,7 @@ import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
 
-export type ShopFilters = {
+interface ShopFilters {
   region?: string;
   subRegion?: string;
   theme?: string;
@@ -12,7 +12,7 @@ export type ShopFilters = {
   sort?: string;
   regularOffset?: number;
   regularLimit?: number;
-};
+}
 
 interface DirectoryShopFilters extends ShopFilters {
   includePremium?: boolean;
@@ -31,6 +31,15 @@ export type ShopRecord = DbShop & {
   courses: ShopCourse[];
   reviews: DbReview[];
 };
+
+export const shopInclude = {
+  images: true,
+  courses: true,
+  reviews: {
+    where: { isHidden: false },
+    orderBy: { createdAt: 'desc' },
+  },
+} satisfies Prisma.ShopInclude;
 
 const shopListSelect = {
   id: true,
@@ -115,53 +124,62 @@ export function invalidatePublicShopListCache() {
   }
 }
 
-const shopInclude = {
-  reviews: {
-    where: { isHidden: false },
-    orderBy: { createdAt: 'desc' as const },
-  },
-  courses: {
-    orderBy: { sortOrder: 'asc' as const },
-  },
-  images: {
-    orderBy: { sortOrder: 'asc' as const },
-  },
-} as const;
-
 export function mapShop(record: any): Shop {
+  const visibleReviews = Array.isArray(record.reviews) ? record.reviews.filter((review: any) => !review.isHidden) : [];
+
   return {
     id: record.id,
     name: record.name,
     slug: record.slug,
     region: record.region,
     regionLabel: record.regionLabel,
-    subRegion: record.subRegion || undefined,
-    subRegionLabel: record.subRegionLabel || undefined,
+    subRegion: record.subRegion ?? undefined,
+    subRegionLabel: record.subRegionLabel ?? undefined,
     theme: record.theme,
     themeLabel: record.themeLabel,
+    isPremium: record.isPremium ?? false,
+    premiumOrder: record.premiumOrder ?? undefined,
+    thumbnailUrl: record.thumbnailUrl || (Array.isArray(record.images) && record.images[0]?.imageUrl) || '',
+    bannerUrl: record.bannerUrl || (Array.isArray(record.images) && record.images[0]?.imageUrl) || '',
+    images: Array.isArray(record.images) 
+      ? [...record.images]
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+          .map((image) => image.imageUrl)
+      : [],
     tagline: record.tagline,
     description: record.description,
     address: record.address,
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount: record.reviews?.length ?? record._count?.reviews ?? 0,
-    thumbnailUrl: record.thumbnailUrl || '',
-    bannerUrl: record.bannerUrl || '',
-    images: Array.isArray(record.images) ? record.images.map((img: any) => img.imageUrl) : [],
-    courses: (record.courses as any[] || []).map((course: any) => ({
-      name: course.name || '',
-      duration: course.durationMinutes ? `${course.durationMinutes}분` : '',
-      price: `${course.price}`,
-      description: course.description || undefined,
-    })),
+    reviewCount: visibleReviews.length || record._count?.reviews || 0,
+    courses: Array.isArray(record.courses)
+      ? [...record.courses]
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+          .map((course) => ({
+            name: course.name || '',
+            duration: course.durationMinutes ? `${course.durationMinutes}분` : '',
+            price: `${course.price}`,
+            description: course.description ?? undefined,
+          }))
+      : [],
     tags: record.tags || [],
     isVisible: record.isVisible ?? true,
-    isPremium: record.isPremium ?? false,
-    premiumOrder: record.premiumOrder || undefined,
-    ownerId: record.ownerId || undefined,
+    ownerId: record.ownerId ?? undefined,
     createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
     updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,
+  };
+}
+
+function mapReview(review: DbReview, shopName: string): Review {
+  return {
+    id: review.id,
+    shopId: review.shopId,
+    shopName,
+    authorName: review.authorName,
+    rating: review.rating,
+    content: review.content,
+    createdAt: review.createdAt.toISOString(),
   };
 }
 
@@ -172,8 +190,8 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     slug: record.slug,
     region: record.region,
     regionLabel: record.regionLabel,
-    subRegion: record.subRegion || undefined,
-    subRegionLabel: record.subRegionLabel || undefined,
+    subRegion: record.subRegion ?? undefined,
+    subRegionLabel: record.subRegionLabel ?? undefined,
     theme: record.theme,
     themeLabel: record.themeLabel,
     isPremium: record.isPremium,
@@ -195,37 +213,26 @@ function mapShopList(record: ShopListRecord): ShopListItem {
 
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
-  const query = filters.query?.trim();
 
-  const where: Prisma.ShopWhereInput = {
+  return {
     isVisible: true,
+    ...(mappedRegion ? { region: mappedRegion } : {}),
+    ...(filters.subRegion && filters.subRegion !== 'all' ? { subRegion: filters.subRegion } : {}),
+    ...(filters.theme && filters.theme !== 'all' ? { theme: filters.theme } : {}),
+    ...(filters.query
+      ? {
+          OR: [
+            { name: { contains: filters.query, mode: 'insensitive' } },
+            { regionLabel: { contains: filters.query, mode: 'insensitive' } },
+            { subRegionLabel: { contains: filters.query, mode: 'insensitive' } },
+            { themeLabel: { contains: filters.query, mode: 'insensitive' } },
+            { tagline: { contains: filters.query, mode: 'insensitive' } },
+            { description: { contains: filters.query, mode: 'insensitive' } },
+            { tags: { has: filters.query } },
+          ],
+        }
+      : {}),
   };
-
-  if (mappedRegion) {
-    where.region = mappedRegion;
-  }
-
-  if (filters.subRegion && filters.subRegion !== 'all') {
-    where.subRegion = filters.subRegion;
-  }
-
-  if (filters.theme && filters.theme !== 'all') {
-    where.theme = filters.theme;
-  }
-
-  if (query) {
-    where.OR = [
-      { name: { contains: query, mode: 'insensitive' } },
-      { tagline: { contains: query, mode: 'insensitive' } },
-      { description: { contains: query, mode: 'insensitive' } },
-      { regionLabel: { contains: query, mode: 'insensitive' } },
-      { subRegionLabel: { contains: query, mode: 'insensitive' } },
-      { themeLabel: { contains: query, mode: 'insensitive' } },
-      { tags: { hasSome: [query] } },
-    ];
-  }
-
-  return where;
 }
 
 function sortByPopularity(left: ShopListItem, right: ShopListItem) {
@@ -379,6 +386,7 @@ async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListRes
     const shops = await prisma.shop.findMany({
       where: buildShopWhere(filters),
       select: shopListSelect,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
     const allShops = shops.map((shop) => mapShopList(shop));
@@ -444,17 +452,10 @@ export async function getShopBySlug(slug: string) {
 
     return {
       shop: mapShop(shop),
-      reviews: (shop.reviews as any[])
+      reviews: shop.reviews
         .filter((review) => !review.isHidden)
-        .map((review) => ({
-          id: review.id,
-          shopId: review.shopId,
-          shopName: shop.name,
-          authorName: review.authorName,
-          rating: review.rating,
-          content: review.content,
-          createdAt: review.createdAt.toISOString(),
-        })),
+        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+        .map((review) => mapReview(review, shop.name)),
     };
   } catch (error) {
     return null;
@@ -466,11 +467,12 @@ export async function updateShopVisibility(shopId: string, isVisible: boolean) {
     const shop = await prisma.shop.update({
       where: { id: shopId },
       data: { isVisible },
+      include: shopInclude,
     });
     invalidatePublicShopListCache();
-    return true;
+    return mapShop(shop);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -478,12 +480,16 @@ export async function updateShopPremium(shopId: string, isPremium: boolean, prem
   try {
     const shop = await prisma.shop.update({
       where: { id: shopId },
-      data: { isPremium, premiumOrder },
+      data: {
+        isPremium,
+        premiumOrder: isPremium ? premiumOrder ?? 1 : null,
+      },
+      include: shopInclude,
     });
     invalidatePublicShopListCache();
-    return true;
+    return mapShop(shop);
   } catch {
-    return false;
+    return null;
   }
 }
 

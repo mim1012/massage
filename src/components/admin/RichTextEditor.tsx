@@ -57,13 +57,22 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
   const fileInputRef = useRef<HTMLInputElement>(null);
   const normalizedValue = useMemo(() => clientNormalize(value), [value]);
 
+  const getEditorValue = (editor: HTMLDivElement) => {
+    const html = editor.innerHTML.trim();
+    if (!html || html === '<br>' || html === '<p><br></p>' || html === '<p><br /></p>') {
+      return '';
+    }
+    return html;
+  };
+
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
-    if (editor.innerHTML !== normalizedValue) {
+    const currentNormalizedValue = clientNormalize(getEditorValue(editor));
+    if (currentNormalizedValue !== normalizedValue) {
       editor.innerHTML = normalizedValue || '<p><br /></p>';
     }
   }, [normalizedValue]);
@@ -74,8 +83,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
       return;
     }
 
-    const html = editor.innerHTML === '<br>' ? '' : editor.innerHTML;
-    onChange(clientNormalize(html));
+    onChange(clientNormalize(getEditorValue(editor)));
   };
 
   const focusEditor = () => {
@@ -95,10 +103,16 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
 
     const editor = editorRef.current;
     if (editor) {
-      editor.querySelectorAll('font[size="7"]').forEach((node) => {
-        const element = node as HTMLElement;
-        element.removeAttribute('size');
-        element.style.fontSize = fontSize;
+      editor.querySelectorAll<HTMLElement>('font[size="7"], [style*="font-size"]').forEach((element) => {
+        const currentStyle = element.getAttribute('style') || '';
+        const nextStyle = /font-size\s*:/i.test(currentStyle)
+          ? currentStyle.replace(/font-size\s*:\s*[^;]+/gi, `font-size: ${fontSize}`)
+          : `${currentStyle.replace(/;?\s*$/, '')}${currentStyle.trim() ? '; ' : ''}font-size: ${fontSize}`;
+
+        element.setAttribute('style', nextStyle.trim());
+        if (element.tagName === 'FONT') {
+          element.removeAttribute('size');
+        }
       });
     }
 
