@@ -37,7 +37,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!initialDataLoaded && initialQnaList.length === 0 && initialShops.length === 0);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,8 +113,10 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     });
   }, [qnaList, search, tab]);
 
+  const isDeleting = (id: string) => deletingIds.includes(id);
+
   async function handleCommentSubmit(id: string) {
-    if (deletingId === id) {
+    if (isDeleting(id)) {
       return;
     }
 
@@ -148,11 +150,15 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   }
 
   async function handleDelete(qna: QnA) {
+    if (isDeleting(qna.id) || submittingId === qna.id) {
+      return;
+    }
+
     if (typeof window !== 'undefined' && !window.confirm(buildDeleteQnaConfirmMessage(qna))) {
       return;
     }
 
-    setDeletingId(qna.id);
+    setDeletingIds((current) => [...current, qna.id]);
     setError(null);
 
     try {
@@ -178,7 +184,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Q&A를 삭제하지 못했습니다.');
     } finally {
-      setDeletingId(null);
+      setDeletingIds((current) => current.filter((id) => id !== qna.id));
     }
   }
 
@@ -265,7 +271,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                   </div>
                   <button
                     onClick={() => void handleDelete(qna)}
-                    disabled={deletingId === qna.id || submittingId === qna.id}
+                    disabled={isDeleting(qna.id) || submittingId === qna.id}
                     className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                     title="Q&A 삭제"
                     aria-label="Q&A 삭제"
@@ -306,20 +312,20 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                         value={drafts[qna.id] ?? ''}
                         onChange={(event) => setDrafts((current) => ({ ...current, [qna.id]: event.target.value }))}
                         placeholder="댓글 내용을 입력해 주세요."
-                        disabled={deletingId === qna.id}
+                        disabled={isDeleting(qna.id)}
                         className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                       />
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => setActiveComposerId(null)}
-                          disabled={deletingId === qna.id}
+                          disabled={isDeleting(qna.id)}
                           className="rounded border border-gray-300 px-3 py-1.5 text-[11px] text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           취소
                         </button>
                         <button
                           onClick={() => void handleCommentSubmit(qna.id)}
-                          disabled={submittingId === qna.id || deletingId === qna.id}
+                          disabled={submittingId === qna.id || isDeleting(qna.id)}
                           className="rounded bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {submittingId === qna.id ? '저장 중' : '저장'}
@@ -329,7 +335,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                   ) : (
                     <button
                       onClick={() => setActiveComposerId(qna.id)}
-                      disabled={deletingId === qna.id}
+                      disabled={isDeleting(qna.id)}
                       className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Send className="h-3 w-3" />
