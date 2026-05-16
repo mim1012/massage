@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { CheckCircle, MessageCircle, Search, Send } from 'lucide-react';
+import { CheckCircle, MessageCircle, Search, Send, Trash2 } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
-import type { QnA, QnAComment } from '@/lib/types';
+import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { buildDeleteQnaConfirmMessage, getThreadComments, removeManagedQna } from '@/components/admin/qna-management-helpers';
 
 type Props = {
   scope: 'admin' | 'owner';
@@ -27,28 +28,6 @@ const TABS = [
   { key: 'done', label: '댓글 등록됨' },
 ] satisfies Array<{ key: TabKey; label: string }>;
 
-function getThreadComments(qna: QnA): QnAComment[] {
-  if (Array.isArray(qna.comments) && qna.comments.length > 0) {
-    return qna.comments;
-  }
-
-  if (qna.answer?.trim()) {
-    return [
-      {
-        id: `${qna.id}-legacy-answer`,
-        qnaId: qna.id,
-        content: qna.answer,
-        authorName: '운영진',
-        role: 'ADMIN',
-        authorRole: 'ADMIN',
-        createdAt: qna.createdAt,
-      },
-    ];
-  }
-
-  return [];
-}
-
 export default function QnaManagementPage({ scope, initialQnaList = [], initialShops = [], initialDataLoaded = false }: Props) {
   const [qnaList, setQnaList] = useState<QnA[]>(initialQnaList);
   const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
@@ -58,6 +37,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!initialDataLoaded && initialQnaList.length === 0 && initialShops.length === 0);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -134,6 +114,10 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   }, [qnaList, search, tab]);
 
   async function handleCommentSubmit(id: string) {
+    if (deletingId === id) {
+      return;
+    }
+
     const trimmedComment = drafts[id]?.trim();
     if (!trimmedComment) {
       return;
@@ -163,11 +147,46 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     }
   }
 
+  async function handleDelete(qna: QnA) {
+    if (typeof window !== 'undefined' && !window.confirm(buildDeleteQnaConfirmMessage(qna))) {
+      return;
+    }
+
+    setDeletingId(qna.id);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/qna/${qna.id}`, { method: 'DELETE' });
+      if (!response.ok && response.status !== 204) {
+        const result = (await response.json()) as { error?: string };
+        throw new Error(result.error ?? 'Q&A를 삭제하지 못했습니다.');
+      }
+
+      setQnaList((current) => removeManagedQna(current, qna.id));
+      setDrafts((current) => {
+        if (!(qna.id in current)) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[qna.id];
+        return next;
+      });
+      if (activeComposerId === qna.id) {
+        setActiveComposerId(null);
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Q&A를 삭제하지 못했습니다.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const pageTitle = scope === 'admin' ? 'Q&A 댓글 관리' : '내 업소 Q&A 댓글 관리';
   const description =
     scope === 'admin'
-      ? '관리자는 전체 Q&A를 검색하고 댓글 스레드를 관리할 수 있습니다.'
-      : '오너는 내 업소 Q&A만 검색하고 댓글 스레드를 관리할 수 있습니다.';
+      ? '관리자는 전체 Q&A를 검색하고 댓글 스레드를 관리하거나 삭제할 수 있습니다.'
+      : '오너는 내 업소 Q&A만 검색하고 댓글 스레드를 관리하거나 삭제할 수 있습니다.';
 
   return (
     <div className="max-w-[900px] space-y-4">
@@ -244,6 +263,15 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                       <span className="rounded bg-red-50 px-1 font-bold text-red-500">{shopMeta}</span>
                     </div>
                   </div>
+                  <button
+                    onClick={() => void handleDelete(qna)}
+                    disabled={deletingId === qna.id || submittingId === qna.id}
+                    className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    title="Q&A 삭제"
+                    aria-label="Q&A 삭제"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
 
                 <div className="space-y-3 rounded-b bg-gray-50 p-3">
@@ -278,18 +306,20 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                         value={drafts[qna.id] ?? ''}
                         onChange={(event) => setDrafts((current) => ({ ...current, [qna.id]: event.target.value }))}
                         placeholder="댓글 내용을 입력해 주세요."
-                        className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500"
+                        disabled={deletingId === qna.id}
+                        className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                       />
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => setActiveComposerId(null)}
-                          className="rounded border border-gray-300 px-3 py-1.5 text-[11px] text-gray-600 hover:bg-gray-100"
+                          disabled={deletingId === qna.id}
+                          className="rounded border border-gray-300 px-3 py-1.5 text-[11px] text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           취소
                         </button>
                         <button
                           onClick={() => void handleCommentSubmit(qna.id)}
-                          disabled={submittingId === qna.id}
+                          disabled={submittingId === qna.id || deletingId === qna.id}
                           className="rounded bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {submittingId === qna.id ? '저장 중' : '저장'}
@@ -299,7 +329,8 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                   ) : (
                     <button
                       onClick={() => setActiveComposerId(qna.id)}
-                      className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
+                      disabled={deletingId === qna.id}
+                      className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Send className="h-3 w-3" />
                       댓글 추가
