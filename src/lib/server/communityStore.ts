@@ -1021,13 +1021,13 @@ export async function listManagedReviews(user: { id: string; role: UserRole }, s
       : {
           shop: {
             ownerId: user.id,
-            ...(normalizedSearch ? { name: buildContainsFilter(normalizedSearch) } : {}),
           },
           ...(normalizedSearch
             ? {
                 OR: [
                   { content: buildContainsFilter(normalizedSearch) },
                   { authorName: buildContainsFilter(normalizedSearch) },
+                  { shop: { name: buildContainsFilter(normalizedSearch) } },
                 ],
               }
             : {}),
@@ -1115,6 +1115,40 @@ export async function deleteManagedReview(user: { id: string; role: UserRole }, 
   } catch {
     return false;
   }
+}
+
+export async function deleteManagedQna(user: { id: string; role: UserRole }, qnaId: string) {
+  const qna = await prisma.qnA.findUnique({
+    where: { id: qnaId },
+    select: {
+      shop: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
+
+  if (!qna) {
+    return false;
+  }
+
+  if (user.role !== 'ADMIN' && qna.shop?.ownerId !== user.id) {
+    return false;
+  }
+
+  try {
+    await prisma.qnA.delete({ where: { id: qnaId } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return false;
+    }
+
+    throw error;
+  }
+
+  invalidatePublicBoardCaches();
+  return true;
 }
 
 export async function getAdminShopById(id: string) {
