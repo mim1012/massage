@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Building, Check, Mail, Phone, Store, UserCheck, X } from 'lucide-react';
 import clsx from 'clsx';
 import type { User } from '@/lib/types';
@@ -15,9 +15,12 @@ export default function ApprovalsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingActionUserIds, setPendingActionUserIds] = useState<string[]>([]);
+  const pendingActionUserIdsRef = useRef<Set<string>>(new Set());
 
   const pendingUsers = useMemo(() => users.filter((user) => user.status === 'pending'), [users]);
   const processedUsers = useMemo(() => users.filter((user) => user.status !== 'pending'), [users]);
+  const isActionPending = (id: string) => pendingActionUserIdsRef.current.has(id) || pendingActionUserIds.includes(id);
 
   useEffect(() => {
     const load = async () => {
@@ -41,19 +44,30 @@ export default function ApprovalsPage() {
   }, []);
 
   const updateStatus = async (id: string, action: 'approve' | 'reject') => {
-    setError(null);
-
-    const response = await fetch(`/api/admin/approvals/${id}/${action}`, {
-      method: 'PATCH',
-    });
-    const result = (await response.json()) as { user?: User; error?: string };
-
-    if (!response.ok || !result.user) {
-      setError(result.error ?? '상태를 변경하지 못했습니다.');
+    if (isActionPending(id)) {
       return;
     }
 
-    setUsers((current) => current.map((user) => (user.id === id ? result.user! : user)));
+    pendingActionUserIdsRef.current.add(id);
+    setPendingActionUserIds((current) => (current.includes(id) ? current : [...current, id]));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/approvals/${id}/${action}`, {
+        method: 'PATCH',
+      });
+      const result = (await response.json()) as { user?: User; error?: string };
+
+      if (!response.ok || !result.user) {
+        setError(result.error ?? '상태를 변경하지 못했습니다.');
+        return;
+      }
+
+      setUsers((current) => current.map((user) => (user.id === id ? result.user! : user)));
+    } finally {
+      pendingActionUserIdsRef.current.delete(id);
+      setPendingActionUserIds((current) => current.filter((currentId) => currentId !== id));
+    }
   };
 
   return (
@@ -112,13 +126,15 @@ export default function ApprovalsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => void updateStatus(user.id, 'approve')}
-                    className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700"
+                    disabled={isActionPending(user.id)}
+                    className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Check className="h-4 w-4" /> 등록승인
                   </button>
                   <button
                     onClick={() => void updateStatus(user.id, 'reject')}
-                    className="flex items-center gap-1 rounded bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
+                    disabled={isActionPending(user.id)}
+                    className="flex items-center gap-1 rounded bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <X className="h-4 w-4" /> 반려
                   </button>
