@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import Top100PageClient from '@/components/public/Top100PageClient';
-import { buildTop100PageData } from '@/lib/public-page-data';
 import { getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
-import { listShops } from '@/lib/server/shop-store';
+import { listTopShops } from '@/lib/server/shop-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +42,7 @@ export default async function Top100Page({ searchParams }: PageProps) {
     redirect(canonicalRedirect);
   }
 
-  const shopResponse = await listShops({
+  const shops = await listTopShops({
     region: directoryQuery.region,
     subRegion: directoryQuery.subRegion,
     theme: directoryQuery.theme,
@@ -52,7 +51,7 @@ export default async function Top100Page({ searchParams }: PageProps) {
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
-      <Top100PageClient initialShops={buildTop100PageData(shopResponse)} />
+      <Top100PageClient initialShops={shops} />
     </Suspense>
   );
 }

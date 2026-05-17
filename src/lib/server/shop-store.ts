@@ -1,5 +1,7 @@
+import { cache } from 'react';
 import { revalidateTag, unstable_cache } from 'next/cache';
-import type { Prisma, Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
+import type { Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
@@ -80,6 +82,7 @@ export type ShopListRecord = Prisma.ShopGetPayload<{
 
 const publicShopListCache = new Map<string, Promise<ShopListResponse>>();
 const publicDirectoryShopListCache = new Map<string, Promise<ShopListResponse>>();
+const publicTopShopListCache = new Map<string, Promise<ShopListItem[]>>();
 const PUBLIC_DIRECTORY_SHOPS_CACHE_TAG = 'public-directory-shops';
 
 function normalizeShopListCacheKey(filters: ShopFilters) {
@@ -111,10 +114,39 @@ function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
   return JSON.stringify(normalizeDirectoryShopListFilters(filters));
 }
 
+function normalizeTopShopListFilters(filters: ShopFilters, limit: number) {
+  return {
+    region: filters.region ?? '',
+    subRegion: filters.subRegion ?? '',
+    theme: filters.theme ?? '',
+    query: filters.query?.trim() ?? '',
+    limit: Math.max(1, limit),
+  };
+}
+
+function normalizeTopShopListCacheKey(filters: ShopFilters, limit: number) {
+  return JSON.stringify(normalizeTopShopListFilters(filters, limit));
+}
+
+function isMissingNextCacheContextError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.message.includes('static generation store missing') || error.message.includes('incrementalCache missing'))
+  );
+}
+
 export function invalidatePublicShopListCache() {
   publicShopListCache.clear();
   publicDirectoryShopListCache.clear();
-  revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
+  publicTopShopListCache.clear();
+
+  try {
+    revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
 }
 
 export function mapShop(record: ShopRecord): Shop {
@@ -269,6 +301,109 @@ function getRegularOrderBy(sort?: string): Prisma.ShopOrderByWithRelationInput[]
   return [{ createdAt: 'desc' }];
 }
 
+function buildTopShopWhereSql(filters: ShopFilters) {
+  const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
+  const trimmedQuery = filters.query?.trim();
+  const conditions: Prisma.Sql[] = [Prisma.sql`s."is_visible" = true`];
+
+  if (mappedRegion) {
+    conditions.push(Prisma.sql`s."region" = ${mappedRegion}`);
+  }
+
+  if (filters.subRegion && filters.subRegion !== 'all') {
+    conditions.push(Prisma.sql`s."sub_region" = ${filters.subRegion}`);
+  }
+
+  if (filters.theme && filters.theme !== 'all') {
+    conditions.push(Prisma.sql`s."theme" = ${filters.theme}`);
+  }
+
+  if (trimmedQuery) {
+    const searchTerm = `%${trimmedQuery}%`;
+    conditions.push(Prisma.sql`(
+      s."name" ILIKE ${searchTerm}
+      OR s."region_label" ILIKE ${searchTerm}
+      OR s."sub_region_label" ILIKE ${searchTerm}
+      OR s."theme_label" ILIKE ${searchTerm}
+      OR s."tagline" ILIKE ${searchTerm}
+      OR s."description" ILIKE ${searchTerm}
+      OR s."tags" @> ARRAY[${trimmedQuery}]::text[]
+    )`);
+  }
+
+  return Prisma.join(conditions, ' AND ');
+}
+
+async function listTopShopsUncached(filters: ShopFilters = {}, limit = 100): Promise<ShopListItem[]> {
+  const normalizedLimit = Math.max(1, limit);
+  const topShopIds = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT s."id"
+    FROM "shops" AS s
+    LEFT JOIN "reviews" AS r
+      ON r."shop_id" = s."id"
+     AND r."is_hidden" = false
+    WHERE ${buildTopShopWhereSql(filters)}
+    GROUP BY s."id"
+    ORDER BY COUNT(r."id") DESC, s."rating" DESC, s."created_at" DESC
+    LIMIT ${normalizedLimit}
+  `);
+
+  if (topShopIds.length === 0) {
+    return [];
+  }
+
+  const records = await prisma.shop.findMany({
+    where: { id: { in: topShopIds.map(({ id }) => id) } },
+    select: shopListSelect,
+  });
+  const recordMap = new Map(records.map((record) => [record.id, mapShopList(record)]));
+
+  return topShopIds.map(({ id }) => recordMap.get(id)).filter((shop): shop is ShopListItem => Boolean(shop));
+}
+
+const getPersistentTopShopList = unstable_cache(
+  async (serializedFilters: string) => {
+    const normalized = JSON.parse(serializedFilters) as ReturnType<typeof normalizeTopShopListFilters>;
+    return listTopShopsUncached(
+      {
+        region: normalized.region || undefined,
+        subRegion: normalized.subRegion || undefined,
+        theme: normalized.theme || undefined,
+        query: normalized.query || undefined,
+      },
+      normalized.limit,
+    );
+  },
+  [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'top-shops'],
+  { revalidate: 120, tags: [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG] },
+);
+
+export async function listTopShops(filters: ShopFilters = {}, limit = 100) {
+  const cacheKey = normalizeTopShopListCacheKey(filters, limit);
+  const cached = publicTopShopListCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = (async () => {
+    try {
+      return await getPersistentTopShopList(cacheKey);
+    } catch (error) {
+      if (isMissingNextCacheContextError(error)) {
+        return listTopShopsUncached(filters, limit);
+      }
+
+      throw error;
+    }
+  })().catch((error) => {
+    publicTopShopListCache.delete(cacheKey);
+    throw error;
+  });
+
+  publicTopShopListCache.set(cacheKey, pending);
+  return pending;
+}
+
 async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): Promise<ShopListResponse> {
   if (filters.sort === 'popular') {
     return listShopsUncached(filters);
@@ -404,7 +539,7 @@ export async function listShops(filters: ShopFilters = {}) {
   return pending;
 }
 
-export async function getShopBySlug(slug: string) {
+const getShopBySlugUncached = async (slug: string) => {
   const shop = await prisma.shop.findFirst({
     where: { slug, isVisible: true },
     include: shopInclude,
@@ -421,7 +556,9 @@ export async function getShopBySlug(slug: string) {
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
       .map((review) => mapReview(review, shop.name)),
   };
-}
+};
+
+export const getShopBySlug = cache(getShopBySlugUncached);
 
 export async function updateShopVisibility(shopId: string, isVisible: boolean) {
   try {
