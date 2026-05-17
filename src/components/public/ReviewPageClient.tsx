@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
-import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, ShopListItem, User } from '@/lib/types';
@@ -50,15 +49,24 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
   );
 }
 
-function ReviewContent({ initialReviews, initialShops }: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
+function ReviewContent({
+  initialReviews,
+  initialShops,
+  initialPage,
+  initialTotalPages,
+}: {
+  initialReviews: ReviewWithRegion[];
+  initialShops: ShopListItem[];
+  initialPage: number;
+  initialTotalPages: number;
+}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
-  const initialPage = normalizePageParam(searchParams.get('page'));
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -211,9 +219,8 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
     shopTab !== 'all' ||
     searchType !== 'all';
 
-  const REVIEW_PAGE_SIZE = 10;
-  const totalPages = getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
-  const visibleReviews = useMemo(() => paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE), [currentPage, filteredReviews]);
+  const totalPages = initialTotalPages;
+  const visibleReviews = filteredReviews;
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -557,7 +564,12 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   );
 }
 
-export default function ReviewPageClient(props: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
+export default function ReviewPageClient(props: {
+  initialReviews: ReviewWithRegion[];
+  initialShops: ShopListItem[];
+  initialPage: number;
+  initialTotalPages: number;
+}) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <ReviewContent {...props} />

@@ -18,14 +18,30 @@ test('board notice page reads a page search param and renders pagination control
   assert.equal(source.includes('PaginationControls'), true);
 });
 
-test('board review page uses pagination controls for filtered review results', async () => {
+test('board review route reads search params and delegates pagination to the server store', async () => {
+  const source = await readProjectFile('src/app/board/review/page.tsx');
+
+  assert.equal(source.includes('searchParams'), true);
+  assert.equal(source.includes('page'), true);
+  assert.equal(source.includes('listPublicReviewPage'), true);
+});
+
+test('board review client still renders pagination controls', async () => {
   const source = await readProjectFile('src/components/public/ReviewPageClient.tsx');
 
   assert.equal(source.includes('PaginationControls'), true);
   assert.equal(source.includes('currentPage'), true);
 });
 
-test('board qna page uses pagination controls for filtered qna results', async () => {
+test('board qna route reads search params and delegates pagination to the server store', async () => {
+  const source = await readProjectFile('src/app/board/qna/page.tsx');
+
+  assert.equal(source.includes('searchParams'), true);
+  assert.equal(source.includes('page'), true);
+  assert.equal(source.includes('listPublicQnaPage'), true);
+});
+
+test('board qna client still renders pagination controls', async () => {
   const source = await readProjectFile('src/components/public/QnaPageClient.tsx');
 
   assert.equal(source.includes('PaginationControls'), true);

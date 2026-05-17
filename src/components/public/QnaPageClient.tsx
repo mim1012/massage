@@ -1,10 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
-import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronDown, ChevronRight, ChevronUp, Plus, X } from 'lucide-react';
 import type { QnA, QnAComment, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -26,12 +25,19 @@ function getPrimaryAnswer(entry: QnA) {
   return entry.answer?.trim() || null;
 }
 
-function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
+function QnaContent({
+  initialEntries,
+  initialPage,
+  initialTotalPages,
+}: {
+  initialEntries: QnA[];
+  initialPage: number;
+  initialTotalPages: number;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const shopId = searchParams.get('shopId');
   const query = searchParams.get('q')?.trim() ?? '';
-  const initialPage = normalizePageParam(searchParams.get('page'));
 
   const [entries, setEntries] = useState<QnA[]>(initialEntries);
   const [user, setUser] = useState<User | null>(null);
@@ -83,21 +89,9 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
     };
   }, []);
 
-  const filteredEntries = useMemo(() => {
-    const normalized = query.toLowerCase();
-    if (!normalized) {
-      return entries;
-    }
-
-    return entries.filter((entry) => {
-      const primaryAnswer = getPrimaryAnswer(entry) ?? '';
-      return [entry.question, entry.authorName, primaryAnswer].some((value) => value.toLowerCase().includes(normalized));
-    });
-  }, [entries, query]);
-
-  const QNA_PAGE_SIZE = 10;
-  const totalPages = getTotalPages(filteredEntries.length, QNA_PAGE_SIZE);
-  const visibleEntries = useMemo(() => paginateItems(filteredEntries, currentPage, QNA_PAGE_SIZE), [currentPage, filteredEntries]);
+  const filteredEntries = entries;
+  const totalPages = initialTotalPages;
+  const visibleEntries = entries;
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -294,7 +288,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   );
 }
 
-export default function QnaPageClient(props: { initialEntries: QnA[] }) {
+export default function QnaPageClient(props: { initialEntries: QnA[]; initialPage: number; initialTotalPages: number }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <QnaContent {...props} />

@@ -23,6 +23,7 @@ import type {
 } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
+import { clampPage, getTotalPages } from '@/lib/pagination';
 import {
   normalizeHomeSeo,
   normalizeSiteSettings,
@@ -229,7 +230,13 @@ function isQnaCommentStorageUnavailable(error: unknown) {
   return message.includes('qna_comments') || message.includes('comments') || message.includes('column') || message.includes('relation');
 }
 
-async function loadLegacyQnaRecords(where: Prisma.QnAWhereInput) {
+async function loadLegacyQnaRecords(
+  where: Prisma.QnAWhereInput,
+  pagination?: {
+    skip?: number;
+    take?: number;
+  },
+) {
   const entries = await prisma.qnA.findMany({
     where,
     include: {
@@ -242,6 +249,8 @@ async function loadLegacyQnaRecords(where: Prisma.QnAWhereInput) {
       },
     },
     orderBy: { createdAt: 'desc' },
+    ...(typeof pagination?.skip === 'number' ? { skip: pagination.skip } : {}),
+    ...(typeof pagination?.take === 'number' ? { take: pagination.take } : {}),
   });
 
   return entries.map((entry) => ({ ...entry, comments: [] as [] })) satisfies LegacyQnaRecord[];
@@ -616,6 +625,19 @@ type QnaListOptions = {
   viewer?: ViewerContext;
 };
 
+type PaginatedListResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+type PublicPaginationOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
 const qnaInclude = {
   shop: {
     select: {
@@ -662,11 +684,8 @@ const boardLandingQnaSelect = {
   },
 } satisfies Prisma.QnASelect;
 
-export async function listQna(options: string | QnaListOptions = {}) {
-  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
-  const shopId = normalizedOptions.shopId?.trim();
-  const search = normalizedOptions.search?.trim();
-  const where: Prisma.QnAWhereInput = {
+function buildQnaWhere(shopId?: string, search?: string) {
+  return {
     ...(shopId ? { shopId } : {}),
     ...(search
       ? {
@@ -677,7 +696,101 @@ export async function listQna(options: string | QnaListOptions = {}) {
           ],
         }
       : {}),
-  };
+  } satisfies Prisma.QnAWhereInput;
+}
+
+function buildLegacyQnaWhere(shopId?: string, search?: string) {
+  return {
+    ...(shopId ? { shopId } : {}),
+    ...(search
+      ? {
+          OR: [
+            { question: buildContainsFilter(search) },
+            { authorName: buildContainsFilter(search) },
+          ],
+        }
+      : {}),
+  } satisfies Prisma.QnAWhereInput;
+}
+
+function normalizePagination(options: PublicPaginationOptions) {
+  const pageSize = Number.isFinite(options.pageSize) && (options.pageSize ?? 0) > 0 ? Math.floor(options.pageSize ?? 10) : 10;
+  const requestedPage = Number.isFinite(options.page) && (options.page ?? 0) > 0 ? Math.floor(options.page ?? 1) : 1;
+  return { pageSize, requestedPage };
+}
+
+function buildReviewWhere(shopId?: string, search?: string) {
+  return {
+    isHidden: false,
+    ...(shopId ? { shopId } : {}),
+    ...(search
+      ? {
+          OR: [
+            { content: buildContainsFilter(search) },
+            { authorName: buildContainsFilter(search) },
+            { shop: { name: buildContainsFilter(search) } },
+          ],
+        }
+      : {}),
+  } satisfies Prisma.ReviewWhereInput;
+}
+
+export async function listPublicQnaPage(
+  options: QnaListOptions & PublicPaginationOptions = {},
+): Promise<PaginatedListResult<QnA>> {
+  const shopId = options.shopId?.trim();
+  const search = options.search?.trim();
+  const { pageSize, requestedPage } = normalizePagination(options);
+
+  try {
+    const where = buildQnaWhere(shopId, search);
+    const totalItems = await prisma.qnA.count({ where });
+    const totalPages = getTotalPages(totalItems, pageSize);
+    const page = clampPage(requestedPage, totalPages);
+    const items = await prisma.qnA.findMany({
+      where,
+      include: qnaInclude,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    return {
+      items: items.map((entry) => mapQna(entry, options.viewer)),
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+    };
+  } catch (error) {
+    if (!isQnaCommentStorageUnavailable(error)) {
+      throw error;
+    }
+
+    const where = buildLegacyQnaWhere(shopId, search);
+    const totalItems = await prisma.qnA.count({ where });
+    const totalPages = getTotalPages(totalItems, pageSize);
+    const page = clampPage(requestedPage, totalPages);
+    const items = await loadLegacyQnaRecords(where, {
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    return {
+      items: items.map((entry) => mapQna(entry, options.viewer)),
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+    };
+  }
+}
+
+export async function listQna(options: string | QnaListOptions = {}) {
+  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
+  const shopId = normalizedOptions.shopId?.trim();
+  const search = normalizedOptions.search?.trim();
+  const where = buildQnaWhere(shopId, search);
 
   try {
     const entries = await prisma.qnA.findMany({
@@ -692,17 +805,7 @@ export async function listQna(options: string | QnaListOptions = {}) {
       throw error;
     }
 
-    const legacyWhere: Prisma.QnAWhereInput = {
-      ...(shopId ? { shopId } : {}),
-      ...(search
-        ? {
-            OR: [
-              { question: buildContainsFilter(search) },
-              { authorName: buildContainsFilter(search) },
-            ],
-          }
-        : {}),
-    };
+    const legacyWhere = buildLegacyQnaWhere(shopId, search);
 
     const entries = await loadLegacyQnaRecords(legacyWhere);
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
@@ -959,6 +1062,33 @@ export async function createReview(input: {
   return mapReview(review);
 }
 
+export async function listPublicReviewPage(
+  options: ReviewListOptions & PublicPaginationOptions = {},
+): Promise<PaginatedListResult<Review>> {
+  const shopId = options.shopId?.trim();
+  const search = options.search?.trim();
+  const { pageSize, requestedPage } = normalizePagination(options);
+  const where = buildReviewWhere(shopId, search);
+  const totalItems = await prisma.review.count({ where });
+  const totalPages = getTotalPages(totalItems, pageSize);
+  const page = clampPage(requestedPage, totalPages);
+  const items = await prisma.review.findMany({
+    where,
+    include: { shop: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+
+  return {
+    items: items.map(mapReview),
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+  };
+}
+
 export async function listReviews(options: number | ReviewListOptions = {}) {
   const normalizedOptions =
     typeof options === 'number'
@@ -975,19 +1105,7 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
 
   const pending = prisma.review
     .findMany({
-      where: {
-        isHidden: false,
-        ...(shopId ? { shopId } : {}),
-        ...(search
-          ? {
-              OR: [
-                { content: buildContainsFilter(search) },
-                { authorName: buildContainsFilter(search) },
-                { shop: { name: buildContainsFilter(search) } },
-              ],
-            }
-          : {}),
-      },
+      where: buildReviewWhere(shopId, search),
       include: { shop: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
