@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, Star, Trash2 } from 'lucide-react';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -28,7 +28,10 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
   const [ratingFilter, setRatingFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!initialDataLoaded && initialReviews.length === 0);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const deletingIdsRef = useRef<Set<string>>(new Set());
+
+  const isDeleting = (id: string) => deletingIdsRef.current.has(id) || deletingIds.includes(id);
 
   useEffect(() => {
     if (initialDataLoaded || initialReviews.length > 0) {
@@ -58,7 +61,12 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
   }, [initialDataLoaded, initialReviews]);
 
   async function removeReview(id: string) {
-    setDeletingId(id);
+    if (isDeleting(id)) {
+      return;
+    }
+
+    deletingIdsRef.current.add(id);
+    setDeletingIds((current) => (current.includes(id) ? current : [...current, id]));
     setError(null);
 
     try {
@@ -72,7 +80,8 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
     } finally {
-      setDeletingId(null);
+      deletingIdsRef.current.delete(id);
+      setDeletingIds((current) => current.filter((currentId) => currentId !== id));
     }
   }
 
@@ -165,7 +174,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
               <div className="flex gap-1.5">
                 <button
                   onClick={() => void removeReview(review.id)}
-                  disabled={deletingId === review.id}
+                  disabled={isDeleting(review.id)}
                   className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   title="삭제"
                 >
