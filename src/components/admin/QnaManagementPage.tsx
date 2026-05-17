@@ -6,7 +6,13 @@ import { CheckCircle, MessageCircle, Search, Send, Trash2 } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
 import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
-import { buildDeleteQnaConfirmMessage, getThreadComments, removeManagedQna } from '@/components/admin/qna-management-helpers';
+import {
+  addDeletingQnaId,
+  buildDeleteQnaConfirmMessage,
+  getThreadComments,
+  removeDeletingQnaId,
+  removeManagedQna,
+} from '@/components/admin/qna-management-helpers';
 
 type Props = {
   scope: 'admin' | 'owner';
@@ -158,7 +164,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
       return;
     }
 
-    setDeletingIds((current) => [...current, qna.id]);
+    setDeletingIds((current) => addDeletingQnaId(current, qna.id));
     setError(null);
 
     try {
@@ -184,7 +190,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Q&A를 삭제하지 못했습니다.');
     } finally {
-      setDeletingIds((current) => current.filter((id) => id !== qna.id));
+      setDeletingIds((current) => removeDeletingQnaId(current, qna.id));
     }
   }
 

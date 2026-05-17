@@ -36,3 +36,11 @@ export function buildDeleteQnaConfirmMessage(qna: DeletePromptQna): string {
 export function removeManagedQna(qnaList: QnA[], qnaId: string) {
   return qnaList.filter((qna) => qna.id !== qnaId);
 }
+
+export function addDeletingQnaId(deletingIds: string[], qnaId: string) {
+  return deletingIds.includes(qnaId) ? deletingIds : [...deletingIds, qnaId];
+}
+
+export function removeDeletingQnaId(deletingIds: string[], qnaId: string) {
+  return deletingIds.filter((id) => id !== qnaId);
+}
