@@ -122,6 +122,40 @@ async function renderHarness(options?: {
   };
 }
 
+test('region fetch failures do not surface as unhandled rejections', async () => {
+  const unhandledRejections: string[] = [];
+  const rejectionHandler = (reason: unknown) => {
+    unhandledRejections.push(String(reason));
+  };
+  process.on('unhandledRejection', rejectionHandler);
+
+  const harness = await renderHarness({
+    fetchImpl: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+
+      if (url.includes('/api/admin/shops?region=seoul') && method === 'GET') {
+        throw new TypeError('Failed to fetch');
+      }
+
+      throw new Error(`unexpected fetch ${method} ${url}`);
+    },
+  });
+
+  try {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off('unhandledRejection', rejectionHandler);
+    await harness.cleanup();
+  }
+});
+
 test('rapid duplicate save clicks trigger only one premium save sequence', async () => {
   const harness = await renderHarness();
 

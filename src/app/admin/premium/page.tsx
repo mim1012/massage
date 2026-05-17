@@ -14,6 +14,10 @@ interface Shop {
   premiumOrder?: number;
 }
 
+function isIgnorableShopFetchError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export default function PremiumManagementPage() {
   const [selectedRegion, setSelectedRegion] = useState('seoul');
   const [premiumShops, setPremiumShops] = useState<Shop[]>([]);
@@ -25,19 +29,31 @@ export default function PremiumManagementPage() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadPremiumShops = async () => {
-      const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
-      const data = await res.json();
-      const shops = (data.shops || []) as Shop[];
-      setPremiumShops(
-        shops
-          .filter((s) => s.isPremium)
-          .sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999))
-          .slice(0, 4),
-      );
+      try {
+        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`, { signal: controller.signal });
+        const data = await res.json();
+        const shops = (data.shops || []) as Shop[];
+        setPremiumShops(
+          shops
+            .filter((s) => s.isPremium)
+            .sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999))
+            .slice(0, 4),
+        );
+      } catch (error) {
+        if (!isIgnorableShopFetchError(error)) {
+          console.error(error);
+        }
+      }
     };
 
     void loadPremiumShops();
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedRegion]);
 
   const handleDragStart = (idx: number) => {
@@ -66,18 +82,26 @@ export default function PremiumManagementPage() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadCandidates = async () => {
       try {
-        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
+        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`, { signal: controller.signal });
         const data = await res.json();
         const shops = (data.shops || []) as Shop[];
         // Filter out shops that are already in the premium slots
         setSearchResults(shops.filter((s) => !premiumShops.some((p) => p.id === s.id)));
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        if (!isIgnorableShopFetchError(error)) {
+          console.error(error);
+        }
       }
     };
     void loadCandidates();
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedRegion, premiumShops]);
 
   async function handleSearch() {
