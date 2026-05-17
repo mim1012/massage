@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Briefcase, Lock, Phone, Store, UserCircle } from 'lucide-react';
+import { getOwnerRegistrationSuccessState } from '@/lib/auth/owner-registration';
 
 type OwnerRegisterResult = {
   error?: string;
+  message?: string;
+  nextUrl?: string;
+  requiresApproval?: boolean;
 };
 
 export default function RegisterOwnerPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     id: '',
     password: '',
@@ -22,6 +24,7 @@ export default function RegisterOwnerPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<ReturnType<typeof getOwnerRegistrationSuccessState> | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -54,7 +57,7 @@ export default function RegisterOwnerPage() {
         return;
       }
 
-      window.location.href = '/owner/shops/new';
+      setSuccess(getOwnerRegistrationSuccessState(result));
     } finally {
       setLoading(false);
     }
@@ -63,6 +66,32 @@ export default function RegisterOwnerPage() {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+          <div className="mb-6 text-center">
+            <Link href="/" className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-600">
+              <span className="text-xl font-black text-white">힐</span>
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-800">입점 신청이 접수되었습니다</h1>
+            <p className="mt-3 text-sm leading-6 text-gray-600">{success.message}</p>
+            <p className="mt-2 text-sm text-gray-500">관리자 승인 후 로그인하시면 업체 등록과 관리 화면을 이용할 수 있습니다.</p>
+          </div>
+
+          <div className="space-y-3">
+            <Link href={success.nextUrl} className="block w-full rounded-lg bg-red-600 py-3 text-center font-bold text-white transition-colors hover:bg-red-700">
+              로그인 페이지로 이동
+            </Link>
+            <Link href="/" className="block text-center text-sm font-medium text-gray-500 hover:text-gray-700">
+              홈으로 돌아가기
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">

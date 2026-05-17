@@ -1,6 +1,6 @@
 import { errorResponse } from '@/lib/auth/http';
-import { setSessionCookie } from '@/lib/auth/session';
-import { login, registerOwner } from '@/lib/server/auth-store';
+import { registerOwnerRoute } from '@/lib/auth/owner-registration';
+import { registerOwner } from '@/lib/server/auth-store';
 
 export async function POST(request: Request) {
   try {
@@ -13,33 +13,7 @@ export async function POST(request: Request) {
       phone?: string;
     };
 
-    if (
-      !body.name ||
-      !body.email ||
-      !body.password ||
-      !body.businessName ||
-      !body.businessNumber ||
-      !body.phone
-    ) {
-      return Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 });
-    }
-
-    const user = await registerOwner({
-      name: body.name,
-      email: body.email,
-      password: body.password,
-      businessName: body.businessName,
-      businessNumber: body.businessNumber,
-      phone: body.phone,
-    });
-
-    const result = await login({
-      email: body.email,
-      password: body.password,
-    });
-    await setSessionCookie(result.token);
-
-    return Response.json({ user }, { status: 201 });
+    return await registerOwnerRoute(body, { registerOwner });
   } catch (error) {
     return errorResponse(error);
   }
