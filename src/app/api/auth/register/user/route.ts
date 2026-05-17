@@ -1,7 +1,13 @@
 import { errorResponse } from '@/lib/auth/http';
+import { checkAuthRateLimit } from '@/lib/security/rate-limit';
 import { registerUser } from '@/lib/server/auth-store';
 
 export async function POST(request: Request) {
+  const rateLimitResult = checkAuthRateLimit(request, 'auth:register:user');
+  if (rateLimitResult.limited) {
+    return rateLimitResult.response;
+  }
+
   try {
     const body = (await request.json()) as {
       name?: string;

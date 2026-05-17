@@ -1,8 +1,14 @@
 import { errorResponse } from '@/lib/auth/http';
 import { setSessionCookie } from '@/lib/auth/session';
+import { checkAuthRateLimit } from '@/lib/security/rate-limit';
 import { login } from '@/lib/server/auth-store';
 
 export async function POST(request: Request) {
+  const rateLimitResult = checkAuthRateLimit(request, 'auth:login');
+  if (rateLimitResult.limited) {
+    return rateLimitResult.response;
+  }
+
   try {
     const body = (await request.json()) as {
       email?: string;
