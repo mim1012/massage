@@ -1,31 +1,5 @@
-import { errorResponse } from '@/lib/auth/http';
-import { checkAuthRateLimit } from '@/lib/security/rate-limit';
-import { registerUser } from '@/lib/server/auth-store';
+import { handleUserRegisterPost } from './post';
 
 export async function POST(request: Request) {
-  const rateLimitResult = checkAuthRateLimit(request, 'auth:register:user');
-  if (rateLimitResult.limited) {
-    return rateLimitResult.response;
-  }
-
-  try {
-    const body = (await request.json()) as {
-      name?: string;
-      email?: string;
-      password?: string;
-    };
-
-    if (!body.name || !body.email || !body.password) {
-      return Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 });
-    }
-
-    const user = await registerUser({
-      name: body.name,
-      email: body.email,
-      password: body.password,
-    });
-    return Response.json({ user }, { status: 201 });
-  } catch (error) {
-    return errorResponse(error);
-  }
+  return handleUserRegisterPost(request);
 }

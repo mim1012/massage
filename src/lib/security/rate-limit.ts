@@ -23,6 +23,10 @@ const DEFAULT_LIMIT = 10;
 const DEFAULT_WINDOW_MS = 60_000;
 const TOO_MANY_REQUESTS_MESSAGE = '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
 
+type AuthRateLimitOptions = {
+  credential?: string;
+};
+
 export function getClientIp(request: Pick<Request, 'headers'>) {
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
@@ -91,6 +95,42 @@ export function createMemoryRateLimiter(options: MemoryRateLimiterOptions = {}) 
 
 const authRateLimiter = createMemoryRateLimiter();
 
-export function checkAuthRateLimit(request: Pick<Request, 'headers'>, routeKey: string) {
-  return authRateLimiter.check(`${routeKey}:${getClientIp(request)}`);
+function normalizeCredential(credential: string) {
+  return credential.trim().toLowerCase();
+}
+
+export function buildAuthRateLimitKey(
+  request: Pick<Request, 'headers'>,
+  routeKey: string,
+  options: AuthRateLimitOptions = {},
+) {
+  const keyParts = [routeKey, getClientIp(request)];
+  const normalizedCredential = options.credential ? normalizeCredential(options.credential) : '';
+
+  if (normalizedCredential) {
+    keyParts.push(normalizedCredential);
+  }
+
+  return keyParts.join(':');
+}
+
+export function checkAuthRateLimit(
+  request: Pick<Request, 'headers'>,
+  routeKey: string,
+  options: AuthRateLimitOptions = {},
+) {
+  return authRateLimiter.check(buildAuthRateLimitKey(request, routeKey, options));
+}
+
+export function applyRateLimitHeaders(response: Response, headers: Headers) {
+  const mergedHeaders = new Headers(response.headers);
+  headers.forEach((value, key) => {
+    mergedHeaders.set(key, value);
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: mergedHeaders,
+  });
 }
