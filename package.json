@@ -41,8 +41,10 @@
     "@types/sanitize-html": "^2.16.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "jsdom": "^29.1.1",
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.1",
     "typescript": "^5",
     "vercel": "^51.6.1"
   }

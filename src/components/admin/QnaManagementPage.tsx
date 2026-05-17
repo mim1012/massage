@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { CheckCircle, MessageCircle, Search, Send, Trash2 } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
@@ -44,6 +44,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [loading, setLoading] = useState(!initialDataLoaded && initialQnaList.length === 0 && initialShops.length === 0);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const deletingIdsRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     });
   }, [qnaList, search, tab]);
 
-  const isDeleting = (id: string) => deletingIds.includes(id);
+  const isDeleting = (id: string) => deletingIdsRef.current.has(id) || deletingIds.includes(id);
 
   async function handleCommentSubmit(id: string) {
     if (isDeleting(id)) {
@@ -164,6 +165,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
       return;
     }
 
+    deletingIdsRef.current.add(qna.id);
     setDeletingIds((current) => addDeletingQnaId(current, qna.id));
     setError(null);
 
@@ -190,6 +192,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Q&A를 삭제하지 못했습니다.');
     } finally {
+      deletingIdsRef.current.delete(qna.id);
       setDeletingIds((current) => removeDeletingQnaId(current, qna.id));
     }
   }
