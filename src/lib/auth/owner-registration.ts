@@ -7,6 +7,8 @@ type OwnerRegistrationBody = {
   phone?: string;
 };
 
+import { getPendingApprovalLoginHref } from '@/lib/auth/login-notice';
+
 type RegisteredOwner = {
   id: string;
   email: string;
@@ -34,7 +36,7 @@ type OwnerRegistrationSuccessStateInput = {
 export function getOwnerRegistrationSuccessState(input: OwnerRegistrationSuccessStateInput) {
   return {
     message: input.message ?? '관리자 승인 후 로그인할 수 있습니다.',
-    nextUrl: input.nextUrl ?? '/auth/login',
+    nextUrl: input.nextUrl ?? getPendingApprovalLoginHref(),
     requiresApproval: input.requiresApproval ?? true,
   };
 }

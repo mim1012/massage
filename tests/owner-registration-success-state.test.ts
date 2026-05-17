@@ -5,7 +5,7 @@ import { getOwnerRegistrationSuccessState } from '../src/lib/auth/owner-registra
 test('getOwnerRegistrationSuccessState falls back to the approval-needed login message', () => {
   assert.deepEqual(getOwnerRegistrationSuccessState({}), {
     message: '관리자 승인 후 로그인할 수 있습니다.',
-    nextUrl: '/auth/login',
+    nextUrl: '/auth/login?notice=pending-approval',
     requiresApproval: true,
   });
 });

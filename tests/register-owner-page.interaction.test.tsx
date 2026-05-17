@@ -52,7 +52,7 @@ test('register owner page shows approval-needed success state after a successful
     return new Response(
       JSON.stringify({
         message: '관리자 승인 후 로그인할 수 있습니다.',
-        nextUrl: '/auth/login',
+        nextUrl: '/auth/login?notice=pending-approval',
         requiresApproval: true,
       }),
       {
@@ -104,7 +104,9 @@ test('register owner page shows approval-needed success state after a successful
     assert.match(container.textContent ?? '', /입점 신청이 접수되었습니다/);
     assert.match(container.textContent ?? '', /관리자 승인 후 로그인할 수 있습니다/);
     assert.equal(container.querySelector('form'), null);
-    const loginLink = Array.from(container.querySelectorAll('a')).find((anchor) => anchor.getAttribute('href') === '/auth/login');
+    const loginLink = Array.from(container.querySelectorAll('a')).find(
+      (anchor) => anchor.getAttribute('href') === '/auth/login?notice=pending-approval',
+    );
     assert.ok(loginLink, 'expected login link in success state');
   } finally {
     await act(async () => {

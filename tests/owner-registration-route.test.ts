@@ -40,7 +40,7 @@ test('registerOwnerRoute creates a pending owner without auto-login side effects
   assert.deepEqual(await response.json(), {
     user,
     requiresApproval: true,
-    nextUrl: '/auth/login',
+    nextUrl: '/auth/login?notice=pending-approval',
     message: '관리자 승인 후 로그인할 수 있습니다.',
   });
   assert.deepEqual(calls, ['register:owner@example.com']);
