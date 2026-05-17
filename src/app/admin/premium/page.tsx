@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Crown, Search, X, Save, CheckCircle2 } from 'lucide-react';
 import { REGIONS } from '@/lib/catalog';
 import clsx from 'clsx';
@@ -20,6 +20,7 @@ export default function PremiumManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Shop[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const saveInFlightRef = useRef(false);
 
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
@@ -106,6 +107,11 @@ export default function PremiumManagementPage() {
   }
 
   async function saveChanges() {
+    if (saveInFlightRef.current) {
+      return;
+    }
+
+    saveInFlightRef.current = true;
     setSaveStatus('saving');
     try {
       const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
@@ -134,6 +140,8 @@ export default function PremiumManagementPage() {
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch {
       setSaveStatus('error');
+    } finally {
+      saveInFlightRef.current = false;
     }
   }
 
