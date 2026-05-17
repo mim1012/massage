@@ -23,12 +23,12 @@ function LoginContent() {
     const target = searchParams.get('redirect');
     return target && target.startsWith('/') ? target : null;
   }, [searchParams]);
-  const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice')), [searchParams]);
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
   const { user, authChecked } = useAuthSession();
 
   useEffect(() => {
@@ -157,7 +157,7 @@ function LoginContent() {
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
-              {error ? <p className="text-xs text-red-600">{error}</p> : null}
+              {error && !loginNotice ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 
             <div className="mt-4 flex items-center justify-between text-xs">
