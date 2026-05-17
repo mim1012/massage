@@ -8,10 +8,12 @@ import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
   addDeletingQnaId,
+  addSubmittingQnaId,
   buildDeleteQnaConfirmMessage,
   getThreadComments,
   removeDeletingQnaId,
   removeManagedQna,
+  removeSubmittingQnaId,
 } from '@/components/admin/qna-management-helpers';
 
 type Props = {
@@ -42,7 +44,8 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [activeComposerId, setActiveComposerId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!initialDataLoaded && initialQnaList.length === 0 && initialShops.length === 0);
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [submittingIds, setSubmittingIds] = useState<string[]>([]);
+  const submittingIdsRef = useRef<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const deletingIdsRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -121,9 +124,10 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   }, [qnaList, search, tab]);
 
   const isDeleting = (id: string) => deletingIdsRef.current.has(id) || deletingIds.includes(id);
+  const isSubmitting = (id: string) => submittingIdsRef.current.has(id) || submittingIds.includes(id);
 
   async function handleCommentSubmit(id: string) {
-    if (isDeleting(id)) {
+    if (isDeleting(id) || isSubmitting(id)) {
       return;
     }
 
@@ -132,7 +136,8 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
       return;
     }
 
-    setSubmittingId(id);
+    submittingIdsRef.current.add(id);
+    setSubmittingIds((current) => addSubmittingQnaId(current, id));
     setError(null);
 
     try {
@@ -152,12 +157,13 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '댓글을 등록하지 못했습니다.');
     } finally {
-      setSubmittingId(null);
+      submittingIdsRef.current.delete(id);
+      setSubmittingIds((current) => removeSubmittingQnaId(current, id));
     }
   }
 
   async function handleDelete(qna: QnA) {
-    if (isDeleting(qna.id) || submittingId === qna.id) {
+    if (isDeleting(qna.id) || isSubmitting(qna.id)) {
       return;
     }
 
@@ -280,7 +286,7 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                   </div>
                   <button
                     onClick={() => void handleDelete(qna)}
-                    disabled={isDeleting(qna.id) || submittingId === qna.id}
+                    disabled={isDeleting(qna.id) || isSubmitting(qna.id)}
                     className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                     title="Q&A 삭제"
                     aria-label="Q&A 삭제"
@@ -321,23 +327,23 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                         value={drafts[qna.id] ?? ''}
                         onChange={(event) => setDrafts((current) => ({ ...current, [qna.id]: event.target.value }))}
                         placeholder="댓글 내용을 입력해 주세요."
-                        disabled={isDeleting(qna.id)}
+                        disabled={isDeleting(qna.id) || isSubmitting(qna.id)}
                         className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                       />
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => setActiveComposerId(null)}
-                          disabled={isDeleting(qna.id)}
+                          disabled={isDeleting(qna.id) || isSubmitting(qna.id)}
                           className="rounded border border-gray-300 px-3 py-1.5 text-[11px] text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           취소
                         </button>
                         <button
                           onClick={() => void handleCommentSubmit(qna.id)}
-                          disabled={submittingId === qna.id || isDeleting(qna.id)}
+                          disabled={isSubmitting(qna.id) || isDeleting(qna.id)}
                           className="rounded bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {submittingId === qna.id ? '저장 중' : '저장'}
+                          {isSubmitting(qna.id) ? '저장 중' : '저장'}
                         </button>
                       </div>
                     </div>

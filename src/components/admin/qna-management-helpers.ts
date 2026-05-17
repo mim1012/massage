@@ -44,3 +44,11 @@ export function addDeletingQnaId(deletingIds: string[], qnaId: string) {
 export function removeDeletingQnaId(deletingIds: string[], qnaId: string) {
   return deletingIds.filter((id) => id !== qnaId);
 }
+
+export function addSubmittingQnaId(submittingIds: string[], qnaId: string) {
+  return submittingIds.includes(qnaId) ? submittingIds : [...submittingIds, qnaId];
+}
+
+export function removeSubmittingQnaId(submittingIds: string[], qnaId: string) {
+  return submittingIds.filter((id) => id !== qnaId);
+}

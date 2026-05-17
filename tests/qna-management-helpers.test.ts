@@ -3,10 +3,12 @@ import test from 'node:test';
 import type { QnA } from '@/lib/types';
 import {
   addDeletingQnaId,
+  addSubmittingQnaId,
   buildDeleteQnaConfirmMessage,
   getThreadComments,
   removeDeletingQnaId,
   removeManagedQna,
+  removeSubmittingQnaId,
 } from '@/components/admin/qna-management-helpers';
 
 const baseQna: QnA = {
@@ -73,7 +75,17 @@ test('addDeletingQnaId avoids duplicate pending ids for the same row', () => {
   assert.deepEqual(addDeletingQnaId(['qna-1'], 'qna-2'), ['qna-1', 'qna-2']);
 });
 
+test('addSubmittingQnaId avoids duplicate pending ids for the same row', () => {
+  assert.deepEqual(addSubmittingQnaId(['qna-1'], 'qna-1'), ['qna-1']);
+  assert.deepEqual(addSubmittingQnaId(['qna-1'], 'qna-2'), ['qna-1', 'qna-2']);
+});
+
 test('removeDeletingQnaId removes only the targeted pending id', () => {
   assert.deepEqual(removeDeletingQnaId(['qna-1', 'qna-2'], 'qna-1'), ['qna-2']);
   assert.deepEqual(removeDeletingQnaId(['qna-1', 'qna-2'], 'missing-qna'), ['qna-1', 'qna-2']);
+});
+
+test('removeSubmittingQnaId removes only the targeted pending id', () => {
+  assert.deepEqual(removeSubmittingQnaId(['qna-1', 'qna-2'], 'qna-1'), ['qna-2']);
+  assert.deepEqual(removeSubmittingQnaId(['qna-1', 'qna-2'], 'missing-qna'), ['qna-1', 'qna-2']);
 });

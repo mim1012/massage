@@ -90,6 +90,19 @@ async function renderHarness(options?: {
         (button): button is HTMLButtonElement => button.getAttribute('aria-label') === 'Q&A 삭제',
       );
     },
+    getCommentButtons() {
+      return Array.from(dom.window.document.querySelectorAll('button')).filter(
+        (button): button is HTMLButtonElement => button.textContent?.trim() === '댓글 추가',
+      );
+    },
+    getSaveButtons() {
+      return Array.from(dom.window.document.querySelectorAll('button')).filter(
+        (button): button is HTMLButtonElement => button.textContent?.trim() === '저장' || button.textContent?.trim() === '저장 중',
+      );
+    },
+    getTextareas() {
+      return Array.from(dom.window.document.querySelectorAll('textarea')) as HTMLTextAreaElement[];
+    },
     async cleanup() {
       await act(async () => {
         root.unmount();
