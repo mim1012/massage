@@ -22,7 +22,14 @@ export async function PATCH(request: Request) {
     await requireRole('ADMIN');
     const body = (await request.json()) as LegalDocumentsPayload;
 
-    if (body.slug !== 'privacy' && body.slug !== 'terms' && body.slug !== 'youth' && body.slug !== 'ad' && body.slug !== 'mobile') {
+    if (
+      body.slug !== 'privacy' &&
+      body.slug !== 'terms' &&
+      body.slug !== 'youth' &&
+      body.slug !== 'ad' &&
+      body.slug !== 'mobile' &&
+      body.slug !== 'partnership'
+    ) {
       return Response.json({ error: '수정할 문서 종류를 확인해 주세요.' }, { status: 400 });
     }
 

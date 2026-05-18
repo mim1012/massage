@@ -1,4 +1,4 @@
-export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth' | 'ad' | 'mobile';
+export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth' | 'ad' | 'mobile' | 'partnership';
 
 export type LegalSection = {
   title: string;
@@ -18,6 +18,11 @@ export type ResolvedLegalDocument = EditableLegalDocument & {
   slug: LegalDocumentSlug;
   updatedAt?: string | null;
   sections: LegalSection[];
+};
+
+export type PartnershipContactDetails = {
+  phone: string;
+  kakao: string;
 };
 
 export function parseLegalDocumentBody(body: string): LegalSection[] {
@@ -260,6 +265,19 @@ const MOBILE_SECTIONS: LegalSection[] = [
   },
 ];
 
+const PARTNERSHIP_SECTIONS: LegalSection[] = [
+  {
+    title: 'Direct Call',
+    paragraphs: [],
+    items: ['010-1234-5678'],
+  },
+  {
+    title: 'Kakao ID',
+    paragraphs: [],
+    items: ['healing_help'],
+  },
+];
+
 export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDocument> = {
   privacy: {
     eyebrow: 'Privacy',
@@ -301,7 +319,101 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
     note: '기기별 표시 차이나 접속 이슈는 고객센터로 문의해 주시면 확인 후 안내드립니다.',
     body: buildLegalDocumentBody(MOBILE_SECTIONS),
   },
+  partnership: {
+    eyebrow: 'Partnership',
+    title: '제휴 입점 안내',
+    description: '대한민국 대표 마사지 커뮤니티와 함께 성공할 파트너를 모십니다.',
+    note: '보내주신 소중한 입점 문의가 정상적으로 접수되었습니다. 담당자가 확인 후 1~2일 내에 기재해주신 연락처로 안내해 드리겠습니다.',
+    body: buildLegalDocumentBody(PARTNERSHIP_SECTIONS),
+  },
 };
+
+function normalizeSectionTitle(title: string) {
+  return title.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function matchesSectionTitle(title: string, keywords: string[]) {
+  const normalized = normalizeSectionTitle(title);
+  return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function getSectionValues(section: LegalSection) {
+  return [...section.paragraphs, ...(section.items ?? [])].map((value) => value.trim()).filter(Boolean);
+}
+
+function findPhoneValue(value: string) {
+  const match = value.match(/\+?\d[\d\s()-]{6,}\d/);
+  return match ? match[0].trim() : null;
+}
+
+function extractSectionValue(sections: LegalSection[], keywords: string[], parser?: (value: string) => string | null) {
+  for (const section of sections) {
+    if (!matchesSectionTitle(section.title, keywords)) {
+      continue;
+    }
+
+    for (const value of getSectionValues(section)) {
+      const parsed = parser ? parser(value) : value;
+      if (parsed) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractPhoneFromSections(sections: LegalSection[]) {
+  const directMatch = extractSectionValue(sections, ['direct call', 'phone', 'tel', 'contact', '전화', '연락처'], findPhoneValue);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const section of sections) {
+    for (const value of getSectionValues(section)) {
+      const parsed = findPhoneValue(value);
+      if (parsed) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractKakaoFromSections(sections: LegalSection[], phoneValue: string | null) {
+  const directMatch = extractSectionValue(sections, ['kakao', '카카오'], (value) => value.trim() || null);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const section of sections) {
+    for (const value of getSectionValues(section)) {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        continue;
+      }
+      if (phoneValue && trimmed === phoneValue) {
+        continue;
+      }
+      if (findPhoneValue(trimmed)) {
+        continue;
+      }
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+export function resolvePartnershipContactDetails(document: Pick<ResolvedLegalDocument, 'sections'>): PartnershipContactDetails {
+  const fallback = resolveLegalDocument('partnership');
+  const fallbackPhone = extractPhoneFromSections(fallback.sections) ?? '010-1234-5678';
+  const fallbackKakao = extractKakaoFromSections(fallback.sections, fallbackPhone) ?? 'healing_help';
+  const phone = extractPhoneFromSections(document.sections) ?? fallbackPhone;
+  const kakao = extractKakaoFromSections(document.sections, phone) ?? fallbackKakao;
+  return { phone, kakao };
+}
 
 export function resolveLegalDocument(
   slug: LegalDocumentSlug,

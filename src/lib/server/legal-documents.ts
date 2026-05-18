@@ -72,14 +72,15 @@ export async function getLegalDocument(slug: LegalDocumentSlug): Promise<Resolve
 }
 
 export async function getAllLegalDocuments(): Promise<Record<LegalDocumentSlug, ResolvedLegalDocument>> {
-  const [privacy, terms, youth, ad, mobile] = await Promise.all([
+  const [privacy, terms, youth, ad, mobile, partnership] = await Promise.all([
     getLegalDocument('privacy'),
     getLegalDocument('terms'),
     getLegalDocument('youth'),
     getLegalDocument('ad'),
     getLegalDocument('mobile'),
+    getLegalDocument('partnership'),
   ]);
-  return { privacy, terms, youth, ad, mobile };
+  return { privacy, terms, youth, ad, mobile, partnership };
 }
 
 export async function upsertLegalDocument(slug: LegalDocumentSlug, input: EditableLegalDocument): Promise<ResolvedLegalDocument> {

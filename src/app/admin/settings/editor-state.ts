@@ -39,6 +39,7 @@ export function createDefaultAdminSettingsState(input: {
       youth: { ...input.legalDocs.youth },
       ad: { ...input.legalDocs.ad },
       mobile: { ...input.legalDocs.mobile },
+      partnership: { ...input.legalDocs.partnership },
     },
   };
 }
@@ -60,6 +61,7 @@ export function getAdminSettingsDirtyState(input: {
         youth: false,
         ad: false,
         mobile: false,
+        partnership: false,
       } as Record<LegalDocumentSlug, boolean>,
     };
   }
@@ -72,6 +74,7 @@ export function getAdminSettingsDirtyState(input: {
     youth: stableStringify(toEditableLegalDocument(input.baseline.legalDocs.youth)) !== stableStringify(toEditableLegalDocument(input.legalDocs.youth)),
     ad: stableStringify(toEditableLegalDocument(input.baseline.legalDocs.ad)) !== stableStringify(toEditableLegalDocument(input.legalDocs.ad)),
     mobile: stableStringify(toEditableLegalDocument(input.baseline.legalDocs.mobile)) !== stableStringify(toEditableLegalDocument(input.legalDocs.mobile)),
+    partnership: stableStringify(toEditableLegalDocument(input.baseline.legalDocs.partnership)) !== stableStringify(toEditableLegalDocument(input.legalDocs.partnership)),
   } satisfies Record<LegalDocumentSlug, boolean>;
 
   return {
