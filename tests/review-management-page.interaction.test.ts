@@ -11,6 +11,7 @@ type ManagedReview = Review & { shopRegionLabel?: string };
 
 const baseReview: ManagedReview = {
   id: 'review-1',
+  shopId: 'shop-1',
   authorName: '손님1',
   shopName: '테스트 업소',
   content: '정말 좋았어요',
@@ -41,6 +42,7 @@ async function renderHarness(options?: {
   const previousEvent = globalThis.Event;
   const previousMouseEvent = globalThis.MouseEvent;
   const previousFetch = globalThis.fetch;
+  const previousConfirm = globalThis.confirm;
   const previousActEnvironment = (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
 
   Object.defineProperties(globalThis, {
@@ -52,13 +54,17 @@ async function renderHarness(options?: {
     Event: { configurable: true, writable: true, value: dom.window.Event },
     MouseEvent: { configurable: true, writable: true, value: dom.window.MouseEvent },
     IS_REACT_ACT_ENVIRONMENT: { configurable: true, writable: true, value: true },
+    confirm: { configurable: true, writable: true, value: () => true },
   });
 
-  const fetchCalls: Array<{ url: string; method: string }> = [];
+  dom.window.confirm = () => true;
+
+  const fetchCalls: Array<{ url: string; method: string; body?: string }> = [];
   globalThis.fetch = (options?.fetchImpl ?? (async (input: RequestInfo | URL, init?: RequestInit) => {
     fetchCalls.push({
       url: String(input),
       method: init?.method ?? 'GET',
+      body: typeof init?.body === 'string' ? init.body : undefined,
     });
 
     return new Response(null, { status: 204 });
@@ -84,6 +90,16 @@ async function renderHarness(options?: {
         (button): button is HTMLButtonElement => button.getAttribute('title') === '삭제',
       );
     },
+    getEditButtons() {
+      return Array.from(dom.window.document.querySelectorAll('button')).filter(
+        (button): button is HTMLButtonElement => button.getAttribute('title') === '수정',
+      );
+    },
+    getCreateButton() {
+      return Array.from(dom.window.document.querySelectorAll('button')).find(
+        (button): button is HTMLButtonElement => button.textContent?.includes('리뷰 등록') ?? false,
+      );
+    },
     async cleanup() {
       await act(async () => {
         root.unmount();
@@ -98,6 +114,7 @@ async function renderHarness(options?: {
         Event: { configurable: true, writable: true, value: previousEvent },
         MouseEvent: { configurable: true, writable: true, value: previousMouseEvent },
         IS_REACT_ACT_ENVIRONMENT: { configurable: true, writable: true, value: previousActEnvironment },
+        confirm: { configurable: true, writable: true, value: previousConfirm },
       });
       dom.window.close();
     },
@@ -153,7 +170,7 @@ test('deleting one review keeps the first row disabled while another row delete 
   const harness = await renderHarness({
     reviews: [
       buildReview({ id: 'review-1', content: '첫 번째 리뷰' }),
-      buildReview({ id: 'review-2', authorName: '손님2', content: '두 번째 리뷰' }),
+      buildReview({ id: 'review-2', shopId: 'shop-2', authorName: '손님2', content: '두 번째 리뷰' }),
     ],
     fetchImpl,
   });
@@ -191,6 +208,38 @@ test('deleting one review keeps the first row disabled while another row delete 
   } finally {
     releaseFirstDelete?.();
     releaseSecondDelete?.();
+    await harness.cleanup();
+  }
+});
+
+test('review edit modal pre-fills existing review fields', async () => {
+  const harness = await renderHarness();
+
+  try {
+    const editButton = harness.getEditButtons()[0];
+    assert.ok(editButton, 'edit button should be rendered');
+
+    await act(async () => {
+      editButton.dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const modalTitle = Array.from(harness.dom.window.document.querySelectorAll('h2')).find((heading) =>
+      heading.textContent?.includes('리뷰 수정'),
+    );
+    assert.ok(modalTitle, 'edit modal should be rendered');
+
+    const inputs = Array.from(harness.dom.window.document.querySelectorAll('input')) as HTMLInputElement[];
+    const authorInput = inputs.find((input) => input.value === '손님1');
+    assert.ok(authorInput, 'author input should be prefilled');
+
+    const readonlyShopInput = inputs.find((input) => input.value === '테스트 업소');
+    assert.ok(readonlyShopInput, 'shop input should be readonly and prefilled');
+
+    const textareas = Array.from(harness.dom.window.document.querySelectorAll('textarea')) as HTMLTextAreaElement[];
+    const contentInput = textareas[0];
+    assert.equal(contentInput.value, '정말 좋았어요');
+  } finally {
     await harness.cleanup();
   }
 });
