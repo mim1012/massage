@@ -143,6 +143,7 @@ type LegacyQnaRecord = Prisma.QnAGetPayload<{
 type BoardLandingQnaRecord = Prisma.QnAGetPayload<{
   select: {
     id: true;
+    userId: true;
     shopId: true;
     question: true;
     authorName: true;
@@ -176,6 +177,7 @@ type BoardLandingQnaRecord = Prisma.QnAGetPayload<{
 type LegacyBoardLandingQnaRecord = Prisma.QnAGetPayload<{
   select: {
     id: true;
+    userId: true;
     shopId: true;
     question: true;
     authorName: true;
@@ -268,12 +270,29 @@ function canCommentOnQna(entry: { shop?: { ownerId: string | null } | null }, vi
   return viewer.role === 'OWNER' && Boolean(entry.shop?.ownerId) && entry.shop?.ownerId === viewer.id;
 }
 
+function canManagePublicQna(
+  entry: { userId: string | null; status: QnaStatus },
+  viewer: ViewerContext | undefined,
+  commentCount: number,
+) {
+  if (!viewer) {
+    return false;
+  }
+
+  if (viewer.role !== 'USER' || viewer.id !== entry.userId) {
+    return false;
+  }
+
+  return entry.status === QnaStatus.OPEN && commentCount === 0;
+}
+
 function mapQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext): QnA {
   const comments = entry.comments.map(mapQnaComment);
   const latestComment = comments.at(-1);
 
   return {
     id: entry.id,
+    canManage: canManagePublicQna(entry, viewer, comments.length),
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -296,6 +315,7 @@ function mapBoardLandingQna(entry: BoardLandingQnaRecord | LegacyBoardLandingQna
 
   return {
     id: entry.id,
+    canManage: canManagePublicQna(entry, viewer, commentCount),
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -655,6 +675,7 @@ const qnaInclude = {
 
 const boardLandingQnaSelect = {
   id: true,
+  userId: true,
   shopId: true,
   question: true,
   authorName: true,
@@ -840,6 +861,7 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
         const entries = await prisma.qnA.findMany({
           select: {
             id: true,
+            userId: true,
             shopId: true,
             question: true,
             authorName: true,
@@ -993,6 +1015,92 @@ export async function createQna(
   }
 }
 
+export async function updateQna(
+  id: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  try {
+    const entry = await prisma.qnA.update({
+      where: { id },
+      data: {
+        question: input.question.trim(),
+      },
+      include: qnaInclude,
+    });
+
+    invalidatePublicBoardCaches();
+    return mapQna(entry, viewer);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function updatePublicQna(
+  id: string,
+  userId: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  const result = await prisma.qnA.updateMany({
+    where: {
+      id,
+      userId,
+      status: QnaStatus.OPEN,
+      comments: { none: {} },
+    },
+    data: {
+      question: input.question.trim(),
+    },
+  });
+
+  if (result.count === 0) {
+    return null;
+  }
+
+  const entry = await prisma.qnA.findUnique({
+    where: { id },
+    include: qnaInclude,
+  });
+
+  invalidatePublicBoardCaches();
+  return entry ? mapQna(entry, viewer) : null;
+}
+
+export async function deleteQna(id: string) {
+  try {
+    await prisma.qnA.delete({ where: { id } });
+    invalidatePublicBoardCaches();
+    return true;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function deletePublicQna(id: string, userId: string) {
+  const result = await prisma.qnA.deleteMany({
+    where: {
+      id,
+      userId,
+      status: QnaStatus.OPEN,
+      comments: { none: {} },
+    },
+  });
+
+  if (result.count === 0) {
+    return false;
+  }
+
+  invalidatePublicBoardCaches();
+  return true;
+}
+
 type ReviewListOptions = {
   limit?: number;
   shopId?: string;
@@ -1000,7 +1108,7 @@ type ReviewListOptions = {
 };
 
 const PUBLIC_REVIEWER_EMAIL = 'public-reviewer@massage.local';
-const PUBLIC_REVIEWER_PASSWORD_HASH = 'public-reviewer';
+const PUBLIC_REVIEWER_PASSWORD_HASH = '***';
 
 async function getPublicReviewerId() {
   const reviewer = await prisma.user.upsert({

@@ -1,4 +1,5 @@
 import QnaPageClient from '@/components/public/QnaPageClient';
+import { getSessionUser } from '@/lib/auth/guards';
 import { normalizePageParam } from '@/lib/pagination';
 import { listPublicQnaPage } from '@/lib/server/communityStore';
 
@@ -24,7 +25,13 @@ export default async function QnaPage({ searchParams }: PageProps) {
   const shopId = pickFirst(resolvedSearchParams?.shopId);
   const search = pickFirst(resolvedSearchParams?.q)?.trim();
 
-  const entryPage = await listPublicQnaPage({ page, shopId, search });
+  const viewer = await getSessionUser();
+  const entryPage = await listPublicQnaPage({
+    page,
+    shopId,
+    search,
+    viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
+  });
 
   return <QnaPageClient initialEntries={entryPage.items} initialPage={entryPage.page} initialTotalPages={entryPage.totalPages} />;
 }

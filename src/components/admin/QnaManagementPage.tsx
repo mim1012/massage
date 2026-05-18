@@ -49,6 +49,11 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const deletingIdsRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newShopId, setNewShopId] = useState('');
+  const [editingQnaId, setEditingQnaId] = useState<string | null>(null);
+  const [editingQuestionText, setEditingQuestionText] = useState('');
 
   useEffect(() => {
     if (initialDataLoaded || initialQnaList.length > 0 || initialShops.length > 0) {
@@ -195,6 +200,10 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
       if (activeComposerId === qna.id) {
         setActiveComposerId(null);
       }
+      if (editingQnaId === qna.id) {
+        setEditingQnaId(null);
+        setEditingQuestionText('');
+      }
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Q&A를 삭제하지 못했습니다.');
     } finally {
@@ -203,10 +212,83 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
     }
   }
 
+  async function handleCreateQna(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedQuestion = newQuestion.trim();
+    if (!trimmedQuestion) {
+      return;
+    }
+
+    const requestKey = '__create__';
+    if (submittingIdsRef.current.has(requestKey)) {
+      return;
+    }
+
+    submittingIdsRef.current.add(requestKey);
+    setSubmittingIds((current) => addSubmittingQnaId(current, requestKey));
+    setError(null);
+
+    try {
+      const response = await fetch('/api/board/qna', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: trimmedQuestion, shopId: newShopId || null }),
+      });
+      const result = (await response.json()) as { qna?: QnA; error?: string };
+      if (!response.ok || !result.qna) {
+        throw new Error(result.error ?? 'Q&A를 등록하지 못했습니다.');
+      }
+
+      setQnaList((current) => [result.qna as QnA, ...current]);
+      setNewQuestion('');
+      setNewShopId('');
+      setShowCreateForm(false);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Q&A를 등록하지 못했습니다.');
+    } finally {
+      submittingIdsRef.current.delete(requestKey);
+      setSubmittingIds((current) => removeSubmittingQnaId(current, requestKey));
+    }
+  }
+
+  async function handleUpdateQna(id: string) {
+    const trimmedQuestion = editingQuestionText.trim();
+    if (!trimmedQuestion || isSubmitting(id) || isDeleting(id)) {
+      return;
+    }
+
+    submittingIdsRef.current.add(id);
+    setSubmittingIds((current) => addSubmittingQnaId(current, id));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/qna/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: trimmedQuestion }),
+      });
+      const result = (await response.json()) as { qna?: QnA; error?: string };
+      if (!response.ok || !result.qna) {
+        throw new Error(result.error ?? 'Q&A를 수정하지 못했습니다.');
+      }
+
+      setQnaList((current) => current.map((qna) => (qna.id === id ? result.qna ?? qna : qna)));
+      setEditingQnaId(null);
+      setEditingQuestionText('');
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Q&A를 수정하지 못했습니다.');
+    } finally {
+      submittingIdsRef.current.delete(id);
+      setSubmittingIds((current) => removeSubmittingQnaId(current, id));
+    }
+  }
+
   const pageTitle = scope === 'admin' ? 'Q&A 댓글 관리' : '내 업소 Q&A 댓글 관리';
+  const canCreateQna = scope === 'admin';
+  const canEditQna = scope === 'admin';
   const description =
     scope === 'admin'
-      ? '관리자는 전체 Q&A를 검색하고 댓글 스레드를 관리하거나 삭제할 수 있습니다.'
+      ? '관리자는 전체 Q&A를 검색하고 질문 수정/삭제와 댓글 스레드 관리를 할 수 있습니다.'
       : '오너는 내 업소 Q&A만 검색하고 댓글 스레드를 관리하거나 삭제할 수 있습니다.';
 
   return (
@@ -216,8 +298,70 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
           <MessageCircle className="h-5 w-5 text-red-600" />
           {pageTitle}
         </h1>
-        <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filtered.length}건 / 전체 {qnaList.length}건</div>
+        <div className="flex items-center gap-2">
+          {canCreateQna ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreateForm((current) => !current);
+                setError(null);
+              }}
+              className="rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"
+            >
+              {showCreateForm ? '작성 취소' : '질문 작성'}
+            </button>
+          ) : null}
+          <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filtered.length}건 / 전체 {qnaList.length}건</div>
+        </div>
       </div>
+
+      {canCreateQna && showCreateForm ? (
+        <form onSubmit={handleCreateQna} className="rounded border border-red-200 bg-white p-4 space-y-3 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-800">새 Q&A 질문 등록</h3>
+          <div>
+            <label className="mb-1 block text-[11px] font-bold text-gray-500">관련 업소 선택 (선택 사항)</label>
+            <select
+              value={newShopId}
+              onChange={(event) => setNewShopId(event.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-1.5 text-xs outline-none focus:border-red-500 bg-white"
+            >
+              <option value="">일반 문의 (업소 선택 안함)</option>
+              {shops.map((shop) => (
+                <option key={shop.id} value={shop.id}>
+                  {shop.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-bold text-gray-500">질문 내용</label>
+            <textarea
+              required
+              rows={3}
+              value={newQuestion}
+              onChange={(event) => setNewQuestion(event.target.value)}
+              placeholder="질문 내용을 작성해 주세요."
+              className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500 bg-white"
+            />
+          </div>
+          <div className="flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowCreateForm(false)}
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting('__create__')}
+              className="rounded bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {isSubmitting('__create__') ? '등록 중' : '등록'}
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <div className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,white)] bg-[var(--portal-brand-soft)] px-3 py-2 text-xs text-[var(--portal-brand-dark)]">
         {description} 여러 댓글이 제공되면 스레드 형태로 표시되며, 기존 단일 답변 데이터도 함께 호환됩니다.
@@ -277,12 +421,57 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
                     {isDone ? '완료' : '대기'}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 font-semibold leading-snug text-gray-800">Q. {qna.question}</p>
-                    <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
-                      <span>{qna.authorName}</span>
-                      <span>{formatDate(qna.createdAt)}</span>
-                      <span className="rounded bg-red-50 px-1 font-bold text-red-500">{shopMeta}</span>
-                    </div>
+                    {editingQnaId === qna.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={2}
+                          value={editingQuestionText}
+                          onChange={(event) => setEditingQuestionText(event.target.value)}
+                          className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-xs outline-none focus:border-red-500"
+                        />
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingQnaId(null);
+                              setEditingQuestionText('');
+                            }}
+                            className="rounded border border-gray-300 px-2 py-1 text-[10px] text-gray-600 hover:bg-gray-100"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => void handleUpdateQna(qna.id)}
+                            disabled={isSubmitting(qna.id)}
+                            className="rounded bg-red-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                          >
+                            {isSubmitting(qna.id) ? '저장 중' : '저장'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="mb-1 font-semibold leading-snug text-gray-800">Q. {qna.question}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-400 items-center">
+                          <span>{qna.authorName}</span>
+                          <span>{formatDate(qna.createdAt)}</span>
+                          <span className="rounded bg-red-50 px-1 font-bold text-red-500">{shopMeta}</span>
+                          {canEditQna ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingQnaId(qna.id);
+                                setEditingQuestionText(qna.question);
+                                setError(null);
+                              }}
+                              disabled={isDeleting(qna.id) || isSubmitting(qna.id)}
+                              className="font-bold text-blue-600 hover:underline disabled:opacity-50"
+                            >
+                              수정
+                            </button>
+                          ) : null}
+                        </div>
+                      </>
+                    )}
                   </div>
                   <button
                     onClick={() => void handleDelete(qna)}

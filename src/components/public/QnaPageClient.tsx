@@ -50,11 +50,15 @@ function QnaContent({
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState('');
   const didInitPaginationReset = useRef(false);
 
   useEffect(() => {
     setEntries(initialEntries);
     setCurrentPage(initialPage);
+    setEditingId(null);
+    setEditingQuestion('');
   }, [initialEntries, initialPage]);
 
   useEffect(() => {
@@ -143,7 +147,63 @@ function QnaContent({
       setOpenId(result.qna.id);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '질문을 등록하지 못했습니다.');
-      console.error(submitError);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdate(id: string) {
+    if (!editingQuestion.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/board/qna/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: editingQuestion }),
+      });
+      const result = (await response.json()) as { qna?: QnA; error?: string };
+      if (!response.ok || !result.qna) {
+        throw new Error(result.error ?? '질문을 수정하지 못했습니다.');
+      }
+
+      setEntries((current) => current.map((entry) => (entry.id === id ? result.qna ?? entry : entry)));
+      setEditingId(null);
+      setEditingQuestion('');
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : '질문을 수정하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (typeof window !== 'undefined' && !window.confirm('질문을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/board/qna/${id}`, { method: 'DELETE' });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? '질문을 삭제하지 못했습니다.');
+      }
+
+      setEntries((current) => current.filter((entry) => entry.id !== id));
+      if (openId === id) {
+        setOpenId(null);
+      }
+      if (editingId === id) {
+        setEditingId(null);
+        setEditingQuestion('');
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '질문을 삭제하지 못했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -235,48 +295,118 @@ function QnaContent({
         ) : (
           visibleEntries.map((entry, idx) => {
             const answer = getPrimaryAnswer(entry);
+            const canManage = Boolean(entry.canManage);
             return (
               <div key={entry.id} className={idx < visibleEntries.length - 1 ? 'border-b border-gray-100' : ''}>
-                <button
-                  onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
-                  className="w-full text-left transition-all hover:bg-gray-50"
-                >
-                  <div className="flex items-start justify-between p-3">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <span
-                        className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          entry.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                        }`}
+                {editingId === entry.id ? (
+                  <div className="p-3 space-y-2">
+                    <textarea
+                      value={editingQuestion}
+                      onChange={(event) => setEditingQuestion(event.target.value)}
+                      rows={3}
+                      className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+                    />
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingQuestion('');
+                        }}
+                        className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
                       >
-                        {entry.isAnswered ? '완료' : '대기'}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-700">Q. {entry.question}</p>
-                        <p className="mt-0.5 text-[11px] text-gray-400">
-                          {entry.authorName} · {formatDate(entry.createdAt)}
-                        </p>
+                        취소
+                      </button>
+                      <button
+                        onClick={() => void handleUpdate(entry.id)}
+                        disabled={submitting}
+                        className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {submitting ? '저장 중' : '저장'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={openId === entry.id}
+                      onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setOpenId(openId === entry.id ? null : entry.id);
+                        }
+                      }}
+                      className="w-full cursor-pointer text-left transition-all hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                    >
+                      <div className="flex items-start justify-between p-3">
+                        <div className="flex min-w-0 items-start gap-2 flex-1">
+                          <span
+                            className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                              entry.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {entry.isAnswered ? '완료' : '대기'}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-700">Q. {entry.question}</p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                              <span>{entry.authorName}</span>
+                              <span>·</span>
+                              <span>{formatDate(entry.createdAt)}</span>
+                              {canManage ? (
+                                <>
+                                  <span>·</span>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setEditingId(entry.id);
+                                      setEditingQuestion(entry.question);
+                                    }}
+                                    className="font-bold text-blue-600 hover:underline"
+                                  >
+                                    수정
+                                  </button>
+                                  <span>·</span>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void handleDelete(entry.id);
+                                    }}
+                                    className="font-bold text-red-600 hover:underline"
+                                  >
+                                    삭제
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                        {openId === entry.id ? (
+                          <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
+                        )}
                       </div>
                     </div>
-                    {openId === entry.id ? (
-                      <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
-                    )}
-                  </div>
-                </button>
 
-                {openId === entry.id ? (
-                  <div className="px-3 pb-3">
-                    {answer ? (
-                      <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
-                        <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
-                        A. {answer}
+                    {openId === entry.id ? (
+                      <div className="px-3 pb-3">
+                        {answer ? (
+                          <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
+                            <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
+                            A. {answer}
+                          </div>
+                        ) : (
+                          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">답변 준비 중입니다.</div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">답변 준비 중입니다.</div>
-                    )}
-                  </div>
-                ) : null}
+                    ) : null}
+                  </>
+                )}
               </div>
             );
           })
