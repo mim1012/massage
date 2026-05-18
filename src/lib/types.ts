@@ -98,6 +98,7 @@ export interface QnAComment {
 
 export interface QnA {
   id: string;
+  userId?: string;
   shopId?: string;
   shopName?: string;
   shopRegionLabel?: string;

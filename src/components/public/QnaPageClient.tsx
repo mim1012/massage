@@ -45,6 +45,8 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   const [submitted, setSubmitted] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const didInitPaginationReset = useRef(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState('');
 
   useEffect(() => {
     setEntries(initialEntries);
@@ -155,6 +157,39 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
     }
   }
 
+  async function handleUpdate(id: string) {
+    if (!editingQuestion.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/board/qna/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: editingQuestion }),
+      });
+      const result = (await response.json()) as { qna?: QnA; error?: string };
+      if (!response.ok || !result.qna) throw new Error(result.error ?? '수정 실패');
+      setEntries((current) => current.map((q) => (q.id === id ? (result.qna as QnA) : q)));
+      setEditingId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '수정에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setError(null);
+    try {
+      const response = await fetch(`/api/board/qna/${id}`, { method: 'DELETE' });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error ?? '삭제 실패');
+      setEntries((current) => current.filter((q) => q.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '삭제에 실패했습니다.');
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[800px] px-3 py-4">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
@@ -241,48 +276,106 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
         ) : (
           visibleEntries.map((entry, idx) => {
             const answer = getPrimaryAnswer(entry);
+            const canManage = user && (user.id === entry.userId || user.role === 'ADMIN');
             return (
               <div key={entry.id} className={idx < visibleEntries.length - 1 ? 'border-b border-gray-100' : ''}>
-                <button
-                  onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
-                  className="w-full text-left transition-all hover:bg-gray-50"
-                >
-                  <div className="flex items-start justify-between p-3">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <span
-                        className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          entry.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                        }`}
+                {editingId === entry.id ? (
+                  <div className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      value={editingQuestion}
+                      onChange={(e) => setEditingQuestion(e.target.value)}
+                      className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+                      rows={3}
+                    />
+                    <div className="mt-2 flex justify-end gap-1.5">
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
                       >
-                        {entry.isAnswered ? '완료' : '대기'}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-700">Q. {entry.question}</p>
-                        <p className="mt-0.5 text-[11px] text-gray-400">
-                          {entry.authorName} · {formatDate(entry.createdAt)}
-                        </p>
-                      </div>
+                        취소
+                      </button>
+                      <button
+                        onClick={() => void handleUpdate(entry.id)}
+                        disabled={submitting}
+                        className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                      >
+                        저장
+                      </button>
                     </div>
-                    {openId === entry.id ? (
-                      <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
-                    )}
                   </div>
-                </button>
-
-                {openId === entry.id ? (
-                  <div className="px-3 pb-3">
-                    {answer ? (
-                      <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
-                        <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
-                        A. {answer}
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
+                      className="w-full text-left transition-all hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between p-3">
+                        <div className="flex min-w-0 items-start gap-2 flex-1">
+                          <span
+                            className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                              entry.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {entry.isAnswered ? '완료' : '대기'}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-700">Q. {entry.question}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                              <span>{entry.authorName}</span>
+                              <span>·</span>
+                              <span>{formatDate(entry.createdAt)}</span>
+                              {canManage && (
+                                <>
+                                  <span>·</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingId(entry.id);
+                                      setEditingQuestion(entry.question);
+                                    }}
+                                    className="font-bold text-blue-600 hover:underline animate-pulse"
+                                  >
+                                    수정
+                                  </button>
+                                  <span>·</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm('질문을 삭제하시겠습니까?')) {
+                                        void handleDelete(entry.id);
+                                      }
+                                    }}
+                                    className="font-bold text-red-600 hover:underline"
+                                  >
+                                    삭제
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {openId === entry.id ? (
+                          <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
+                        )}
                       </div>
-                    ) : (
-                      <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">답변 준비 중입니다.</div>
-                    )}
-                  </div>
-                ) : null}
+                    </button>
+
+                    {openId === entry.id ? (
+                      <div className="px-3 pb-3">
+                        {answer ? (
+                          <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
+                            <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
+                            A. {answer}
+                          </div>
+                        ) : (
+                          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">답변 준비 중입니다.</div>
+                        )}
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             );
           })

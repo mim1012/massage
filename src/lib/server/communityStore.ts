@@ -143,6 +143,7 @@ type LegacyQnaRecord = Prisma.QnAGetPayload<{
 type BoardLandingQnaRecord = Prisma.QnAGetPayload<{
   select: {
     id: true;
+    userId: true;
     shopId: true;
     question: true;
     authorName: true;
@@ -176,6 +177,7 @@ type BoardLandingQnaRecord = Prisma.QnAGetPayload<{
 type LegacyBoardLandingQnaRecord = Prisma.QnAGetPayload<{
   select: {
     id: true;
+    userId: true;
     shopId: true;
     question: true;
     authorName: true;
@@ -274,6 +276,7 @@ function mapQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext): QnA
 
   return {
     id: entry.id,
+    userId: entry.userId ?? undefined,
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -296,6 +299,7 @@ function mapBoardLandingQna(entry: BoardLandingQnaRecord | LegacyBoardLandingQna
 
   return {
     id: entry.id,
+    userId: entry.userId ?? undefined,
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -656,6 +660,7 @@ const qnaInclude = {
 
 const boardLandingQnaSelect = {
   id: true,
+  userId: true,
   shopId: true,
   question: true,
   authorName: true,
@@ -841,6 +846,7 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
         const entries = await prisma.qnA.findMany({
           select: {
             id: true,
+            userId: true,
             shopId: true,
             question: true,
             authorName: true,
@@ -1621,6 +1627,36 @@ export async function deleteReview(id: string) {
     });
     await refreshShopReviewRating(review.shopId);
     invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function updateQna(
+  id: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  try {
+    const entry = await prisma.qnA.update({
+      where: { id },
+      data: {
+        question: input.question.trim(),
+      },
+      include: qnaInclude,
+    });
+    invalidatePublicBoardCaches();
+    return mapQna(entry, viewer);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteQna(id: string) {
+  try {
+    await prisma.qnA.delete({ where: { id } });
     invalidatePublicBoardCaches();
     return true;
   } catch {
