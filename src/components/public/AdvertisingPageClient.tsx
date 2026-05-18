@@ -77,7 +77,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       allLines.forEach((line) => {
         const mainMatch = line.match(/(?:메인 배너 광고|메인 배너)\s*[:：]\s*([^\n]+)/);
         const categoryMatch = line.match(/(?:카테고리 상단 광고|카테고리 상단)\s*[:：]\s*([^\n]+)/);
-        const recomMatch = line.match(/(?:추천업소 노출|추천업소|추천업체 노출)\s*[:：]\s*([^\n]+)/);
+        const recomMatch = line.match(/(?:추천업소 노출|추천업소|추천업체 노출|추천업체)\s*[:：]\s*([^\n]+)/);
         const popupMatch = line.match(/(?:팝업 광고|팝업)\s*[:：]\s*([^\n]+)/);
 
         if (mainMatch) mainBanner = mainMatch[1].trim();
