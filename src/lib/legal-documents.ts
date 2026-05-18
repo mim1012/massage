@@ -233,8 +233,13 @@ const AD_SECTIONS: LegalSection[] = [
     ],
   },
   {
-    title: '문의 방법',
-    paragraphs: ['광고 관련 상담은 푸터 연락처 또는 제휴/입점 문의 채널을 통해 접수할 수 있습니다.'],
+    title: '문의 및 연락처',
+    paragraphs: [
+      'TEL : 1588-0000',
+      'E-mail : ads@example.com',
+      'Kakao ID : ad_help',
+      '운영시간 : 평일 10:00 ~ 18:00 (토/일, 공휴일 휴무)',
+    ],
   },
 ];
 
