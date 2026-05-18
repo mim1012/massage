@@ -284,11 +284,11 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-[1200px] space-y-10 pb-10">
-      <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-gray-200 bg-gray-50/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
-        <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
+      <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-3 border-b border-gray-200 bg-gray-50/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0 md:flex-row md:items-center md:justify-between">
+        <h1 className="flex items-center gap-2 text-lg font-black text-gray-800 sm:text-xl">
           <Settings className="h-5 w-5 text-[var(--portal-brand)]" /> 사이트 통합 관리 설정
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {dirtyState.hasAnyChanges ? (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
               저장 안 된 변경 있음
@@ -303,23 +303,23 @@ export default function AdminSettingsPage() {
             onClick={handleResetAllSettings}
             disabled={!dirtyState.hasAnyChanges}
             className={clsx(
-              'flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-bold transition-all active:scale-95',
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold transition-all active:scale-95',
               dirtyState.hasAnyChanges
                 ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400',
             )}
           >
-            <RotateCcw className="h-4 w-4" /> 편집 되돌리기
+            <RotateCcw className="h-3.5 w-3.5" /> 편집 되돌리기
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !dirtyState.hasAnyChanges}
             className={clsx(
-              'flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-bold text-white shadow-md transition-all active:scale-95',
+              'flex items-center gap-1.5 rounded-lg px-4 py-1.5 sm:px-6 sm:py-2 text-xs sm:text-sm font-bold text-white shadow-md transition-all active:scale-95',
               isSaving || !dirtyState.hasAnyChanges ? 'cursor-not-allowed bg-gray-400' : 'bg-[var(--portal-brand)] hover:bg-[var(--portal-brand-hover)]',
             )}
           >
-            <Save className={clsx('h-4 w-4', isSaving && 'animate-spin')} />
+            <Save className={clsx('h-3.5 w-3.5', isSaving && 'animate-spin')} />
             {isSaving ? '저장 중...' : '전체 설정 저장'}
           </button>
         </div>
@@ -496,7 +496,7 @@ export default function AdminSettingsPage() {
 
             return (
               <div key={doc.slug} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="flex flex-col gap-2 border-b border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <Icon className={`h-4 w-4 ${doc.accent}`} />
                     <span className="text-sm font-bold text-gray-700">{doc.label}</span>
@@ -504,7 +504,7 @@ export default function AdminSettingsPage() {
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">편집 중</span>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleResetLegalDocument(doc.slug)}

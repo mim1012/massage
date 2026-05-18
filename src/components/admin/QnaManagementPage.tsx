@@ -247,12 +247,12 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
 
   return (
     <div className="max-w-[900px] space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="flex items-center gap-2 text-lg sm:text-xl font-black text-gray-800">
           <MessageCircle className="h-5 w-5 text-red-600" />
           {pageTitle}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"

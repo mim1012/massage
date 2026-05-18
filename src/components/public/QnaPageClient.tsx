@@ -305,9 +305,9 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
                   </div>
                 ) : (
                   <>
-                    <button
+                    <div
                       onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
-                      className="w-full text-left transition-all hover:bg-gray-50"
+                      className="w-full text-left transition-all hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="flex items-start justify-between p-3">
                         <div className="flex min-w-0 items-start gap-2 flex-1">
@@ -360,7 +360,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
                           <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
                         )}
                       </div>
-                    </button>
+                    </div>
 
                     {openId === entry.id ? (
                       <div className="px-3 pb-3">
