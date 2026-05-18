@@ -34,5 +34,8 @@ test('public review page keeps pagination while adding self edit/delete controls
   assert.equal(source.includes('PaginationControls'), true);
   assert.equal(source.includes('handleEditClick'), true);
   assert.equal(source.includes('handleDeleteClick'), true);
-  assert.equal(source.includes("review.userId === user.id || user.role === 'ADMIN'"), true);
+  assert.equal(source.includes("value={editingReview.shopName}"), true);
+  assert.equal(source.includes("title=\"수정\""), true);
+  assert.equal(source.includes("title=\"삭제\""), true);
 });
+

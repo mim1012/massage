@@ -511,28 +511,29 @@ function ReviewContent({
                     ) : null}
                     <StarRow rating={review.rating} />
                   </div>
-                  <div className="flex items-center gap-2">
-                    {(user && (review.userId === user.id || user.role === 'ADMIN')) ? (
-                      <div className="flex items-center gap-1 text-gray-400">
+                  <div className="flex items-center gap-3">
+                    <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+                    {user && (review.userId === user.id || user.role === 'ADMIN') ? (
+                      <div className="shrink-0 flex items-center gap-1.5 text-gray-400">
                         <button
                           type="button"
                           onClick={() => handleEditClick(review)}
-                          className="rounded border border-gray-200 p-1 hover:bg-gray-50 hover:text-gray-600"
+                          className="text-[11px] text-gray-500 hover:text-red-600"
                           title="수정"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          수정
                         </button>
+                        <span className="text-[10px] text-gray-300">|</span>
                         <button
                           type="button"
                           onClick={() => void handleDeleteClick(review.id)}
-                          className="rounded border border-red-200 p-1 text-red-500 hover:bg-red-50"
+                          className="text-[11px] text-gray-500 hover:text-red-600"
                           title="삭제"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          삭제
                         </button>
                       </div>
                     ) : null}
-                    <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
@@ -582,18 +583,26 @@ function ReviewContent({
                   <label className="mb-1 block text-xs font-bold text-gray-600">
                     업체 선택 <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={form.shopId}
-                    onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
-                    disabled={Boolean(editingReview)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                  >
-                    {shopSelectList.map((shop) => (
-                      <option key={shop.id} value={shop.id} disabled={shop.id === ''}>
-                        {shop.label}
-                      </option>
-                    ))}
-                  </select>
+                  {editingReview ? (
+                    <input
+                      type="text"
+                      value={editingReview.shopName}
+                      readOnly
+                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500 focus:outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={form.shopId}
+                      onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                    >
+                      {shopSelectList.map((shop) => (
+                        <option key={shop.id} value={shop.id} disabled={shop.id === ''}>
+                          {shop.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
