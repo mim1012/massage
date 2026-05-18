@@ -571,7 +571,7 @@ export async function listQna(options: { shopId?: string; search?: string; viewe
 
     try {
       const entries = await loadLegacyQnaRecords(legacyWhere);
-      return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+      return entries.map((entry) => mapQna(entry, options.viewer));
     } catch {
       return [];
     }
@@ -752,6 +752,7 @@ export async function createQna(
 
 type ReviewListOptions = {
   limit?: number;
+  skip?: number;
   shopId?: string;
   search?: string;
 };
@@ -931,26 +932,54 @@ export async function getBoardSummary() {
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   try {
-    const [stats, recentShops, recentQna] = await Promise.all([
-      getAdminStats(),
-      prisma.shop.findMany({
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [totalShops, premiumShops, pendingQnaCount, recentReviews, pendingQna] = await Promise.all([
+      prisma.shop.count(),
+      prisma.shop.count({ where: { isPremium: true } }),
+      prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
+      prisma.review.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        select: managedShopListSelect,
+        include: { shop: { select: { name: true } } },
       }),
-      listQna({ limit: 5 } as any),
+      prisma.qnA.findMany({
+        where: { status: QnaStatus.OPEN },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     return {
-      stats,
-      recentShops: recentShops.map(mapManagedShopRecordForAdmin),
-      recentQna: recentQna.slice(0, 5),
+      summary: [
+        { label: '전체 업소', value: totalShops },
+        { label: '프리미엄(AD)', value: premiumShops },
+        { label: '미답변 Q&A', value: pendingQnaCount },
+        { label: '오늘 페이지뷰', value: 0 },
+      ],
+      pendingQna: pendingQna.map((q) => ({
+        id: q.id,
+        question: q.question,
+        isAnswered: q.status === QnaStatus.ANSWERED,
+      })),
+      recentReviews: recentReviews.map((r) => ({
+        id: r.id,
+        shopName: r.shop.name,
+        rating: r.rating,
+        content: r.content,
+      })),
     };
   } catch {
     return {
-      stats: { totalShops: 0, premiumShops: 0, pendingQna: 0, todayReviews: 0 },
-      recentShops: [],
-      recentQna: [],
+      summary: [
+        { label: '전체 업소', value: 0 },
+        { label: '프리미엄(AD)', value: 0 },
+        { label: '미답변 Q&A', value: 0 },
+        { label: '오늘 페이지뷰', value: 0 },
+      ],
+      pendingQna: [],
+      recentReviews: [],
     };
   }
 }
@@ -967,8 +996,19 @@ export async function getAdminStats(): Promise<AdminStatsData> {
       prisma.review.count({ where: { createdAt: { gte: today } } }),
     ]);
 
-    return { totalShops, premiumShops, pendingQna, todayReviews };
+    return {
+      summary: [
+        { label: '전체 업소', value: totalShops, helperText: '등록된 전체 업소 수' },
+        { label: '프리미엄(AD)', value: premiumShops, helperText: '광고 중인 업소 수' },
+        { label: '미답변 Q&A', value: pendingQna, helperText: '답변 대기 중인 문의 수' },
+        { label: '오늘 리뷰', value: todayReviews, helperText: '오늘 작성된 후기 수' },
+      ],
+      topShops: [],
+    };
   } catch {
-    return { totalShops: 0, premiumShops: 0, pendingQna: 0, todayReviews: 0 };
+    return {
+      summary: [],
+      topShops: [],
+    };
   }
 }

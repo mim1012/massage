@@ -118,6 +118,7 @@ export function invalidatePublicShopListCache() {
   publicShopListCache.clear();
   publicDirectoryShopListCache.clear();
   try {
+    // @ts-ignore
     revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG);
   } catch {
     // Ignore cache invalidation errors
