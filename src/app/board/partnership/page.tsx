@@ -1,11 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, CheckCircle2, ChevronRight, MapPin, Phone, Send, Tag } from 'lucide-react';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 
 export default function PartnershipPage() {
+  const [inquiryDoc, setInquiryDoc] = useState<{
+    eyebrow: string;
+    title: string;
+    description: string;
+    note: string;
+    phone: string;
+    kakao: string;
+  }>({
+    eyebrow: 'Partnership',
+    title: '제휴 입점 안내',
+    description: '대한민국 대표 마사지 커뮤니티와 함께 성공할 파트너를 모십니다.',
+    note: '보내주신 소중한 입점 문의가 정상적으로 접수되었습니다.\n담당자가 확인 후 1~2일 내에 기재해주신 연락처로 안내해 드리겠습니다.',
+    phone: '010-1234-5678',
+    kakao: 'healing_help',
+  });
+
+  useEffect(() => {
+    fetch('/api/board/partnership/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) {
+          const directCall = data.sections?.find((s: any) => s.title === 'Direct Call')?.items?.[0] || '010-1234-5678';
+          const kakaoId = data.sections?.find((s: any) => s.title === 'Kakao ID')?.items?.[0] || 'healing_help';
+          setInquiryDoc({
+            eyebrow: data.eyebrow || 'Partnership',
+            title: data.title || '제휴 입점 안내',
+            description: data.description || '대한민국 대표 마사지 커뮤니티와 함께 성공할 파트너를 모십니다.',
+            note: data.note || '보내주신 소중한 입점 문의가 정상적으로 접수되었습니다.\n담당자가 확인 후 1~2일 내에 기재해주신 연락처로 안내해 드리겠습니다.',
+            phone: directCall,
+            kakao: kakaoId,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [form, setForm] = useState({
     shopName: '',
     region: 'seoul',
@@ -60,10 +96,8 @@ export default function PartnershipPage() {
           </div>
         </div>
         <h1 className="mb-4 text-2xl font-black tracking-tight text-gray-900 sm:text-3xl">입점 문의 접수 완료!</h1>
-        <p className="mb-10 leading-relaxed text-gray-600">
-          보내주신 소중한 입점 문의가 정상적으로 접수되었습니다.
-          <br />
-          담당자가 확인 후 1~2일 내에 기재해주신 연락처로 안내해 드리겠습니다.
+        <p className="mb-10 whitespace-pre-line leading-relaxed text-gray-600">
+          {inquiryDoc.note}
         </p>
         <Link
           href="/"
@@ -85,11 +119,11 @@ export default function PartnershipPage() {
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl sm:rounded-3xl">
         <div className="bg-gradient-to-br from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-6 text-center text-white sm:p-10">
-          <h1 className="mb-2 text-xl font-black italic uppercase tracking-wider sm:mb-4 sm:text-4xl">Partnership</h1>
+          <h1 className="mb-2 text-xl font-black italic uppercase tracking-wider sm:mb-4 sm:text-4xl">{inquiryDoc.eyebrow}</h1>
           <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-white/30" />
-          <p className="text-sm font-medium leading-relaxed opacity-95 sm:text-lg">
-            대한민국 대표 마사지 커뮤니티와
-            <br className="sm:hidden" /> 함께 성공할 파트너를 모십니다.
+          <p className="text-sm font-bold opacity-90 sm:text-2xl mb-1">{inquiryDoc.title}</p>
+          <p className="text-xs font-medium leading-relaxed opacity-95 sm:text-base whitespace-pre-line">
+            {inquiryDoc.description}
           </p>
         </div>
 
@@ -263,14 +297,14 @@ export default function PartnershipPage() {
               </div>
               <div className="text-left">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Direct Call</p>
-                <p className="text-sm font-black text-gray-800">010-1234-5678</p>
+                <p className="text-sm font-black text-gray-800">{inquiryDoc.phone}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-4">
               <div className="rounded-full bg-[var(--portal-brand)] p-2 text-white">💬</div>
               <div className="text-left">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Kakao ID</p>
-                <p className="text-sm font-black text-gray-800">healing_help</p>
+                <p className="text-sm font-black text-gray-800">{inquiryDoc.kakao}</p>
               </div>
             </div>
           </div>

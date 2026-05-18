@@ -66,6 +66,7 @@ export default function AdminSettingsPage() {
                 youth: { ...DEFAULT_LEGAL_DOCUMENTS.youth, ...legalResult.youth },
                 ad: { ...DEFAULT_LEGAL_DOCUMENTS.ad, ...legalResult.ad },
                 mobile: { ...DEFAULT_LEGAL_DOCUMENTS.mobile, ...legalResult.mobile },
+                partnership: { ...DEFAULT_LEGAL_DOCUMENTS.partnership, ...legalResult.partnership },
               } satisfies Record<LegalDocumentSlug, AdminLegalDocumentState>;
 
               setLegalDocs(mergedLegalDocs);
@@ -220,6 +221,7 @@ export default function AdminSettingsPage() {
       youth: { ...baseline.legalDocs.youth },
       ad: { ...baseline.legalDocs.ad },
       mobile: { ...baseline.legalDocs.mobile },
+      partnership: { ...baseline.legalDocs.partnership },
     });
     setPreviewSlug(null);
     setLegalSaveMessage('저장된 기준으로 편집 내용 되돌림');
@@ -277,6 +279,7 @@ export default function AdminSettingsPage() {
     { slug: 'youth', label: '청소년보호정책', icon: Shield, accent: 'text-violet-600' },
     { slug: 'ad', label: '광고안내', icon: FileText, accent: 'text-amber-600' },
     { slug: 'mobile', label: '모바일웹 안내', icon: FileText, accent: 'text-cyan-600' },
+    { slug: 'partnership', label: '제휴입점문의 설정', icon: FileText, accent: 'text-rose-600' },
   ];
 
   return (

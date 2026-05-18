@@ -1,4 +1,4 @@
-export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth' | 'ad' | 'mobile';
+export type LegalDocumentSlug = 'privacy' | 'terms' | 'youth' | 'ad' | 'mobile' | 'partnership';
 
 export type LegalSection = {
   title: string;
@@ -260,6 +260,19 @@ const MOBILE_SECTIONS: LegalSection[] = [
   },
 ];
 
+const PARTNERSHIP_SECTIONS: LegalSection[] = [
+  {
+    title: 'Direct Call',
+    paragraphs: [],
+    items: ['010-1234-5678'],
+  },
+  {
+    title: 'Kakao ID',
+    paragraphs: [],
+    items: ['healing_help'],
+  },
+];
+
 export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDocument> = {
   privacy: {
     eyebrow: 'Privacy',
@@ -300,6 +313,13 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
       '힐링찾기 모바일웹은 별도 앱 설치 없이 스마트폰 브라우저에서 주요 기능을 이용할 수 있도록 제공됩니다.',
     note: '기기별 표시 차이나 접속 이슈는 고객센터로 문의해 주시면 확인 후 안내드립니다.',
     body: buildLegalDocumentBody(MOBILE_SECTIONS),
+  },
+  partnership: {
+    eyebrow: 'Partnership',
+    title: '제휴 입점 안내',
+    description: '대한민국 대표 마사지 커뮤니티와 함께 성공할 파트너를 모십니다.',
+    note: '보내주신 소중한 입점 문의가 정상적으로 접수되었습니다. 담당자가 확인 후 1~2일 내에 기재해주신 연락처로 안내해 드리겠습니다.',
+    body: buildLegalDocumentBody(PARTNERSHIP_SECTIONS),
   },
 };
 
