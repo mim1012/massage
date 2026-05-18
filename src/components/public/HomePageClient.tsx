@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid,
   List as ListIcon,
@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import MobileBannerRail from '@/components/public/MobileBannerRail';
+import PaginationControls from '@/components/public/PaginationControls';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { shouldAutoLoadDeferredHomeDirectory } from '@/lib/home-directory-fetch-strategy';
@@ -22,6 +22,7 @@ import { buildBrowseHref, buildDirectorySearchParams, getDirectoryMode } from '@
 import { getDirectorySortType, sortRegularShops } from '@/lib/directory-sort';
 import type { HomeSeoContent, ShopListItem, SiteSettings } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
+import { normalizePageParam } from '@/lib/pagination';
 
 type ShopListResponse = {
   allShops: ShopListItem[];
@@ -44,7 +45,7 @@ const themeEmoji: Record<string, string> = {
   couple: '👫',
 };
 
-const REGULAR_PAGE_SIZE = 24;
+const REGULAR_PAGE_SIZE = 30;
 
 export default function HomePageClient({
   initialPremiumShops,
@@ -62,6 +63,9 @@ export default function HomePageClient({
   deferInitialDirectoryFetch?: boolean;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
@@ -69,16 +73,17 @@ export default function HomePageClient({
   const sortType = getDirectorySortType(searchParams.get('sort'));
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const viewParam = searchParams.get('viewMode') === 'list' ? 'list' : 'card';
+  const initialPage = normalizePageParam(searchParams.get('page'));
 
   const [premiumShops, setPremiumShops] = useState<ShopListItem[]>(initialPremiumShops);
   const [regularShops, setRegularShops] = useState<ShopListItem[]>(initialRegularShops);
   const [regularTotal, setRegularTotal] = useState(initialRegularTotal);
   const [isLoading, setIsLoading] = useState(deferInitialDirectoryFetch);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(viewParam);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
-  const loadShops = useCallback(async () => {
+  const loadShops = useCallback(async (page: number = 1) => {
     setIsLoading(true);
     setError(null);
 
@@ -89,7 +94,7 @@ export default function HomePageClient({
       q: searchQuery,
       sort: sortType,
       extraParams: {
-        regularOffset: 0,
+        regularOffset: (page - 1) * REGULAR_PAGE_SIZE,
         regularLimit: REGULAR_PAGE_SIZE,
       },
     });
@@ -106,6 +111,7 @@ export default function HomePageClient({
       setPremiumShops((result.premiumShops ?? []).slice(0, 4));
       setRegularShops(result.regularShops ?? []);
       setRegularTotal(result.regularTotal ?? result.regularShops?.length ?? 0);
+      setCurrentPage(page);
     } catch {
       setError('업소 목록을 불러오지 못했습니다.');
     } finally {
@@ -113,39 +119,16 @@ export default function HomePageClient({
     }
   }, [searchQuery, selectedRegion, selectedSubRegion, selectedTheme, sortType]);
 
-  const loadMoreShops = useCallback(async () => {
-    setIsLoadingMore(true);
-    setError(null);
-
-    const params = buildDirectorySearchParams({
-      region: selectedRegion,
-      subRegion: selectedSubRegion,
-      theme: selectedTheme,
-      q: searchQuery,
-      sort: sortType,
-      extraParams: {
-        regularOffset: regularShops.length,
-        regularLimit: REGULAR_PAGE_SIZE,
-      },
-    });
-
-    try {
-      const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
-      const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
-
-      if (!response.ok) {
-        setError(result.error ?? '업소 목록을 불러오지 못했습니다.');
-        return;
-      }
-
-      setRegularShops((current) => [...current, ...(result.regularShops ?? [])]);
-      setRegularTotal(result.regularTotal ?? regularTotal);
-    } catch {
-      setError('업소 목록을 불러오지 못했습니다.');
-    } finally {
-      setIsLoadingMore(false);
+  const handlePageChange = (page: number) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (page <= 1) {
+      nextParams.delete('page');
+    } else {
+      nextParams.set('page', String(page));
     }
-  }, [regularShops.length, regularTotal, searchQuery, selectedRegion, selectedSubRegion, selectedTheme, sortType]);
+    router.replace(`${pathname}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: true });
+    void loadShops(page);
+  };
 
   useEffect(() => {
     setViewMode(viewParam);
@@ -155,9 +138,10 @@ export default function HomePageClient({
     setPremiumShops(initialPremiumShops);
     setRegularShops(initialRegularShops);
     setRegularTotal(initialRegularTotal);
+    setCurrentPage(initialPage);
     setError(null);
     setIsLoading(deferInitialDirectoryFetch);
-  }, [deferInitialDirectoryFetch, initialPremiumShops, initialRegularShops, initialRegularTotal]);
+  }, [deferInitialDirectoryFetch, initialPremiumShops, initialRegularShops, initialRegularTotal, initialPage]);
 
   useEffect(() => {
     if (!shouldAutoLoadDeferredHomeDirectory({
@@ -168,8 +152,8 @@ export default function HomePageClient({
       return;
     }
 
-    void loadShops();
-  }, [deferInitialDirectoryFetch, initialPremiumShops.length, initialRegularShops.length, loadShops]);
+    void loadShops(initialPage);
+  }, [deferInitialDirectoryFetch, initialPremiumShops.length, initialRegularShops.length, loadShops, initialPage]);
 
   const regionLabel = useMemo(
     () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',
@@ -199,7 +183,7 @@ export default function HomePageClient({
               <p className="mt-0.5 text-sm text-white/80">{initialSiteSettings.heroSubText}</p>
             </div>
             <button
-              onClick={() => void loadShops()}
+              onClick={() => void loadShops(currentPage)}
               disabled={isLoading}
               className="flex items-center gap-1.5 rounded-lg bg-white/20 px-4 py-2 text-sm font-bold transition-all hover:bg-white/30 disabled:opacity-50"
             >
@@ -261,13 +245,18 @@ export default function HomePageClient({
                     prefetch={false}
                     className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
                   >
-                    <div
-                      className="premium-shop-media flex aspect-[4/3] shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white bg-cover bg-center"
-                      style={shop.bannerUrl?.trim() ? { backgroundImage: `url(${shop.bannerUrl})` } : undefined}
-                    >
-                      {!shop.bannerUrl?.trim() ? (
-                        <span className="text-6xl opacity-50 sm:text-7xl">{themeEmoji[shop.theme] ?? '✨'}</span>
-                      ) : null}
+                    <div className="premium-shop-media relative flex aspect-[4/3] shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
+                      {shop.bannerUrl?.trim() && (
+                        <img
+                          src={shop.bannerUrl}
+                          alt={shop.name}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span className="text-6xl opacity-50 sm:text-7xl">{themeEmoji[shop.theme] ?? '✨'}</span>
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
                       <div className="mb-2 flex items-start justify-between gap-1">
@@ -318,7 +307,7 @@ export default function HomePageClient({
                   {themeLabel && !searchQuery && ` · ${themeLabel}`}
                 </span>
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
-                  ({regularShops.length}/{regularTotal}개)
+                  ({(currentPage - 1) * REGULAR_PAGE_SIZE + 1}-{Math.min(currentPage * REGULAR_PAGE_SIZE, regularTotal)} / {regularTotal}개)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -396,21 +385,17 @@ export default function HomePageClient({
                     />
                   ))}
                 </div>
-                {regularShops.length < regularTotal ? (
-                  <div className="mt-4 flex justify-center">
-                    <button
-                      onClick={() => void loadMoreShops()}
-                      disabled={isLoadingMore}
-                      className="rounded-lg border border-[var(--portal-brand)] bg-white px-5 py-2 text-sm font-bold text-[var(--portal-brand)] transition-colors hover:bg-[var(--portal-brand-soft)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isLoadingMore ? '불러오는 중...' : `더보기 (${regularTotal - regularShops.length}개 남음)`}
-                    </button>
-                  </div>
-                ) : null}
+
+                <div className="mt-8">
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(regularTotal / REGULAR_PAGE_SIZE)}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
               </>
             )}
           </div>
-
 
           <MobileBannerRail />
 
@@ -424,12 +409,7 @@ export default function HomePageClient({
             <h2 className="mb-2 text-lg font-bold text-slate-800">{initialHomeSeo.section3Title}</h2>
             <p className="text-sm leading-relaxed text-gray-600">{initialHomeSeo.section3Content}</p>
           </div>
-
         </div>
-
-        <aside className="hidden w-[120px] shrink-0 lg:block">
-          <HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />
-        </aside>
       </div>
     </div>
   );

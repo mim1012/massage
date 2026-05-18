@@ -65,7 +65,7 @@ let cachedBoardSummary: Promise<{ notices: number; qna: number; reviews: number 
 const cachedPublicNoticeLists = new Map<string, Promise<Notice[]>>();
 const cachedPublicReviewLists = new Map<string, Promise<Review[]>>();
 
-const getPersistentPublicSiteContent = unstable_cache(
+export const getPublicSiteContent = unstable_cache(
   async () => {
     try {
       const loaded = await loadSiteContentRecord();
@@ -437,27 +437,23 @@ export async function getPremiumBoardData(): Promise<PremiumBoardData> {
 
 type NoticeListOptions = {
   search?: string;
+  skip?: number;
+  take?: number;
 };
 
 export async function listNotices(options: NoticeListOptions = {}) {
-  const search = options.search?.trim();
-  const cacheKey = search ?? '__all__';
-  const cached = cachedPublicNoticeLists.get(cacheKey);
-  if (cached) return cached;
-
-  const pending = prisma.notice
-    .findMany({
+  const { search, skip, take = 30 } = options;
+  try {
+    const notices = await prisma.notice.findMany({
       where: search ? { OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }] } : undefined,
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-    })
-    .then((notices) => notices.map(mapNotice))
-    .catch(() => {
-      cachedPublicNoticeLists.delete(cacheKey);
-      return [];
+      skip,
+      take,
     });
-
-  cachedPublicNoticeLists.set(cacheKey, pending);
-  return pending;
+    return notices.map(mapNotice);
+  } catch {
+    return [];
+  }
 }
 
 export async function getNoticeById(id: string) {
@@ -537,18 +533,24 @@ const boardLandingQnaSelect = {
   },
 } satisfies Prisma.QnASelect;
 
-export async function listQna(options: string | { shopId?: string; search?: string; viewer?: ViewerContext } = {}) {
-  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
-  const shopId = normalizedOptions.shopId?.trim();
-  const search = normalizedOptions.search?.trim();
+export async function listQna(options: { shopId?: string; search?: string; viewer?: ViewerContext; skip?: number; take?: number } = {}) {
+  const shopId = options.shopId?.trim();
+  const search = options.search?.trim();
+  const { skip, take = 30 } = options;
   const where: Prisma.QnAWhereInput = {
     ...(shopId ? { shopId } : {}),
     ...(search ? { OR: [{ question: buildContainsFilter(search) }, { authorName: buildContainsFilter(search) }, { comments: { some: { content: buildContainsFilter(search) } } }] } : {}),
   };
 
   try {
-    const entries = await prisma.qnA.findMany({ where, include: qnaInclude, orderBy: { createdAt: 'desc' } });
-    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+    const entries = await prisma.qnA.findMany({ 
+      where, 
+      include: qnaInclude, 
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    });
+    return entries.map((entry) => mapQna(entry, options.viewer));
   } catch (error) {
     if (!isQnaCommentStorageUnavailable(error)) {
       return [];
@@ -841,6 +843,29 @@ export async function deleteReview(id: string) {
   }
 }
 
+export async function updateReview(id: string, input: { rating?: number; content?: string }) {
+  try {
+    const review = await prisma.review.update({
+      where: { id },
+      data: {
+        ...(input.rating !== undefined ? { rating: input.rating } : {}),
+        ...(input.content !== undefined ? { content: input.content.trim() } : {}),
+      },
+      include: { shop: { select: { name: true } } },
+    });
+
+    if (input.rating !== undefined) {
+      await refreshShopReviewRating(review.shopId);
+    }
+    invalidatePublicBoardCaches();
+    invalidatePublicShopListCache();
+
+    return mapReview(review);
+  } catch {
+    return null;
+  }
+}
+
 export async function listPublicReviews(options: { limit?: number; shopId?: string } = {}) {
   const { limit = 10, shopId } = options;
   const cacheKey = `public-reviews-${shopId ?? 'all'}-${limit}`;
@@ -864,17 +889,18 @@ export async function listPublicReviews(options: { limit?: number; shopId?: stri
   return pending;
 }
 
-export async function listReviews(options: number | ReviewListOptions = {}) {
-  const normalized = typeof options === 'number' ? { limit: options } : options;
+export async function listReviews(options: ReviewListOptions = {}) {
+  const { limit: take = 30, skip, shopId, search } = options;
   try {
     const reviews = await prisma.review.findMany({
       where: {
-        ...(normalized.shopId ? { shopId: normalized.shopId } : {}),
-        ...(normalized.search ? { OR: [{ content: buildContainsFilter(normalized.search) }, { authorName: buildContainsFilter(normalized.search) }] } : {}),
+        ...(shopId ? { shopId } : {}),
+        ...(search ? { OR: [{ content: buildContainsFilter(search) }, { authorName: buildContainsFilter(search) }] } : {}),
       },
       include: { shop: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
-      ...(normalized.limit ? { take: normalized.limit } : {}),
+      skip,
+      take,
     });
     return reviews.map(mapReview);
   } catch {

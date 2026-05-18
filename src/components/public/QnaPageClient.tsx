@@ -95,7 +95,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
     });
   }, [entries, query]);
 
-  const QNA_PAGE_SIZE = 10;
+  const QNA_PAGE_SIZE = 30;
   const totalPages = getTotalPages(filteredEntries.length, QNA_PAGE_SIZE);
   const visibleEntries = useMemo(() => paginateItems(filteredEntries, currentPage, QNA_PAGE_SIZE), [currentPage, filteredEntries]);
 

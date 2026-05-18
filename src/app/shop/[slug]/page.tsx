@@ -8,6 +8,7 @@ import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
 import { getShopBySlug } from '@/lib/server/shop-store';
+import ShopReviewForm from '@/components/public/ShopReviewForm';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -218,12 +219,16 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
+            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
               <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
               <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[var(--portal-brand)] hover:underline">
                 전체보기 &raquo;
               </Link>
             </div>
+
+            {/* 후기 입력 폼 추가 */}
+            <ShopReviewForm shopId={shop.id} shopName={shop.name} />
+
             {reviews.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
             ) : (

@@ -211,7 +211,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
     shopTab !== 'all' ||
     searchType !== 'all';
 
-  const REVIEW_PAGE_SIZE = 10;
+  const REVIEW_PAGE_SIZE = 30;
   const totalPages = getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
   const visibleReviews = useMemo(() => paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE), [currentPage, filteredReviews]);
 
