@@ -309,6 +309,7 @@ function mapReview(review: DbReview & { shop: { name: string } }): Review {
     rating: review.rating,
     content: review.content,
     isHidden: review.isHidden,
+    userId: review.userId,
     createdAt: review.createdAt.toISOString(),
   };
 }
@@ -843,13 +844,14 @@ export async function deleteReview(id: string) {
   }
 }
 
-export async function updateReview(id: string, input: { rating?: number; content?: string }) {
+export async function updateReview(id: string, input: { rating?: number; content?: string; authorName?: string }) {
   try {
     const review = await prisma.review.update({
       where: { id },
       data: {
         ...(input.rating !== undefined ? { rating: input.rating } : {}),
         ...(input.content !== undefined ? { content: input.content.trim() } : {}),
+        ...(input.authorName !== undefined ? { authorName: input.authorName.trim() } : {}),
       },
       include: { shop: { select: { name: true } } },
     });
