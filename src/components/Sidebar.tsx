@@ -142,6 +142,9 @@ export default function Sidebar() {
             <Link href="/board/review" prefetch={false} className="lnb-menu-item">
               &rsaquo; 업소 후기
             </Link>
+            <Link href="/ad" prefetch={false} className="lnb-menu-item font-bold text-amber-600">
+              &rsaquo; 📢 광고안내
+            </Link>
           </div>
         </div>
 

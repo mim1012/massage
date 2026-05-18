@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import PublicInfoPage from '@/components/PublicInfoPage';
+import AdvertisingPageClient from '@/components/public/AdvertisingPageClient';
 import { getPublicLegalDocument } from '@/lib/server/public-legal-documents';
 
 export const dynamic = 'force-dynamic';
@@ -16,12 +16,6 @@ export default async function AdPage() {
   const document = await getPublicLegalDocument('ad');
 
   return (
-    <PublicInfoPage
-      eyebrow={document.eyebrow}
-      title={document.title}
-      description={document.description}
-      sections={document.sections}
-      note={document.note}
-    />
+    <AdvertisingPageClient document={document} />
   );
 }

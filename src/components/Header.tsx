@@ -225,6 +225,11 @@ export default function Header() {
               </Link>
             </li>
             <li>
+              <Link href="/ad" prefetch={false} className="block px-6 py-3 text-amber-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
+                광고안내
+              </Link>
+            </li>
+            <li>
               <Link href="/board/qna" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 고객센터
               </Link>
@@ -392,6 +397,35 @@ export default function Header() {
                   {theme.label}
                 </Link>
               ))}
+            </div>
+            <div className="border-t border-gray-100 pt-3 mb-4">
+              <p className="text-xs text-gray-400 font-bold mb-2">고객 및 제휴 서비스</p>
+              <div className="grid grid-cols-3 gap-2">
+                <Link
+                  href="/ad"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-amber-200 rounded-xl bg-amber-50 font-bold text-amber-700 hover:bg-amber-100/70 shadow-sm"
+                >
+                  <span className="text-base mb-0.5">📢</span> 광고안내
+                </Link>
+                <Link
+                  href="/board/partnership"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-rose-200 rounded-xl bg-rose-50 font-bold text-rose-700 hover:bg-rose-100/70 shadow-sm"
+                >
+                  <span className="text-base mb-0.5">✍️</span> 제휴입점
+                </Link>
+                <Link
+                  href="/board/qna"
+                  prefetch={false}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-blue-200 rounded-xl bg-blue-50 font-bold text-blue-700 hover:bg-blue-100/70 shadow-sm"
+                >
+                  <span className="text-base mb-0.5">📞</span> 고객센터
+                </Link>
+              </div>
             </div>
             {!isAuthed ? (
               <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-2">
