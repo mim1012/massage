@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
-import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
+import { getTotalPages, paginateItems } from '@/lib/pagination';
+import { ChevronRight, PenLine, Search, Star, X, Pencil, Trash2 } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, ShopListItem, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -82,6 +83,7 @@ function ReviewContent({
   const [currentPage, setCurrentPage] = useState(initialPage);
   const didInitPaginationReset = useRef(false);
   const [form, setForm] = useState({ shopId: initialShopId, authorName: '', rating: 5, content: '' });
+  const [editingReview, setEditingReview] = useState<ReviewWithRegion | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,8 +221,9 @@ function ReviewContent({
     shopTab !== 'all' ||
     searchType !== 'all';
 
-  const totalPages = initialTotalPages;
-  const visibleReviews = filteredReviews;
+  const REVIEW_PAGE_SIZE = 10;
+  const totalPages = hasActiveFilters ? getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE) : initialTotalPages;
+  const visibleReviews = hasActiveFilters ? paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE) : filteredReviews;
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -250,17 +253,56 @@ function ReviewContent({
   function handleOpenModal() {
     setSubmitted(false);
     setError(null);
+    setEditingReview(null);
     if (!user) {
       setShowModal(true);
       return;
     }
 
-    setForm((current) => ({
-      ...current,
-      shopId: current.shopId || (shopTab !== 'all' ? shopTab : initialShopId),
+    setForm({
+      shopId: initialShopId || (shopTab !== 'all' ? shopTab : ''),
       authorName: user.name,
-    }));
+      rating: 5,
+      content: '',
+    });
     setShowModal(true);
+  }
+
+  function handleEditClick(review: ReviewWithRegion) {
+    setEditingReview(review);
+    setSubmitted(false);
+    setError(null);
+    setForm({
+      shopId: review.shopId,
+      authorName: review.authorName,
+      rating: review.rating,
+      content: review.content,
+    });
+    setShowModal(true);
+  }
+
+  function handleCloseModal() {
+    setShowModal(false);
+    setEditingReview(null);
+    setForm({ shopId: initialShopId || '', authorName: user?.name || '', rating: 5, content: '' });
+  }
+
+  async function handleDeleteClick(reviewId: string) {
+    if (!window.confirm('정말로 이 후기를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/board/reviews/${reviewId}`, { method: 'DELETE' });
+      const result = response.status === 204 ? {} : ((await response.json()) as { error?: string });
+      if (!response.ok) {
+        throw new Error(result.error ?? '리뷰를 삭제하지 못했습니다.');
+      }
+
+      setReviews((current) => current.filter((review) => review.id !== reviewId));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -286,29 +328,51 @@ function ReviewContent({
     setSubmitted(false);
 
     try {
-      const response = await fetch('/api/board/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shopId: form.shopId,
-          rating: form.rating,
-          content: form.content,
-        }),
-      });
+      if (editingReview) {
+        const response = await fetch(`/api/board/reviews/${editingReview.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rating: form.rating,
+            content: form.content,
+          }),
+        });
 
-      const result = (await response.json()) as { review?: Review; error?: string };
-      const createdReview = result.review;
-      if (!response.ok || !createdReview) {
-        throw new Error(result.error ?? '리뷰를 등록하지 못했습니다.');
+        const result = (await response.json()) as { review?: Review; error?: string };
+        if (!response.ok || !result.review) {
+          throw new Error(result.error ?? '리뷰를 수정하지 못했습니다.');
+        }
+
+        const [decoratedReview] = mapReviewsWithRegion([result.review], shops);
+        setReviews((current) => current.map((review) => (review.id === editingReview.id ? decoratedReview : review)));
+        setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
+        setSubmitted(true);
+        handleCloseModal();
+      } else {
+        const response = await fetch('/api/board/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shopId: form.shopId,
+            rating: form.rating,
+            content: form.content,
+          }),
+        });
+
+        const result = (await response.json()) as { review?: Review; error?: string };
+        const createdReview = result.review;
+        if (!response.ok || !createdReview) {
+          throw new Error(result.error ?? '리뷰를 등록하지 못했습니다.');
+        }
+
+        const [decoratedReview] = mapReviewsWithRegion([createdReview], shops);
+        setReviews((current) => [decoratedReview, ...current]);
+        setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
+        setSubmitted(true);
+        handleCloseModal();
       }
-
-      const [decoratedReview] = mapReviewsWithRegion([createdReview], shops);
-      setReviews((current) => [decoratedReview, ...current]);
-      setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
-      setSubmitted(true);
-      setShowModal(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : '리뷰를 등록하지 못했습니다.');
+      setError(submitError instanceof Error ? submitError.message : editingReview ? '리뷰를 수정하지 못했습니다.' : '리뷰를 등록하지 못했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -438,7 +502,7 @@ function ReviewContent({
           <div className="divide-y divide-gray-100">
             {visibleReviews.map((review) => (
               <div key={review.id} className="p-3">
-                <div className="mb-1 flex items-center justify-between">
+                <div className="mb-1 flex items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
                     <span className="text-xs text-red-500">{review.shopName}</span>
@@ -447,7 +511,29 @@ function ReviewContent({
                     ) : null}
                     <StarRow rating={review.rating} />
                   </div>
-                  <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+                  <div className="flex items-center gap-2">
+                    {(user && (review.userId === user.id || user.role === 'ADMIN')) ? (
+                      <div className="flex items-center gap-1 text-gray-400">
+                        <button
+                          type="button"
+                          onClick={() => handleEditClick(review)}
+                          className="rounded border border-gray-200 p-1 hover:bg-gray-50 hover:text-gray-600"
+                          title="수정"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteClick(review.id)}
+                          className="rounded border border-red-200 p-1 text-red-500 hover:bg-red-50"
+                          title="삭제"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : null}
+                    <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+                  </div>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
               </div>
@@ -463,8 +549,8 @@ function ReviewContent({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <h2 className="font-black text-gray-800">{user ? '후기 작성' : '로그인 안내'}</h2>
-              <button type="button" onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+              <h2 className="font-black text-gray-800">{user ? (editingReview ? '후기 수정' : '후기 작성') : '로그인 안내'}</h2>
+              <button type="button" onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -499,7 +585,8 @@ function ReviewContent({
                   <select
                     value={form.shopId}
                     onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                    disabled={Boolean(editingReview)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     {shopSelectList.map((shop) => (
                       <option key={shop.id} value={shop.id} disabled={shop.id === ''}>
@@ -542,7 +629,7 @@ function ReviewContent({
                 <div className="flex gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={handleCloseModal}
                     className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200"
                   >
                     취소
@@ -552,7 +639,7 @@ function ReviewContent({
                     disabled={submitting}
                     className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {submitting ? '등록 중' : '등록'}
+                    {submitting ? (editingReview ? '수정 중' : '등록 중') : editingReview ? '수정' : '등록'}
                   </button>
                 </div>
               </form>

@@ -341,6 +341,7 @@ function mapReview(review: DbReview & { shop: { name: string } }): Review {
     rating: review.rating,
     content: review.content,
     isHidden: review.isHidden,
+    userId: review.userId ?? undefined,
     createdAt: review.createdAt.toISOString(),
   };
 }
@@ -1269,6 +1270,50 @@ export async function listManagedReviews(user: { id: string; role: UserRole }, s
     ...mapReview(review),
     shopRegionLabel: review.shop.regionLabel,
   }));
+}
+
+export async function updateReview(reviewId: string, input: { rating?: number; content?: string; authorName?: string }) {
+  try {
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        ...(input.rating !== undefined ? { rating: input.rating } : {}),
+        ...(input.content !== undefined ? { content: input.content.trim() } : {}),
+        ...(input.authorName !== undefined ? { authorName: input.authorName.trim() } : {}),
+      },
+      include: { shop: { select: { name: true } } },
+    });
+
+    if (input.rating !== undefined) {
+      await refreshShopReviewRating(updated.shopId);
+    }
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return mapReview(updated);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteReview(reviewId: string) {
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { shopId: true },
+    });
+
+    if (!review) {
+      return false;
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+    await refreshShopReviewRating(review.shopId);
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function setReviewHiddenState(

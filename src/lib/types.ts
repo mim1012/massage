@@ -69,6 +69,7 @@ export interface Review {
   rating: number;
   content: string;
   isHidden?: boolean;
+  userId?: string;
   createdAt: string;
 }
 
