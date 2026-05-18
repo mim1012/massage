@@ -14,7 +14,7 @@ export default function SidebarPromoBanners({ mode = 'sidebar', onNavigate }: Si
   return (
     <div className={clsx('space-y-2', isSidebar ? 'mt-4' : '')}>
       <Link
-        href="/board/notice"
+        href="/ad"
         prefetch={false}
         onClick={onNavigate}
         className={clsx(
