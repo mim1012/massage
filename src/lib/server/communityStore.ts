@@ -78,6 +78,40 @@ const getPersistentPublicSiteContent = unstable_cache(
   },
 );
 
+function isMissingNextCacheContextError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes('incrementalCache missing') ||
+    error.message.includes('static generation store missing')
+  );
+}
+
+async function readPublicSiteContentWithFallback() {
+  try {
+    return await getPersistentPublicSiteContent();
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+
+    const loaded = await loadSiteContentRecord();
+    return loaded?.content ?? null;
+  }
+}
+
+function safeRevalidateTag(tag: string) {
+  try {
+    revalidateTag(tag, 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
+}
+
 function invalidatePublicBoardCaches() {
   cachedBoardSummary = null;
   cachedPublicNoticeLists.clear();
@@ -1472,7 +1506,7 @@ export async function getPublicSiteContent() {
     return cachedPublicSiteContent;
   }
 
-  cachedPublicSiteContent = await getPersistentPublicSiteContent();
+  cachedPublicSiteContent = await readPublicSiteContentWithFallback();
 
   return cachedPublicSiteContent;
 }
@@ -1515,7 +1549,7 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
 
   const content = mapSiteSettings(record);
   cachedPublicSiteContent = content;
-  revalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG, 'max');
+  safeRevalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG);
 
   return content;
 }

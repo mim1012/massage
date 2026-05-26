@@ -15,7 +15,7 @@ test('buildBrowseHref preserves theme mode while switching filters', () => {
   assert.equal(buildBrowseHref({ mode: 'theme', region: 'seoul' }), '/?view=theme&region=seoul');
   assert.equal(
     buildBrowseHref({ mode: 'theme', region: 'seoul', subRegion: 'gangnam', q: '아로마' }),
-    '/?view=theme&region=seoul&subRegion=gangnam&q=%EC%95%84%EB%A1%9C%EB%A7%88',
+    '/?view=theme&region=seoul&subRegion=gangnam&theme=aroma',
   );
 });
 

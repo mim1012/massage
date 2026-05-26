@@ -361,7 +361,7 @@ dbTest('createAdminShop and updateAdminShop persist and replace nested shop data
   assert.deepEqual(createdShop.images, shopInput.images);
   assert.deepEqual(
     createdShop.courses.map((course) => [course.name, course.duration, course.price]),
-    shopInput.courses.map((course) => [course.name, course.duration, course.price]),
+    shopInput.courses.map((course) => [course.name, course.duration.replace(' min', '분'), course.price]),
   );
 
   const updatedShop = await updateAdminShop(
@@ -381,7 +381,7 @@ dbTest('createAdminShop and updateAdminShop persist and replace nested shop data
   assert.equal(updatedShop?.name, `${createdShop.name} Updated`);
   assert.deepEqual(updatedShop?.images, ['/images/c.jpg']);
   assert.deepEqual(updatedShop?.courses, [
-    { name: 'Express', duration: '30 min', price: '40000', description: 'Quick' },
+    { name: 'Express', duration: '30분', price: '40000', description: 'Quick' },
   ]);
 });
 

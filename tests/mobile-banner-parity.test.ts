@@ -6,62 +6,56 @@ import { test } from 'node:test';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(testDir, '..');
-const templateRoot = path.resolve(projectRoot, '..', 'massageO');
 
-async function readProjectFile(root: string, relativePath: string) {
-  return fs.readFile(path.join(root, relativePath), 'utf8');
+async function readProjectFile(relativePath: string) {
+  return fs.readFile(path.join(projectRoot, relativePath), 'utf8');
 }
 
-test('home page keeps the same mobile filter-to-premium flow as the template', async () => {
-  const prodSource = await readProjectFile(projectRoot, 'src/components/public/HomePageClient.tsx');
-  const templateSource = await readProjectFile(templateRoot, 'src/app/page.tsx');
+test('home page server composition keeps canonical directory + deferred data flow intact', async () => {
+  const homePageSource = await readProjectFile('src/app/page.tsx');
 
-  assert.equal(prodSource.includes('MobilePromoBanners'), false);
-  assert.equal(templateSource.includes('MobilePromoBanners'), false);
-  assert.equal(prodSource.includes('scrollbar-hide md:hidden'), true);
-  assert.equal(templateSource.includes('md:hidden flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide mb-3'), true);
-  assert.equal(prodSource.indexOf('scrollbar-hide md:hidden') < prodSource.indexOf('{premiumShops.length > 0 && ('), true);
-  assert.equal(templateSource.indexOf('scrollbar-hide mb-3') < templateSource.indexOf('{premiumShops.length > 0 && ('), true);
-  assert.equal(prodSource.includes("🏷️ {sortType === 'popular' ? '인기 추천 업소' : directoryMode === 'theme' ? '테마별 업소' : '전체 업소'}"), false);
-  assert.equal(prodSource.includes("📋 {sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}"), true);
-  assert.equal(prodSource.includes('지역이나 테마를 바꿔 다른 업소를 찾아보세요.'), false);
-  assert.equal(prodSource.includes('HomeUtilityRail mode="inline"'), false);
-  assert.equal(prodSource.indexOf('rounded-lg border border-gray-200 bg-white p-3') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
+  assert.equal(homePageSource.includes("import HomePageClient from '@/components/public/HomePageClient';"), true);
+  assert.equal(homePageSource.includes("import { getPublicSiteContent } from '@/lib/server/communityStore';"), true);
+  assert.equal(homePageSource.includes("import { listDirectoryShops } from '@/lib/server/shop-store';"), true);
+  assert.equal(homePageSource.includes('createDeferredHomeShopResponse'), true);
+  assert.equal(homePageSource.includes('shouldDeferInitialHomeDirectoryFetch'), true);
+  assert.equal(homePageSource.includes('getDirectoryCanonicalRedirect'), true);
+  assert.equal(homePageSource.includes('<HomePageClient'), true);
 });
 
-test('top100 page keeps the same hero-to-list mobile flow as the template', async () => {
-  const prodSource = await readProjectFile(projectRoot, 'src/components/public/Top100PageClient.tsx');
-  const templateSource = await readProjectFile(templateRoot, 'src/app/top100/page.tsx');
+test('top100 page server composition keeps canonical redirect + data loading intact', async () => {
+  const top100PageSource = await readProjectFile('src/app/top100/page.tsx');
 
-  assert.equal(prodSource.includes('MobilePromoBanners'), false);
-  assert.equal(templateSource.includes('MobilePromoBanners'), false);
-  assert.equal(prodSource.indexOf('리뷰수와 평점을 기반으로 선정된 실시간 인기 업소입니다.') < prodSource.indexOf('rounded-lg border border-gray-200 bg-white p-3'), true);
-  assert.equal(templateSource.indexOf('리뷰수와 평점을 기반으로 선정된 실시간 인기 업소입니다.') < templateSource.indexOf('bg-white border border-gray-200 rounded-lg p-3'), true);
+  assert.equal(top100PageSource.includes("import Top100PageClient from '@/components/public/Top100PageClient';"), true);
+  assert.equal(top100PageSource.includes('buildTop100PageData'), true);
+  assert.equal(top100PageSource.includes('listShops'), true);
+  assert.equal(top100PageSource.includes('getDirectoryCanonicalRedirect'), true);
+  assert.equal(top100PageSource.includes('parseDirectoryQuery'), true);
+  assert.equal(top100PageSource.includes('<Top100PageClient initialShops={buildTop100PageData(shopResponse)} />'), true);
 });
 
-test('home utility rail is reused responsively instead of a hard-coded right rail only', async () => {
-  const prodSource = await readProjectFile(projectRoot, 'src/components/public/HomePageClient.tsx');
-  const utilitySource = await readProjectFile(projectRoot, 'src/components/public/HomeUtilityRail.tsx');
-  const promoSource = await readProjectFile(projectRoot, 'src/components/public/SidebarPromoBanners.tsx');
-  const sidebarSource = await readProjectFile(projectRoot, 'src/components/Sidebar.tsx');
+test('home client keeps mobile region chips before premium cards and mobile banner rail after the list', async () => {
+  const prodSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
-  assert.equal(prodSource.includes("import HomeUtilityRail from '@/components/public/HomeUtilityRail';"), true);
-  assert.equal(prodSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), false);
-  assert.equal(prodSource.includes('<HomeUtilityRail mode="inline" directoryMode={directoryMode} />'), false);
-  assert.equal(prodSource.includes('<HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />'), true);
-  assert.equal(prodSource.includes('<SidebarPromoBanners mode="inline" />'), false);
-  assert.equal(sidebarSource.includes('<SidebarPromoBanners mode="sidebar" />'), true);
-  assert.equal(prodSource.includes('hidden w-[120px] shrink-0 lg:block'), true);
-  assert.equal(utilitySource.includes("mode: 'sidebar' | 'inline'"), true);
-  assert.equal(promoSource.includes("mode?: 'sidebar' | 'inline'"), true);
-});
-
-test('home page keeps mobile banner rail below the main shop lists like the dad mobile layout', async () => {
-  const prodSource = await readProjectFile(projectRoot, 'src/components/public/HomePageClient.tsx');
-
+  assert.equal(prodSource.includes("import Sidebar from '@/components/Sidebar';"), true);
   assert.equal(prodSource.includes("import MobileBannerRail from '@/components/public/MobileBannerRail';"), true);
+  assert.equal(prodSource.includes('scrollbar-hide md:hidden'), true);
+  assert.equal(prodSource.indexOf('scrollbar-hide md:hidden') < prodSource.indexOf('{premiumShops.length > 0 && ('), true);
   assert.equal(prodSource.indexOf('{premiumShops.length > 0 && (') < prodSource.indexOf('<MobileBannerRail />'), true);
   assert.equal(prodSource.indexOf('<MobileBannerRail />') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
+  assert.equal(prodSource.includes("📋 ${sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}"), true);
+  assert.equal(prodSource.includes('지역이나 테마를 바꿔 다른 업소를 찾아보세요.'), false);
+});
+
+test('desktop promo placement stays delegated to Sidebar instead of inline home-page banners', async () => {
+  const prodSource = await readProjectFile('src/components/public/HomePageClient.tsx');
+  const sidebarSource = await readProjectFile('src/components/Sidebar.tsx');
+
+  assert.equal(prodSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), false);
+  assert.equal(prodSource.includes('<SidebarPromoBanners mode="inline" />'), false);
+  assert.equal(sidebarSource.includes("import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';"), true);
+  assert.equal(sidebarSource.includes('<SidebarPromoBanners mode="sidebar" />'), true);
+  assert.equal(sidebarSource.includes('hidden md:block w-[180px] shrink-0'), true);
 });
 
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
