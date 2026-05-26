@@ -114,19 +114,24 @@ function normalizeDirectoryShopListCacheKey(filters: DirectoryShopFilters) {
   return JSON.stringify(normalizeDirectoryShopListFilters(filters));
 }
 
+export type ShopRecordLike = ShopRecord & {
+  _count?: {
+    reviews?: number;
+  };
+};
+
 export function invalidatePublicShopListCache() {
   publicShopListCache.clear();
   publicDirectoryShopListCache.clear();
   try {
-    // @ts-ignore
-    revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG);
+    revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
   } catch {
     // Ignore cache invalidation errors
   }
 }
 
-export function mapShop(record: any): Shop {
-  const visibleReviews = Array.isArray(record.reviews) ? record.reviews.filter((review: any) => !review.isHidden) : [];
+export function mapShop(record: ShopRecordLike): Shop {
+  const visibleReviews = Array.isArray(record.reviews) ? record.reviews.filter((review) => !review.isHidden) : [];
 
   return {
     id: record.id,

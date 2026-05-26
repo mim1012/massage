@@ -5,6 +5,20 @@ import Link from 'next/link';
 import { Building2, CheckCircle2, ChevronRight, MapPin, Phone, Send, Tag } from 'lucide-react';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 
+type PartnershipSettingsSection = {
+  title: string;
+  items?: string[];
+};
+
+type PartnershipSettingsResponse = {
+  error?: string;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  note?: string;
+  sections?: PartnershipSettingsSection[];
+};
+
 export default function PartnershipPage() {
   const [inquiryDoc, setInquiryDoc] = useState<{
     eyebrow: string;
@@ -25,10 +39,10 @@ export default function PartnershipPage() {
   useEffect(() => {
     fetch('/api/board/partnership/settings')
       .then((res) => res.json())
-      .then((data) => {
+      .then((data: PartnershipSettingsResponse) => {
         if (data && !data.error) {
-          const directCall = data.sections?.find((s: any) => s.title === 'Direct Call')?.items?.[0] || '010-1234-5678';
-          const kakaoId = data.sections?.find((s: any) => s.title === 'Kakao ID')?.items?.[0] || 'healing_help';
+          const directCall = data.sections?.find((section) => section.title === 'Direct Call')?.items?.[0] || '010-1234-5678';
+          const kakaoId = data.sections?.find((section) => section.title === 'Kakao ID')?.items?.[0] || 'healing_help';
           setInquiryDoc({
             eyebrow: data.eyebrow || 'Partnership',
             title: data.title || '제휴 입점 안내',

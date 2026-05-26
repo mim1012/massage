@@ -6,6 +6,8 @@ import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 type ManagedReview = Review & { shopRegionLabel?: string };
+type ShopOption = { id: string; name: string };
+type AdminShopsResponse = { shops?: ShopOption[] };
 
 type Props = {
   scope: 'admin' | 'owner';
@@ -33,7 +35,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
   // 등록/수정 모달 관련 상태
   const [showModal, setShowModal] = useState(false);
   const [editingReview, setEditingReview] = useState<ManagedReview | null>(null);
-  const [shops, setShops] = useState<{ id: string; name: string }[]>([]);
+  const [shops, setShops] = useState<ShopOption[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -78,9 +80,9 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
       setShopsLoading(true);
       try {
         const response = await fetch('/api/admin/shops');
-        const result = await response.json();
+        const result = (await response.json()) as AdminShopsResponse;
         if (response.ok && result.shops) {
-          setShops(result.shops.map((s: any) => ({ id: s.id, name: s.name })));
+          setShops(result.shops);
         }
       } catch (e) {
         console.error('Failed to load shops', e);

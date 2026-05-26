@@ -1,7 +1,8 @@
 import { requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
-import { deleteReview, updateReview } from '@/lib/server/communityStore';
 import { prisma } from '@/lib/db/prisma';
+import { createReviewDeleteResponse, normalizePublicReviewPatchInput } from '@/lib/review-route-helpers';
+import { deleteReview, updateReview } from '@/lib/server/communityStore';
 
 export async function PATCH(
   request: Request,
@@ -19,8 +20,12 @@ export async function PATCH(
     }
 
     const body = (await request.json()) as { rating?: number; content?: string };
-    const updated = await updateReview(id, body);
-    
+    const normalized = normalizePublicReviewPatchInput(body);
+    const updated = await updateReview(id, normalized);
+    if (!updated) {
+      return Response.json({ error: '리뷰를 수정하지 못했습니다.' }, { status: 404 });
+    }
+
     return Response.json({ review: updated });
   } catch (error) {
     return errorResponse(error);
@@ -43,7 +48,7 @@ export async function DELETE(
     }
 
     const success = await deleteReview(id);
-    return Response.json({ success });
+    return createReviewDeleteResponse(success);
   } catch (error) {
     return errorResponse(error);
   }

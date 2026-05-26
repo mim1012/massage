@@ -10,16 +10,27 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
     console.log('🚀 로그인 페이지 이동 중...');
     await page.goto('http://localhost:3000/auth/login');
     
-    await page.fill('input[placeholder="아이디"]', 'user@massage.local');
-    await page.fill('input[placeholder="비밀번호"]', 'user1234');
+    const loginForm = page.locator('main form').filter({ has: page.locator('input[placeholder="아이디"]') });
+    await loginForm.locator('input[placeholder="아이디"]').fill('user@massage.local');
+    await loginForm.locator('input[placeholder="비밀번호"]').fill('user1234');
     
     console.log('🚀 로그인 버튼 클릭...');
-    await page.click('button[type="submit"]');
+    await loginForm.getByRole('button', { name: '로그인' }).click();
 
-    // 로그인 완료 및 세션 반영 대기 (헤더의 사용자 이름 확인)
+    // 로그인 완료 및 세션 반영 대기
     console.log('🔍 로그인 세션 반영 대기 중...');
-    await expect(page.getByText('김철수')).toBeVisible({ timeout: 20000 });
-    console.log('✅ 로그인 확인 완료 (김철수님)');
+    await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'), { timeout: 20000 });
+    await expect
+      .poll(async () => {
+        const session = await page.evaluate(async () => {
+          const response = await fetch('/api/auth/me', { cache: 'no-store' });
+          const data = (await response.json()) as { user?: { email?: string | null } | null };
+          return data.user?.email ?? null;
+        });
+        return session;
+      }, { timeout: 20000 })
+      .toBe('user@massage.local');
+    console.log('✅ 로그인 확인 완료 (user@massage.local)');
 
     // 2. 상점 상세 페이지 이동
     console.log('🚀 상세 페이지 이동 중...');
@@ -45,24 +56,27 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
     // 4. 리뷰 내용 입력 및 등록
     console.log('✍️ 리뷰 내용 입력 중...');
     await page.fill('textarea', TEST_CONTENT);
+    const createResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/board/reviews') &&
+        response.request().method() === 'POST',
+    );
     await page.click('button:has-text("후기 등록")');
+    const createResponse = await createResponsePromise;
+    expect(createResponse.ok()).toBe(true);
+    const createPayload = (await createResponse.json()) as { review?: { id?: string; content?: string } };
+    const reviewId = createPayload.review?.id;
+
+    if (!reviewId) throw new Error('작성된 리뷰의 ID를 응답에서 찾을 수 없습니다.');
 
     // 5. 등록 확인
     console.log('🔍 등록된 리뷰 확인 중...');
-    await expect(page.locator(`text=${TEST_CONTENT}`)).toBeVisible({ timeout: 10000 });
+    await page.reload();
+    await expect(page.locator('p').filter({ hasText: TEST_CONTENT })).toBeVisible({ timeout: 10000 });
     console.log('✅ 리뷰 작성 및 노출 확인 완료');
 
     // --- API 기반 수정/삭제 검증 ---
     console.log('🛠️ API 기반 수정/삭제 검증 시작...');
-    
-    const reviewId = await page.evaluate(async (content) => {
-      const res = await fetch('/api/board/reviews');
-      const data = await res.json();
-      const myReview = data.reviews.find((r: any) => r.content === content);
-      return myReview?.id;
-    }, TEST_CONTENT);
-
-    if (!reviewId) throw new Error('작성된 리뷰의 ID를 찾을 수 없습니다.');
     console.log(`🔍 생성된 리뷰 ID: ${reviewId}`);
 
     // 6. 리뷰 수정

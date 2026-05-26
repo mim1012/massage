@@ -105,8 +105,8 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
         method: 'DELETE',
       });
 
-      if (!response.ok) {
-        const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
         throw new Error(result.error ?? '리뷰를 삭제하지 못했습니다.');
       }
 
