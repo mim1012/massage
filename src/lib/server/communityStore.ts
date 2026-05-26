@@ -78,6 +78,40 @@ const getPersistentPublicSiteContent = unstable_cache(
   },
 );
 
+function isMissingNextCacheContextError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes('incrementalCache missing') ||
+    error.message.includes('static generation store missing')
+  );
+}
+
+async function readPublicSiteContentWithFallback() {
+  try {
+    return await getPersistentPublicSiteContent();
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+
+    const loaded = await loadSiteContentRecord();
+    return loaded?.content ?? null;
+  }
+}
+
+function safeRevalidateTag(tag: string) {
+  try {
+    revalidateTag(tag, 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
+}
+
 function invalidatePublicBoardCaches() {
   cachedBoardSummary = null;
   cachedPublicNoticeLists.clear();
@@ -272,8 +306,8 @@ function canCommentOnQna(entry: { shop?: { ownerId: string | null } | null }, vi
 
 function canManagePublicQna(
   entry: { userId: string | null; status: QnaStatus },
-  viewer: ViewerContext | undefined,
-  commentCount: number,
+  viewer?: ViewerContext,
+  commentCount = 0,
 ) {
   if (!viewer) {
     return false;
@@ -778,7 +812,15 @@ export async function listPublicQnaPage(
     });
 
     return {
-      items: items.map((entry) => mapQna(entry, options.viewer)),
+      items: items.map((entry) => {
+        const mapped = mapQna(entry, options.viewer);
+        if (mapped.canManage) {
+          return mapped;
+        }
+
+        const { canManage: _canManage, ...rest } = mapped;
+        return rest;
+      }),
       page,
       pageSize,
       totalItems,
@@ -799,7 +841,15 @@ export async function listPublicQnaPage(
     });
 
     return {
-      items: items.map((entry) => mapQna(entry, options.viewer)),
+      items: items.map((entry) => {
+        const mapped = mapQna(entry, options.viewer);
+        if (mapped.canManage) {
+          return mapped;
+        }
+
+        const { canManage: _canManage, ...rest } = mapped;
+        return rest;
+      }),
       page,
       pageSize,
       totalItems,
@@ -1016,92 +1066,6 @@ export async function createQna(
   }
 }
 
-export async function updateQna(
-  id: string,
-  input: { question: string },
-  viewer?: ViewerContext,
-) {
-  try {
-    const entry = await prisma.qnA.update({
-      where: { id },
-      data: {
-        question: input.question.trim(),
-      },
-      include: qnaInclude,
-    });
-
-    invalidatePublicBoardCaches();
-    return mapQna(entry, viewer);
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return null;
-    }
-    throw error;
-  }
-}
-
-export async function updatePublicQna(
-  id: string,
-  userId: string,
-  input: { question: string },
-  viewer?: ViewerContext,
-) {
-  const result = await prisma.qnA.updateMany({
-    where: {
-      id,
-      userId,
-      status: QnaStatus.OPEN,
-      comments: { none: {} },
-    },
-    data: {
-      question: input.question.trim(),
-    },
-  });
-
-  if (result.count === 0) {
-    return null;
-  }
-
-  const entry = await prisma.qnA.findUnique({
-    where: { id },
-    include: qnaInclude,
-  });
-
-  invalidatePublicBoardCaches();
-  return entry ? mapQna(entry, viewer) : null;
-}
-
-export async function deleteQna(id: string) {
-  try {
-    await prisma.qnA.delete({ where: { id } });
-    invalidatePublicBoardCaches();
-    return true;
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return false;
-    }
-    throw error;
-  }
-}
-
-export async function deletePublicQna(id: string, userId: string) {
-  const result = await prisma.qnA.deleteMany({
-    where: {
-      id,
-      userId,
-      status: QnaStatus.OPEN,
-      comments: { none: {} },
-    },
-  });
-
-  if (result.count === 0) {
-    return false;
-  }
-
-  invalidatePublicBoardCaches();
-  return true;
-}
-
 type ReviewListOptions = {
   limit?: number;
   shopId?: string;
@@ -1109,7 +1073,7 @@ type ReviewListOptions = {
 };
 
 const PUBLIC_REVIEWER_EMAIL = 'public-reviewer@massage.local';
-const PUBLIC_REVIEWER_PASSWORD_HASH = '***';
+const PUBLIC_REVIEWER_PASSWORD_HASH = 'public-reviewer';
 
 async function getPublicReviewerId() {
   const reviewer = await prisma.user.upsert({
@@ -1190,7 +1154,11 @@ export async function listPublicReviewPage(
   });
 
   return {
-    items: items.map(mapReview),
+    items: items.map((review) => {
+      const mapped = mapReview(review);
+      const { userId: _userId, ...rest } = mapped;
+      return rest;
+    }),
     page,
     pageSize,
     totalItems,
@@ -1270,50 +1238,6 @@ export async function listManagedReviews(user: { id: string; role: UserRole }, s
     ...mapReview(review),
     shopRegionLabel: review.shop.regionLabel,
   }));
-}
-
-export async function updateReview(reviewId: string, input: { rating?: number; content?: string; authorName?: string }) {
-  try {
-    const updated = await prisma.review.update({
-      where: { id: reviewId },
-      data: {
-        ...(input.rating !== undefined ? { rating: input.rating } : {}),
-        ...(input.content !== undefined ? { content: input.content.trim() } : {}),
-        ...(input.authorName !== undefined ? { authorName: input.authorName.trim() } : {}),
-      },
-      include: { shop: { select: { name: true } } },
-    });
-
-    if (input.rating !== undefined) {
-      await refreshShopReviewRating(updated.shopId);
-    }
-    invalidatePublicShopListCache();
-    invalidatePublicBoardCaches();
-    return mapReview(updated);
-  } catch {
-    return null;
-  }
-}
-
-export async function deleteReview(reviewId: string) {
-  try {
-    const review = await prisma.review.findUnique({
-      where: { id: reviewId },
-      select: { shopId: true },
-    });
-
-    if (!review) {
-      return false;
-    }
-
-    await prisma.review.delete({ where: { id: reviewId } });
-    await refreshShopReviewRating(review.shopId);
-    invalidatePublicShopListCache();
-    invalidatePublicBoardCaches();
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export async function setReviewHiddenState(
@@ -1618,7 +1542,7 @@ export async function getPublicSiteContent() {
     return cachedPublicSiteContent;
   }
 
-  cachedPublicSiteContent = await getPersistentPublicSiteContent();
+  cachedPublicSiteContent = await readPublicSiteContentWithFallback();
 
   return cachedPublicSiteContent;
 }
@@ -1661,7 +1585,7 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
 
   const content = mapSiteSettings(record);
   cachedPublicSiteContent = content;
-  revalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG, 'max');
+  safeRevalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG);
 
   return content;
 }
@@ -1741,4 +1665,126 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
       viewCount: shop._count.reviews,
     })),
   };
+}
+
+export async function updateReview(
+  id: string,
+  input: { rating?: number; content?: string; authorName?: string },
+) {
+  try {
+    const updated = await prisma.review.update({
+      where: { id },
+      data: {
+        ...(typeof input.rating === 'number' ? { rating: input.rating } : {}),
+        ...(input.content !== undefined ? { content: input.content.trim() } : {}),
+        ...(input.authorName !== undefined ? { authorName: input.authorName.trim() } : {}),
+      },
+      include: { shop: { select: { name: true } } },
+    });
+    if (input.rating !== undefined) {
+      await refreshShopReviewRating(updated.shopId);
+    }
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return mapReview(updated);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteReview(reviewId: string) {
+  try {
+    const review = await prisma.review.delete({ where: { id: reviewId } });
+    await refreshShopReviewRating(review.shopId);
+    invalidatePublicShopListCache();
+    invalidatePublicBoardCaches();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function updateQna(
+  id: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  try {
+    const entry = await prisma.qnA.update({
+      where: { id },
+      data: {
+        question: input.question.trim(),
+      },
+      include: qnaInclude,
+    });
+    invalidatePublicBoardCaches();
+    return mapQna(entry, viewer);
+  } catch {
+    return null;
+  }
+}
+
+export async function updatePublicQna(
+  id: string,
+  userId: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  try {
+    const existing = await prisma.qnA.findUnique({
+      where: { id },
+      include: { _count: { select: { comments: true } } },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return null;
+    }
+
+    if (existing.status !== QnaStatus.OPEN) {
+      return null;
+    }
+
+    if (existing._count.comments > 0) {
+      return null;
+    }
+
+    return await updateQna(id, input, viewer);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteQna(id: string) {
+  try {
+    await prisma.qnA.delete({ where: { id } });
+    invalidatePublicBoardCaches();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deletePublicQna(id: string, userId: string) {
+  try {
+    const existing = await prisma.qnA.findUnique({
+      where: { id },
+      include: { _count: { select: { comments: true } } },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return false;
+    }
+
+    if (existing.status !== QnaStatus.OPEN) {
+      return false;
+    }
+
+    if (existing._count.comments > 0) {
+      return false;
+    }
+
+    return await deleteQna(id);
+  } catch {
+    return false;
+  }
 }

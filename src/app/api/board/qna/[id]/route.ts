@@ -25,8 +25,12 @@ export async function PATCH(request: Request, context: Context) {
       return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    if (existing.status !== QnaStatus.OPEN || existing._count.comments > 0) {
-      return Response.json({ error: '답변이 등록된 Q&A는 수정할 수 없습니다.' }, { status: 409 });
+    if (existing.status !== QnaStatus.OPEN) {
+      return Response.json({ error: '질문 상태가 변경되어 수정할 수 없습니다.' }, { status: 409 });
+    }
+
+    if (existing._count.comments > 0) {
+      return Response.json({ error: '질문 상태가 변경되어 수정할 수 없습니다.' }, { status: 409 });
     }
 
     const body = (await request.json()) as { question?: string };
@@ -62,8 +66,12 @@ export async function DELETE(_: Request, context: Context) {
       return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    if (existing.status !== QnaStatus.OPEN || existing._count.comments > 0) {
-      return Response.json({ error: '답변이 등록된 Q&A는 삭제할 수 없습니다.' }, { status: 409 });
+    if (existing.status !== QnaStatus.OPEN) {
+      return Response.json({ error: '질문 상태가 변경되어 삭제할 수 없습니다.' }, { status: 409 });
+    }
+
+    if (existing._count.comments > 0) {
+      return Response.json({ error: '질문 상태가 변경되어 삭제할 수 없습니다.' }, { status: 409 });
     }
 
     const deleted = await deletePublicQna(id, user.id);

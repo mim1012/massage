@@ -180,7 +180,7 @@ export function mapShop(record: ShopRecord): Shop {
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((course) => ({
         name: course.name,
-        duration: `${course.durationMinutes} min`,
+        duration: `${course.durationMinutes}분`,
         price: `${course.price}`,
         description: course.description ?? undefined,
       })),

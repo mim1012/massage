@@ -82,14 +82,14 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
         <Sidebar />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-red-600 to-rose-500 p-5 text-white shadow-sm">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-5 text-white shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-white/20 p-2">
                 <Trophy className="h-8 w-8 text-yellow-300" />
               </div>
               <div>
                 <h1 className="flex items-center gap-2 text-xl font-black">
-                  🔥 {filterTitle === '전체' ? '' : filterTitle} 인기순위 TOP 100
+                  {filterTitle === '전체' ? '' : filterTitle} 인기순위 TOP 100
                 </h1>
                 <p className="mt-1 text-sm text-white/80">리뷰수와 평점을 기반으로 선정된 실시간 인기 업소입니다.</p>
               </div>
@@ -116,13 +116,13 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
                 <div className="flex rounded-lg bg-gray-100 p-0.5">
                   <button
                     onClick={() => setViewMode('card')}
-                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'card' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'card' ? 'bg-white text-[var(--portal-brand)] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <LayoutGrid className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-white text-[var(--portal-brand)] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <ListIcon className="h-4 w-4" />
                   </button>

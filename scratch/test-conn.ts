@@ -8,10 +8,11 @@ async function main() {
     console.log('Connection successful');
     const count = await prisma.shop.count();
     console.log('Shop count:', count);
-  } catch (error: any) {
-    console.error('Error type:', error.constructor.name);
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
+  } catch (error: unknown) {
+    const errorRecord = error instanceof Error ? error : new Error(String(error));
+    console.error('Error type:', errorRecord.constructor.name);
+    console.error('Error code:', 'code' in errorRecord ? errorRecord.code : undefined);
+    console.error('Error message:', errorRecord.message);
   } finally {
     await prisma.$disconnect();
   }

@@ -14,11 +14,11 @@ interface ShopCardProps {
 }
 
 const themeEmoji: Record<string, string> = {
-  swedish: '🌿',
+  swedish: '',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '🔥',
+  deep: '',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
@@ -51,17 +51,23 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
     >
       <div
         className={clsx(
-          'shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br bg-cover bg-center',
-          !thumbnailUrl && gradients[gIdx],
+          'shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br',
+          gradients[gIdx],
         )}
-        style={thumbnailUrl ? { backgroundImage: `url(${thumbnailUrl})` } : undefined}
       >
-        {thumbnailUrl ? <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" /> : null}
-        {!thumbnailUrl ? (
-          <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
-            {themeEmoji[shop.theme] ?? '✨'}
-          </span>
-        ) : null}
+        {thumbnailUrl && (
+          <img
+            src={thumbnailUrl}
+            alt={shop.name}
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-90"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        )}
+        <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
+          {themeEmoji[shop.theme] ?? '✨'}
+        </span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col p-3">
         <div className="mb-1 flex items-start justify-between gap-1">

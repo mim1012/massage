@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
-import { getTotalPages, paginateItems } from '@/lib/pagination';
+import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronRight, PenLine, Search, Star, X, Pencil, Trash2 } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, ShopListItem, User } from '@/lib/types';
@@ -53,21 +53,21 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
 function ReviewContent({
   initialReviews,
   initialShops,
-  initialPage,
-  initialTotalPages,
+  initialPage: initialPageFromServer,
 }: {
   initialReviews: ReviewWithRegion[];
   initialShops: ShopListItem[];
-  initialPage: number;
-  initialTotalPages: number;
+  initialPage?: number;
+  initialTotalPages?: number;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
+  const initialPage = normalizePageParam(searchParams.get('page')) || initialPageFromServer || 1;
 
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -84,6 +84,46 @@ function ReviewContent({
   const didInitPaginationReset = useRef(false);
   const [form, setForm] = useState({ shopId: initialShopId, authorName: '', rating: 5, content: '' });
   const [editingReview, setEditingReview] = useState<ReviewWithRegion | null>(null);
+
+  function handleEditClick(review: ReviewWithRegion) {
+    setEditingReview(review);
+    setForm({
+      shopId: review.shopId,
+      authorName: review.authorName,
+      rating: review.rating,
+      content: review.content,
+    });
+    setSubmitted(false);
+    setError(null);
+    setShowModal(true);
+  }
+
+  function handleCloseModal() {
+    setShowModal(false);
+    setEditingReview(null);
+    setForm({ shopId: initialShopId || '', authorName: user?.name || '', rating: 5, content: '' });
+  }
+
+  async function handleDeleteClick(id: string) {
+    if (!window.confirm('정말로 이 후기를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/board/reviews/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? '리뷰를 삭제하지 못했습니다.');
+      }
+
+      setReviews((current) => current.filter((r) => r.id !== id));
+    } catch (deleteError) {
+      alert(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -221,9 +261,9 @@ function ReviewContent({
     shopTab !== 'all' ||
     searchType !== 'all';
 
-  const REVIEW_PAGE_SIZE = 10;
-  const totalPages = hasActiveFilters ? getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE) : initialTotalPages;
-  const visibleReviews = hasActiveFilters ? paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE) : filteredReviews;
+  const REVIEW_PAGE_SIZE = 30;
+  const totalPages = getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
+  const visibleReviews = useMemo(() => paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE), [currentPage, filteredReviews]);
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -253,56 +293,17 @@ function ReviewContent({
   function handleOpenModal() {
     setSubmitted(false);
     setError(null);
-    setEditingReview(null);
     if (!user) {
       setShowModal(true);
       return;
     }
 
-    setForm({
-      shopId: initialShopId || (shopTab !== 'all' ? shopTab : ''),
+    setForm((current) => ({
+      ...current,
+      shopId: current.shopId || (shopTab !== 'all' ? shopTab : initialShopId),
       authorName: user.name,
-      rating: 5,
-      content: '',
-    });
+    }));
     setShowModal(true);
-  }
-
-  function handleEditClick(review: ReviewWithRegion) {
-    setEditingReview(review);
-    setSubmitted(false);
-    setError(null);
-    setForm({
-      shopId: review.shopId,
-      authorName: review.authorName,
-      rating: review.rating,
-      content: review.content,
-    });
-    setShowModal(true);
-  }
-
-  function handleCloseModal() {
-    setShowModal(false);
-    setEditingReview(null);
-    setForm({ shopId: initialShopId || '', authorName: user?.name || '', rating: 5, content: '' });
-  }
-
-  async function handleDeleteClick(reviewId: string) {
-    if (!window.confirm('정말로 이 후기를 삭제하시겠습니까?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/board/reviews/${reviewId}`, { method: 'DELETE' });
-      const result = response.status === 204 ? {} : ((await response.json()) as { error?: string });
-      if (!response.ok) {
-        throw new Error(result.error ?? '리뷰를 삭제하지 못했습니다.');
-      }
-
-      setReviews((current) => current.filter((review) => review.id !== reviewId));
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
-    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -339,15 +340,17 @@ function ReviewContent({
         });
 
         const result = (await response.json()) as { review?: Review; error?: string };
-        if (!response.ok || !result.review) {
+        const updatedReview = result.review;
+        if (!response.ok || !updatedReview) {
           throw new Error(result.error ?? '리뷰를 수정하지 못했습니다.');
         }
 
-        const [decoratedReview] = mapReviewsWithRegion([result.review], shops);
-        setReviews((current) => current.map((review) => (review.id === editingReview.id ? decoratedReview : review)));
-        setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
+        setReviews((current) =>
+          current.map((r) => (r.id === editingReview.id ? { ...r, rating: updatedReview.rating, content: updatedReview.content } : r))
+        );
         setSubmitted(true);
-        handleCloseModal();
+        setShowModal(false);
+        setEditingReview(null);
       } else {
         const response = await fetch('/api/board/reviews', {
           method: 'POST',
@@ -369,10 +372,10 @@ function ReviewContent({
         setReviews((current) => [decoratedReview, ...current]);
         setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
         setSubmitted(true);
-        handleCloseModal();
+        setShowModal(false);
       }
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : editingReview ? '리뷰를 수정하지 못했습니다.' : '리뷰를 등록하지 못했습니다.');
+      setError(submitError instanceof Error ? submitError.message : '작업을 완료하지 못했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -502,7 +505,7 @@ function ReviewContent({
           <div className="divide-y divide-gray-100">
             {visibleReviews.map((review) => (
               <div key={review.id} className="p-3">
-                <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="mb-1 flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
                     <span className="text-xs text-red-500">{review.shopName}</span>
@@ -513,27 +516,27 @@ function ReviewContent({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
-                    {user && (review.userId === user.id || user.role === 'ADMIN') ? (
-                      <div className="shrink-0 flex items-center gap-1.5 text-gray-400">
+                    {user && (user.id === review.userId || user.role === 'ADMIN') && (
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
+                          title="수정"
                           onClick={() => handleEditClick(review)}
                           className="text-[11px] text-gray-500 hover:text-red-600"
-                          title="수정"
                         >
                           수정
                         </button>
                         <span className="text-[10px] text-gray-300">|</span>
                         <button
                           type="button"
-                          onClick={() => void handleDeleteClick(review.id)}
-                          className="text-[11px] text-gray-500 hover:text-red-600"
                           title="삭제"
+                          onClick={() => handleDeleteClick(review.id)}
+                          className="text-[11px] text-gray-500 hover:text-red-600"
                         >
                           삭제
                         </button>
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
@@ -648,7 +651,7 @@ function ReviewContent({
                     disabled={submitting}
                     className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {submitting ? (editingReview ? '수정 중' : '등록 중') : editingReview ? '수정' : '등록'}
+                    {submitting ? '등록 중' : '등록'}
                   </button>
                 </div>
               </form>
@@ -663,8 +666,8 @@ function ReviewContent({
 export default function ReviewPageClient(props: {
   initialReviews: ReviewWithRegion[];
   initialShops: ShopListItem[];
-  initialPage: number;
-  initialTotalPages: number;
+  initialPage?: number;
+  initialTotalPages?: number;
 }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>

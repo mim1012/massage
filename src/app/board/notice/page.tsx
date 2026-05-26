@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-const NOTICE_PAGE_SIZE = 20;
+const NOTICE_PAGE_SIZE = 30;
 
 type SearchParamValue = string | string[] | undefined;
 

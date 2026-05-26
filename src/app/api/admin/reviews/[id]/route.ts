@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
-import { deleteManagedReview, updateReview } from '@/lib/server/communityStore';
 import { prisma } from '@/lib/db/prisma';
+import { deleteManagedReview, updateReview } from '@/lib/server/communityStore';
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -37,7 +37,7 @@ export async function PATCH(request: Request, context: Context) {
 
     const updated = await updateReview(id, body);
     if (!updated) {
-      return Response.json({ error: '리뷰를 수정하지 못했습니다.' }, { status: 500 });
+      return Response.json({ error: '리뷰를 수정하지 못했습니다.' }, { status: 404 });
     }
 
     return Response.json({ review: updated });

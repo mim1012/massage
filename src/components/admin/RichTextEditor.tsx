@@ -198,7 +198,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
           suppressContentEditableWarning
           onInput={emitChange}
           onBlur={emitChange}
-          className="min-h-[320px] w-full px-4 py-4 text-sm leading-7 text-gray-700 focus:outline-none"
+          className="min-h-[900px] w-full px-4 py-4 text-sm leading-7 text-gray-700 focus:outline-none"
           style={{ whiteSpace: 'pre-wrap' }}
           data-placeholder="업소 소개, 서비스 특징, 이용 안내, 주의사항 등을 자유롭게 작성하세요. 색상/글꼴/정렬/이미지도 적용됩니다."
         />

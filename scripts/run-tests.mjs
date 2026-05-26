@@ -108,7 +108,11 @@ if (testFiles.length === 0) {
 }
 
 const testEnv = createTestEnv();
-const seedResult = runCommand(nodeRunner.command, [...nodeRunner.baseArgs, '--experimental-transform-types', 'prisma/seed.ts'], testEnv);
+const seedResult = runCommand(
+  nodeRunner.command,
+  [...nodeRunner.baseArgs, '--import', 'tsx', '--experimental-transform-types', 'prisma/seed.ts'],
+  testEnv,
+);
 if ((seedResult.status ?? 1) !== 0) {
   process.exit(seedResult.status ?? 1);
 }
@@ -127,6 +131,8 @@ for (const filePath of testFiles) {
       '--disable-warning=ExperimentalWarning',
       '--disable-warning=DeprecationWarning',
       '--experimental-transform-types',
+      '--import',
+      'tsx',
       '--import',
       pathToFileURL(path.join(projectRoot, 'scripts', 'register-alias.mjs')).href,
       '--test',

@@ -196,7 +196,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       {/* 광고 상품 섹션 */}
       <section className="space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">🔥 프리미엄 광고 상품</h2>
+          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">프리미엄 광고 상품</h2>
           <p className="text-xs text-gray-400 mt-1">업체 성격과 홍보 전략에 따라 알맞은 광고 상품을 선택해보세요.</p>
         </div>
 

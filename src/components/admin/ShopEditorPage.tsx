@@ -37,11 +37,11 @@ const STEPS = [
 ] as const;
 
 const THEME_EMOJI: Record<string, string> = {
-  swedish: '🌿',
+  swedish: '',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '🔥',
+  deep: '',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
@@ -291,7 +291,11 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
       if (response.ok) {
         shouldReleaseLock = false;
-        router.replace(routeBase);
+        if (routeBase === '/owner/shops' && isNew) {
+          router.replace('/owner/shops/success');
+        } else {
+          router.replace(routeBase);
+        }
         return;
       }
 
@@ -305,7 +309,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   };
 
   return (
-    <div className="max-w-[860px] space-y-4 pb-10">
+    <div className="max-w-[1200px] space-y-4 pb-10">
       <div className="mb-2 flex items-center gap-2">
         <Link href={routeBase} className="rounded p-1 text-gray-600 hover:bg-gray-200">
           <ArrowLeft className="h-5 w-5" />

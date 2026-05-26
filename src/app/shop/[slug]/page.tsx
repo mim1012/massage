@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export const dynamic = 'force-dynamic';
 
 const themeEmoji: Record<string, string> = {
-  swedish: '🌿',
+  swedish: '',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '🔥',
+  deep: '',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
@@ -225,7 +225,10 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
                 전체보기 &raquo;
               </Link>
             </div>
+
+            {/* 후기 입력 폼 추가 */}
             <ShopReviewForm shopId={shop.id} shopName={shop.name} />
+
             {reviews.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
             ) : (
