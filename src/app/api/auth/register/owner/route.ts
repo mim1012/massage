@@ -33,13 +33,8 @@ export async function POST(request: Request) {
       phone: body.phone,
     });
 
-    const result = await login({
-      email: body.email,
-      password: body.password,
-    });
-    await setSessionCookie(result.token);
-
-    return Response.json({ user }, { status: 201 });
+    // 승인 전 가입 신청 대기 상태이므로, 자동 로그인을 통한 쿠키 구성을 생략하고 가입 성공으로 반환
+    return Response.json({ user, success: true }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

@@ -7,7 +7,7 @@ const DEFAULT_SITE_SETTINGS = {
   siteName: '힐링찾기',
   siteTitle: '전국 제휴업소 디렉토리',
   siteDescription: 'HEALING DIRECTORY',
-  heroMainText: '🔥 내 주변 최고의 힐링 업소 찾기',
+  heroMainText: '내 주변 최고의 힐링 업소 찾기',
   heroSubText: '전국 500개+ 제휴업소 | 매일 업데이트되는 검증된 정보',
   contactPhone: '1588-0000',
   footerInfo: '힐링찾기 | 대표자: 홍길동 | 사업자번호: 000-00-00000 | 서울특별시 강남구 테헤란로 123',
@@ -43,6 +43,29 @@ const USER_PASSWORD = 'user1234';
 const SITE_SETTINGS_ID = 'default';
 
 const SCREEN_SAMPLE_SHOPS = [
+  {
+    slug: 'gangnam-signature-therapy',
+    name: '강남 시그니처 테라피',
+    region: 'seoul',
+    subRegion: 'gangnam',
+    theme: 'swedish',
+    tagline: '전원 전문 교육 이수, 지친 일상을 깨우는 1:1 명품 스파',
+    description: '전원 테라피스트가 림프 순환과 부드러운 스웨디시 케어로 깊은 휴식을 선사합니다.',
+    address: '서울특별시 강남구 역삼로 456',
+    phone: '010-1234-9999',
+    hours: '11:00 - 02:00',
+    isPremium: true,
+    premiumOrder: 1,
+    regionLabel: '서울',
+    subRegionLabel: '강남',
+    themeLabel: '스웨디시',
+    rating: 4.9,
+    tags: ['스웨디시', '무료주차', '샤워실완비'],
+    courses: [
+      { name: '시그니처 아로마 스웨디시 A코스', durationMinutes: 60, price: 90000, sortOrder: 0 },
+      { name: '시그니처 아로마 스웨디시 B코스', durationMinutes: 90, price: 120000, sortOrder: 1 },
+    ],
+  },
   {
     slug: 'aroma-balance-hongdae',
     name: '아로마 밸런스 홍대',
@@ -284,6 +307,16 @@ function hashPassword(password: string) {
 }
 
 async function main() {
+  // 기존 레거시 테스트 데이터 및 지저분한 찌꺼기 업소 데이터 완전 청소
+  await prisma.review.deleteMany({});
+  await prisma.qnAComment.deleteMany({});
+  await prisma.qnA.deleteMany({});
+  await prisma.notice.deleteMany({});
+  await prisma.partnershipInquiry.deleteMany({});
+  await prisma.shopCourse.deleteMany({});
+  await prisma.shopImage.deleteMany({});
+  await prisma.shop.deleteMany({});
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@massage.local' },
     update: {

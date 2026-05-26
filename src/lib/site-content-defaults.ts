@@ -14,7 +14,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: '힐링찾기',
   siteTitle: '전국 제휴업소 디렉토리',
   siteDescription: 'HEALING DIRECTORY',
-  heroMainText: '🔥 내 주변 최고의 힐링 업소 찾기',
+  heroMainText: '내 주변 최고의 힐링 업소 찾기',
   heroSubText: '전국 500개+ 제휴업소 | 매일 업데이트되는 검증된 정보',
   contactPhone: '1588-0000',
   footerInfo: '힐링찾기 | 대표자: 홍길동 | 사업자번호: 000-00-00000 | 서울특별시 강남구 테헤란로 123',

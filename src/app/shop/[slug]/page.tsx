@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export const dynamic = 'force-dynamic';
 
 const themeEmoji: Record<string, string> = {
-  swedish: '🌿',
+  swedish: '',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '🔥',
+  deep: '',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
