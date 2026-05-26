@@ -304,13 +304,29 @@ function canCommentOnQna(entry: { shop?: { ownerId: string | null } | null }, vi
   return viewer.role === 'OWNER' && Boolean(entry.shop?.ownerId) && entry.shop?.ownerId === viewer.id;
 }
 
+function canManagePublicQna(
+  entry: { userId: string | null; status: QnaStatus },
+  viewer?: ViewerContext,
+  commentCount = 0,
+) {
+  if (!viewer) {
+    return false;
+  }
+
+  if (viewer.role !== 'USER' || viewer.id !== entry.userId) {
+    return false;
+  }
+
+  return entry.status === QnaStatus.OPEN && commentCount === 0;
+}
+
 function mapQna(entry: QnaRecord | LegacyQnaRecord, viewer?: ViewerContext): QnA {
   const comments = entry.comments.map(mapQnaComment);
   const latestComment = comments.at(-1);
 
   return {
     id: entry.id,
-    userId: entry.userId ?? undefined,
+    canManage: canManagePublicQna(entry, viewer, comments.length),
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -333,7 +349,7 @@ function mapBoardLandingQna(entry: BoardLandingQnaRecord | LegacyBoardLandingQna
 
   return {
     id: entry.id,
-    userId: entry.userId ?? undefined,
+    canManage: canManagePublicQna(entry, viewer, commentCount),
     shopId: entry.shopId ?? undefined,
     shopName: entry.shop?.name ?? undefined,
     shopRegionLabel: entry.shop?.regionLabel ?? undefined,
@@ -796,7 +812,15 @@ export async function listPublicQnaPage(
     });
 
     return {
-      items: items.map((entry) => mapQna(entry, options.viewer)),
+      items: items.map((entry) => {
+        const mapped = mapQna(entry, options.viewer);
+        if (mapped.canManage) {
+          return mapped;
+        }
+
+        const { canManage: _canManage, ...rest } = mapped;
+        return rest;
+      }),
       page,
       pageSize,
       totalItems,
@@ -817,7 +841,15 @@ export async function listPublicQnaPage(
     });
 
     return {
-      items: items.map((entry) => mapQna(entry, options.viewer)),
+      items: items.map((entry) => {
+        const mapped = mapQna(entry, options.viewer);
+        if (mapped.canManage) {
+          return mapped;
+        }
+
+        const { canManage: _canManage, ...rest } = mapped;
+        return rest;
+      }),
       page,
       pageSize,
       totalItems,
@@ -1122,7 +1154,11 @@ export async function listPublicReviewPage(
   });
 
   return {
-    items: items.map(mapReview),
+    items: items.map((review) => {
+      const mapped = mapReview(review);
+      const { userId: _userId, ...rest } = mapped;
+      return rest;
+    }),
     page,
     pageSize,
     totalItems,
@@ -1636,7 +1672,7 @@ export async function updateReview(
   input: { rating?: number; content?: string; authorName?: string },
 ) {
   try {
-    const review = await prisma.review.update({
+    const updated = await prisma.review.update({
       where: { id },
       data: {
         ...(typeof input.rating === 'number' ? { rating: input.rating } : {}),
@@ -1645,20 +1681,20 @@ export async function updateReview(
       },
       include: { shop: { select: { name: true } } },
     });
-    await refreshShopReviewRating(review.shopId);
+    if (input.rating !== undefined) {
+      await refreshShopReviewRating(updated.shopId);
+    }
     invalidatePublicShopListCache();
     invalidatePublicBoardCaches();
-    return mapReview(review);
+    return mapReview(updated);
   } catch {
     return null;
   }
 }
 
-export async function deleteReview(id: string) {
+export async function deleteReview(reviewId: string) {
   try {
-    const review = await prisma.review.delete({
-      where: { id },
-    });
+    const review = await prisma.review.delete({ where: { id: reviewId } });
     await refreshShopReviewRating(review.shopId);
     invalidatePublicShopListCache();
     invalidatePublicBoardCaches();
@@ -1688,11 +1724,66 @@ export async function updateQna(
   }
 }
 
+export async function updatePublicQna(
+  id: string,
+  userId: string,
+  input: { question: string },
+  viewer?: ViewerContext,
+) {
+  try {
+    const existing = await prisma.qnA.findUnique({
+      where: { id },
+      include: { _count: { select: { comments: true } } },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return null;
+    }
+
+    if (existing.status !== QnaStatus.OPEN) {
+      return null;
+    }
+
+    if (existing._count.comments > 0) {
+      return null;
+    }
+
+    return await updateQna(id, input, viewer);
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteQna(id: string) {
   try {
     await prisma.qnA.delete({ where: { id } });
     invalidatePublicBoardCaches();
     return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deletePublicQna(id: string, userId: string) {
+  try {
+    const existing = await prisma.qnA.findUnique({
+      where: { id },
+      include: { _count: { select: { comments: true } } },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return false;
+    }
+
+    if (existing.status !== QnaStatus.OPEN) {
+      return false;
+    }
+
+    if (existing._count.comments > 0) {
+      return false;
+    }
+
+    return await deleteQna(id);
   } catch {
     return false;
   }

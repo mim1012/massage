@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   Calendar,
@@ -31,7 +31,8 @@ export default function AdminPartnershipsPage() {
   const [selectedInquiry, setSelectedInquiry] = useState<PartnershipInquiry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [pendingInquiryIds, setPendingInquiryIds] = useState<string[]>([]);
+  const pendingInquiryIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -70,40 +71,63 @@ export default function AdminPartnershipsPage() {
   }, [inquiries, searchQuery, statusFilter]);
 
   const hasActiveFilters = searchQuery.trim().length > 0 || statusFilter !== 'all';
+  const isActionPending = (id: string) => pendingInquiryIdsRef.current.has(id) || pendingInquiryIds.includes(id);
 
   async function removeInquiry(id: string) {
-    setError(null);
-
-    const response = await fetch(`/api/admin/partnerships/${id}`, { method: 'DELETE' });
-    if (!response.ok && response.status !== 204) {
-      const result = (await response.json()) as { error?: string };
-      setError(result.error ?? '제휴 문의를 삭제하지 못했습니다.');
+    if (isActionPending(id)) {
       return;
     }
 
-    setInquiries((current) => current.filter((item) => item.id !== id));
-    if (selectedInquiry?.id === id) {
-      setSelectedInquiry(null);
+    pendingInquiryIdsRef.current.add(id);
+    setPendingInquiryIds((current) => (current.includes(id) ? current : [...current, id]));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/partnerships/${id}`, { method: 'DELETE' });
+      if (!response.ok && response.status !== 204) {
+        const result = (await response.json()) as { error?: string };
+        setError(result.error ?? '제휴 문의를 삭제하지 못했습니다.');
+        return;
+      }
+
+      setInquiries((current) => current.filter((item) => item.id !== id));
+      if (selectedInquiry?.id === id) {
+        setSelectedInquiry(null);
+      }
+    } finally {
+      pendingInquiryIdsRef.current.delete(id);
+      setPendingInquiryIds((current) => current.filter((currentId) => currentId !== id));
     }
   }
 
   async function updateStatus(id: string, status: PartnershipInquiry['status']) {
-    setError(null);
-
-    const response = await fetch(`/api/admin/partnerships/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-
-    if (!response.ok) {
-      const result = (await response.json()) as { error?: string };
-      setError(result.error ?? '제휴 문의 상태를 변경하지 못했습니다.');
+    if (isActionPending(id)) {
       return;
     }
 
-    setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
-    setSelectedInquiry((current) => (current?.id === id ? { ...current, status } : current));
+    pendingInquiryIdsRef.current.add(id);
+    setPendingInquiryIds((current) => (current.includes(id) ? current : [...current, id]));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/partnerships/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        setError(result.error ?? '제휴 문의 상태를 변경하지 못했습니다.');
+        return;
+      }
+
+      setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      setSelectedInquiry((current) => (current?.id === id ? { ...current, status } : current));
+    } finally {
+      pendingInquiryIdsRef.current.delete(id);
+      setPendingInquiryIds((current) => current.filter((currentId) => currentId !== id));
+    }
   }
 
   const getStatusBadge = (status: PartnershipInquiry['status']) => {
@@ -283,12 +307,16 @@ export default function AdminPartnershipsPage() {
               <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">상태 변경</p>
                 <div className="flex gap-2">
-                  {(['pending', 'contacted', 'completed'] as const).map((status) => (
+                  {(['pending', 'contacted', 'completed'] as const).map((status) => {
+                    const actionPending = isActionPending(selectedInquiry.id);
+
+                    return (
                     <button
                       key={status}
                       onClick={() => void updateStatus(selectedInquiry.id, status)}
+                      disabled={actionPending}
                       className={clsx(
-                        'flex-1 rounded-lg border py-2 text-xs font-bold transition-all',
+                        'flex-1 rounded-lg border py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60',
                         selectedInquiry.status === status
                           ? 'border-red-600 bg-red-600 text-white shadow-md shadow-red-100'
                           : 'border-gray-200 bg-white text-gray-500 hover:border-red-200',
@@ -296,14 +324,16 @@ export default function AdminPartnershipsPage() {
                     >
                       {status === 'pending' ? '접수대기' : status === 'contacted' ? '상담중' : '완료'}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2">
                 <button
                   onClick={() => void removeInquiry(selectedInquiry.id)}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-red-500 transition-colors hover:bg-red-50"
+                  disabled={isActionPending(selectedInquiry.id)}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                 >
                   <Trash2 className="h-4 w-4" /> 내역 삭제
                 </button>

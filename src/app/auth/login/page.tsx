@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 import { getPostLoginRedirect } from '@/lib/auth/redirects';
+import { getLoginNotice } from '@/lib/auth/login-notice';
 import { useAuthSession } from '@/lib/use-auth-session';
 
 type LoginResult = {
@@ -27,6 +28,7 @@ function LoginContent() {
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
   const { user, authChecked } = useAuthSession();
 
   useEffect(() => {
@@ -118,6 +120,11 @@ function LoginContent() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
+              {loginNotice ? (
+                <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  {loginNotice.message}
+                </div>
+              ) : null}
               <input
                 type="text"
                 required
@@ -150,7 +157,7 @@ function LoginContent() {
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
-              {error ? <p className="text-xs text-red-600">{error}</p> : null}
+              {error && !loginNotice ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 
             <div className="mt-4 flex items-center justify-between text-xs">

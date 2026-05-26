@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Briefcase, Lock, Phone, Store, UserCircle } from 'lucide-react';
+import { getOwnerRegistrationSuccessState } from '@/lib/auth/owner-registration';
 
 type OwnerRegisterResult = {
   error?: string;
+  message?: string;
+  nextUrl?: string;
+  requiresApproval?: boolean;
 };
 
 export default function RegisterOwnerPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     id: '',
     password: '',
@@ -22,6 +24,7 @@ export default function RegisterOwnerPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<ReturnType<typeof getOwnerRegistrationSuccessState> | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -54,8 +57,7 @@ export default function RegisterOwnerPage() {
         return;
       }
 
-      // 승인 대기 성공 페이지로 직접 이동 처리
-      router.replace('/auth/register-owner/success');
+      setSuccess(getOwnerRegistrationSuccessState(result));
     } finally {
       setLoading(false);
     }
@@ -65,11 +67,37 @@ export default function RegisterOwnerPage() {
     setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
 
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+          <div className="mb-6 text-center">
+            <Link href="/" className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-600">
+              <span className="text-xl font-black text-white">힐</span>
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-800">입점 신청이 접수되었습니다</h1>
+            <p className="mt-3 text-sm leading-6 text-gray-600">{success.message}</p>
+            <p className="mt-2 text-sm text-gray-500">관리자 승인 후 로그인하시면 업체 등록과 관리 화면을 이용할 수 있습니다.</p>
+          </div>
+
+          <div className="space-y-3">
+            <Link href={success.nextUrl} className="block w-full rounded-lg bg-red-600 py-3 text-center font-bold text-white transition-colors hover:bg-red-700">
+              로그인 페이지로 이동
+            </Link>
+            <Link href="/" className="block text-center text-sm font-medium text-gray-500 hover:text-gray-700">
+              홈으로 돌아가기
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
-          <Link href="/" className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
+          <Link href="/" className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-600">
             <span className="text-xl font-black text-white">힐</span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-800">입점사 회원가입</h1>
@@ -80,7 +108,7 @@ export default function RegisterOwnerPage() {
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">아이디 (이메일)</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">아이디</label>
             <div className="relative">
               <UserCircle className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
@@ -89,8 +117,8 @@ export default function RegisterOwnerPage() {
                 required
                 value={formData.id}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
-                placeholder="example@email.com"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
+                placeholder="아이디 입력"
               />
             </div>
           </div>
@@ -106,7 +134,7 @@ export default function RegisterOwnerPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                   placeholder="••••••••"
                 />
               </div>
@@ -121,7 +149,7 @@ export default function RegisterOwnerPage() {
                   required
                   value={formData.passwordConfirm}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                   placeholder="••••••••"
                 />
               </div>
@@ -138,14 +166,14 @@ export default function RegisterOwnerPage() {
                 required
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                 placeholder="홍길동"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">업체 상호명</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">업체명</label>
             <div className="relative">
               <Store className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
@@ -154,7 +182,7 @@ export default function RegisterOwnerPage() {
                 required
                 value={formData.businessName}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                 placeholder="강남 힐링스파"
               />
             </div>
@@ -170,7 +198,7 @@ export default function RegisterOwnerPage() {
                 required
                 value={formData.businessNumber}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                 placeholder="123-45-67890"
               />
             </div>
@@ -186,24 +214,20 @@ export default function RegisterOwnerPage() {
                 required
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                 placeholder="010-1234-5678"
               />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-6 w-full rounded-lg bg-blue-600 py-3 font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
-          >
-            {loading ? '가입 신청 중...' : '입점사 가입 신청 완료'}
+          <button type="submit" disabled={loading} className="mt-6 w-full rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60">
+            {loading ? '가입 신청 중...' : '회원가입 후 업체등록 진행'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-500">
           이미 계정이 있으신가요?{' '}
-          <Link href="/auth/login" className="font-medium text-blue-600 hover:underline">
+          <Link href="/auth/login" className="font-medium text-red-600 hover:underline">
             로그인
           </Link>
         </div>

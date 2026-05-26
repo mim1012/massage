@@ -20,6 +20,11 @@ export type ResolvedLegalDocument = EditableLegalDocument & {
   sections: LegalSection[];
 };
 
+export type PartnershipContactDetails = {
+  phone: string;
+  kakao: string;
+};
+
 export function parseLegalDocumentBody(body: string): LegalSection[] {
   const normalized = body
     .split('\n')
@@ -327,6 +332,93 @@ export const DEFAULT_LEGAL_DOCUMENTS: Record<LegalDocumentSlug, EditableLegalDoc
     body: buildLegalDocumentBody(PARTNERSHIP_SECTIONS),
   },
 };
+
+function normalizeSectionTitle(title: string) {
+  return title.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function matchesSectionTitle(title: string, keywords: string[]) {
+  const normalized = normalizeSectionTitle(title);
+  return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function getSectionValues(section: LegalSection) {
+  return [...section.paragraphs, ...(section.items ?? [])].map((value) => value.trim()).filter(Boolean);
+}
+
+function findPhoneValue(value: string) {
+  const match = value.match(/\+?\d[\d\s()-]{6,}\d/);
+  return match ? match[0].trim() : null;
+}
+
+function extractSectionValue(sections: LegalSection[], keywords: string[], parser?: (value: string) => string | null) {
+  for (const section of sections) {
+    if (!matchesSectionTitle(section.title, keywords)) {
+      continue;
+    }
+
+    for (const value of getSectionValues(section)) {
+      const parsed = parser ? parser(value) : value;
+      if (parsed) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractPhoneFromSections(sections: LegalSection[]) {
+  const directMatch = extractSectionValue(sections, ['direct call', 'phone', 'tel', 'contact', '전화', '연락처'], findPhoneValue);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const section of sections) {
+    for (const value of getSectionValues(section)) {
+      const parsed = findPhoneValue(value);
+      if (parsed) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractKakaoFromSections(sections: LegalSection[], phoneValue: string | null) {
+  const directMatch = extractSectionValue(sections, ['kakao', '카카오'], (value) => value.trim() || null);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const section of sections) {
+    for (const value of getSectionValues(section)) {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        continue;
+      }
+      if (phoneValue && trimmed === phoneValue) {
+        continue;
+      }
+      if (findPhoneValue(trimmed)) {
+        continue;
+      }
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+export function resolvePartnershipContactDetails(document: Pick<ResolvedLegalDocument, 'sections'>): PartnershipContactDetails {
+  const fallback = resolveLegalDocument('partnership');
+  const fallbackPhone = extractPhoneFromSections(fallback.sections) ?? '010-1234-5678';
+  const fallbackKakao = extractKakaoFromSections(fallback.sections, fallbackPhone) ?? 'healing_help';
+  const phone = extractPhoneFromSections(document.sections) ?? fallbackPhone;
+  const kakao = extractKakaoFromSections(document.sections, phone) ?? fallbackKakao;
+  return { phone, kakao };
+}
 
 export function resolveLegalDocument(
   slug: LegalDocumentSlug,

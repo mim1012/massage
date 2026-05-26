@@ -50,13 +50,22 @@ function StarSelector({ value, onChange }: { value: number; onChange: (value: nu
   );
 }
 
-function ReviewContent({ initialReviews, initialShops }: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
+function ReviewContent({
+  initialReviews,
+  initialShops,
+  initialPage: initialPageFromServer,
+}: {
+  initialReviews: ReviewWithRegion[];
+  initialShops: ShopListItem[];
+  initialPage?: number;
+  initialTotalPages?: number;
+}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
-  const initialPage = normalizePageParam(searchParams.get('page'));
+  const initialPage = normalizePageParam(searchParams.get('page')) || initialPageFromServer || 1;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -511,6 +520,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
+                          title="수정"
                           onClick={() => handleEditClick(review)}
                           className="text-[11px] text-gray-500 hover:text-red-600"
                         >
@@ -519,6 +529,7 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
                         <span className="text-[10px] text-gray-300">|</span>
                         <button
                           type="button"
+                          title="삭제"
                           onClick={() => handleDeleteClick(review.id)}
                           className="text-[11px] text-gray-500 hover:text-red-600"
                         >
@@ -652,7 +663,12 @@ function ReviewContent({ initialReviews, initialShops }: { initialReviews: Revie
   );
 }
 
-export default function ReviewPageClient(props: { initialReviews: ReviewWithRegion[]; initialShops: ShopListItem[] }) {
+export default function ReviewPageClient(props: {
+  initialReviews: ReviewWithRegion[];
+  initialShops: ShopListItem[];
+  initialPage?: number;
+  initialTotalPages?: number;
+}) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <ReviewContent {...props} />

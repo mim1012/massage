@@ -1,7 +1,8 @@
 import { getSessionUser } from '@/lib/auth/guards';
+import { sessionJsonResponse } from '@/lib/security/http';
 
 export async function GET() {
   const user = await getSessionUser();
 
-  return Response.json({ user: user ?? null });
+  return sessionJsonResponse({ user: user ?? null });
 }

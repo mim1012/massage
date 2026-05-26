@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
-import { listManagedReviews, createReview } from '@/lib/server/communityStore';
+import { prisma } from '@/lib/db/prisma';
+import { createReview, listManagedReviews } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
   try {
@@ -31,13 +32,30 @@ export async function POST(request: Request) {
       return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
     }
 
+    const shop = await prisma.shop.findUnique({
+      where: { id: body.shopId.trim() },
+      select: { ownerId: true },
+    });
+
+    if (!shop) {
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    if (user.role !== 'ADMIN' && shop.ownerId !== user.id) {
+      return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
+    }
+
     const review = await createReview({
       shopId: body.shopId.trim(),
+      userId: user.id,
       authorName: body.authorName.trim(),
       rating: body.rating,
       content: body.content,
-      userId: user.id,
     });
+
+    if (!review) {
+      return Response.json({ error: '리뷰를 등록하지 못했습니다.' }, { status: 500 });
+    }
 
     return Response.json({ review }, { status: 201 });
   } catch (error) {

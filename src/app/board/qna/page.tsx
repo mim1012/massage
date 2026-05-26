@@ -1,5 +1,7 @@
 import QnaPageClient from '@/components/public/QnaPageClient';
-import { listQna } from '@/lib/server/communityStore';
+import { getSessionUser } from '@/lib/auth/guards';
+import { normalizePageParam } from '@/lib/pagination';
+import { listPublicQnaPage } from '@/lib/server/communityStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +9,7 @@ type SearchParamValue = string | string[] | undefined;
 
 type PageProps = {
   searchParams?: Promise<{
+    page?: SearchParamValue;
     shopId?: SearchParamValue;
     q?: SearchParamValue;
   }>;
@@ -18,10 +21,17 @@ function pickFirst(value: SearchParamValue) {
 
 export default async function QnaPage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const shopId = pickFirst(resolvedSearchParams?.shopId);
   const search = pickFirst(resolvedSearchParams?.q)?.trim();
 
-  const entries = await listQna({ shopId, search });
+  const viewer = await getSessionUser();
+  const entryPage = await listPublicQnaPage({
+    page,
+    shopId,
+    search,
+    viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
+  });
 
-  return <QnaPageClient initialEntries={entries} />;
+  return <QnaPageClient initialEntries={entryPage.items} initialPage={entryPage.page} initialTotalPages={entryPage.totalPages} />;
 }

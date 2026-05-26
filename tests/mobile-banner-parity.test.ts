@@ -27,11 +27,10 @@ test('top100 page server composition keeps canonical redirect + data loading int
   const top100PageSource = await readProjectFile('src/app/top100/page.tsx');
 
   assert.equal(top100PageSource.includes("import Top100PageClient from '@/components/public/Top100PageClient';"), true);
-  assert.equal(top100PageSource.includes('buildTop100PageData'), true);
-  assert.equal(top100PageSource.includes('listShops'), true);
+  assert.equal(top100PageSource.includes('listTopShops'), true);
   assert.equal(top100PageSource.includes('getDirectoryCanonicalRedirect'), true);
   assert.equal(top100PageSource.includes('parseDirectoryQuery'), true);
-  assert.equal(top100PageSource.includes('<Top100PageClient initialShops={buildTop100PageData(shopResponse)} />'), true);
+  assert.equal(top100PageSource.includes('<Top100PageClient initialShops={shops} />'), true);
 });
 
 test('home client keeps mobile region chips before premium cards and mobile banner rail after the list', async () => {

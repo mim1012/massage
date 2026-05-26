@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Search, Star, Trash2, Pencil, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { MessageSquare, Pencil, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 type ManagedReview = Review & { shopRegionLabel?: string };
-type ShopOption = { id: string; name: string };
-type AdminShopsResponse = { shops?: ShopOption[] };
+
+type ManagedShopOption = {
+  id: string;
+  name: string;
+};
 
 type Props = {
   scope: 'admin' | 'owner';
@@ -24,26 +27,31 @@ const RATING_OPTIONS = [
   { value: '1', label: '1점' },
 ] as const;
 
+const FORM_RATING_OPTIONS = [5, 4, 3, 2, 1] as const;
+
+const EMPTY_FORM = {
+  shopId: '',
+  authorName: '',
+  rating: 5,
+  content: '',
+};
+
 export default function ReviewManagementPage({ scope, initialReviews = [], initialDataLoaded = false }: Props) {
   const [reviews, setReviews] = useState<ManagedReview[]>(initialReviews);
   const [search, setSearch] = useState('');
   const [ratingFilter, setRatingFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!initialDataLoaded && initialReviews.length === 0);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // 등록/수정 모달 관련 상태
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const deletingIdsRef = useRef<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
   const [editingReview, setEditingReview] = useState<ManagedReview | null>(null);
-  const [shops, setShops] = useState<ShopOption[]>([]);
+  const [shops, setShops] = useState<ManagedShopOption[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    shopId: '',
-    authorName: '',
-    rating: 5,
-    content: '',
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+
+  const isDeleting = (id: string) => deletingIdsRef.current.has(id) || deletingIds.includes(id);
 
   useEffect(() => {
     if (initialDataLoaded || initialReviews.length > 0) {
@@ -72,69 +80,84 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
     void load();
   }, [initialDataLoaded, initialReviews]);
 
-  // 모달이 열릴 때 업소 목록 조회 (등록 모드일 때만)
   useEffect(() => {
-    if (!showModal || editingReview || shops.length > 0) return;
+    if (!showModal || editingReview || shops.length > 0) {
+      return;
+    }
 
     const loadShops = async () => {
       setShopsLoading(true);
       try {
-        const response = await fetch('/api/admin/shops');
-        const result = (await response.json()) as AdminShopsResponse;
-        if (response.ok && result.shops) {
-          setShops(result.shops);
+        const response = await fetch('/api/admin/shops', { cache: 'no-store' });
+        const result = (await response.json()) as {
+          shops?: Array<{ id?: string; name?: string }>;
+          error?: string;
+        };
+
+        if (!response.ok || !result.shops) {
+          throw new Error(result.error ?? '업소 목록을 불러오지 못했습니다.');
         }
-      } catch (e) {
-        console.error('Failed to load shops', e);
+
+        setShops(
+          result.shops
+            .filter((shop): shop is { id: string; name: string } => Boolean(shop.id && shop.name))
+            .map((shop) => ({ id: shop.id, name: shop.name })),
+        );
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : '업소 목록을 불러오지 못했습니다.');
       } finally {
         setShopsLoading(false);
       }
     };
 
     void loadShops();
-  }, [showModal, editingReview, shops.length]);
+  }, [editingReview, shops.length, showModal]);
+
+  function resetForm() {
+    setForm(EMPTY_FORM);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    setEditingReview(null);
+    setSubmitting(false);
+    setError(null);
+    resetForm();
+  }
 
   function handleOpenCreateModal() {
     setEditingReview(null);
-    setForm({
-      shopId: '',
-      authorName: '',
-      rating: 5,
-      content: '',
-    });
     setError(null);
+    resetForm();
     setShowModal(true);
   }
 
   function handleOpenEditModal(review: ManagedReview) {
     setEditingReview(review);
+    setError(null);
     setForm({
       shopId: review.shopId,
       authorName: review.authorName,
       rating: review.rating,
       content: review.content,
     });
-    setError(null);
     setShowModal(true);
   }
 
-  function handleCloseModal() {
-    setShowModal(false);
-    setEditingReview(null);
-    setForm({
-      shopId: '',
-      authorName: '',
-      rating: 5,
-      content: '',
-    });
-  }
-
   async function removeReview(id: string) {
-    if (!window.confirm('정말로 이 후기를 삭제하시겠습니까?')) {
+    if (isDeleting(id)) {
       return;
     }
 
-    setDeletingId(id);
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const confirmed = window.confirm('정말로 이 후기를 삭제하시겠습니까?');
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    deletingIdsRef.current.add(id);
+    setDeletingIds((current) => (current.includes(id) ? current : [...current, id]));
     setError(null);
 
     try {
@@ -148,7 +171,8 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
     } finally {
-      setDeletingId(null);
+      deletingIdsRef.current.delete(id);
+      setDeletingIds((current) => current.filter((currentId) => currentId !== id));
     }
   }
 
@@ -159,10 +183,12 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
       setError('업소를 선택해주세요.');
       return;
     }
+
     if (!form.authorName.trim()) {
       setError('작성자 이름을 입력해주세요.');
       return;
     }
+
     if (!form.content.trim()) {
       setError('리뷰 내용을 입력해주세요.');
       return;
@@ -183,16 +209,19 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
           }),
         });
 
-        const result = await response.json();
-        if (!response.ok || !result.review) {
+        const result = (await response.json()) as { review?: ManagedReview; error?: string };
+        const updatedReview = result.review;
+        if (!response.ok || !updatedReview) {
           throw new Error(result.error ?? '리뷰를 수정하지 못했습니다.');
         }
 
         setReviews((current) =>
-          current.map((r) => (r.id === editingReview.id ? { ...r, ...result.review } : r))
+          current.map((review) =>
+            review.id === editingReview.id
+              ? { ...review, ...updatedReview, shopRegionLabel: updatedReview.shopRegionLabel ?? review.shopRegionLabel }
+              : review,
+          ),
         );
-        setShowModal(false);
-        setEditingReview(null);
       } else {
         const response = await fetch('/api/admin/reviews', {
           method: 'POST',
@@ -205,17 +234,18 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
           }),
         });
 
-        const result = await response.json();
-        if (!response.ok || !result.review) {
+        const result = (await response.json()) as { review?: ManagedReview; error?: string };
+        const createdReview = result.review;
+        if (!response.ok || !createdReview) {
           throw new Error(result.error ?? '리뷰를 등록하지 못했습니다.');
         }
 
-        setReviews((current) => [result.review, ...current]);
-        setShowModal(false);
+        setReviews((current) => [createdReview, ...current]);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '요청 처리에 실패했습니다.');
-    } finally {
+
+      closeModal();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '요청 처리에 실패했습니다.');
       setSubmitting(false);
     }
   }
@@ -257,9 +287,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
             <Plus className="h-3.5 w-3.5" />
             리뷰 등록
           </button>
-          <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
-            검색 결과 {filteredReviews.length}건 / 전체 {reviews.length}건
-          </div>
+          <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filteredReviews.length}건 / 전체 {reviews.length}건</div>
         </div>
       </div>
 
@@ -291,11 +319,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
         </select>
       </div>
 
-      {error && !showModal ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
-        </div>
-      ) : null}
+      {error && !showModal ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
       <div className="divide-y divide-gray-100 overflow-hidden rounded border border-gray-200 bg-white">
         {loading ? <div className="p-6 text-center text-sm text-gray-400">리뷰 목록을 불러오는 중입니다.</div> : null}
@@ -307,17 +331,13 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                   <span className="text-sm font-bold text-gray-800">{review.authorName}</span>
                   <span className="text-xs text-red-500">{review.shopName}</span>
                   {review.shopRegionLabel ? (
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
-                      {review.shopRegionLabel}
-                    </span>
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">{review.shopRegionLabel}</span>
                   ) : null}
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((score) => (
                       <Star
                         key={score}
-                        className={`h-3 w-3 ${
-                          score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'
-                        }`}
+                        className={`h-3 w-3 ${score <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
                       />
                     ))}
                   </div>
@@ -335,7 +355,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 </button>
                 <button
                   onClick={() => void removeReview(review.id)}
-                  disabled={deletingId === review.id}
+                  disabled={isDeleting(review.id)}
                   className="rounded border border-red-200 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   title="삭제"
                 >
@@ -359,21 +379,15 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
-              <h2 className="text-lg font-black text-gray-800">
-                {editingReview ? '리뷰 수정' : '리뷰 등록'}
-              </h2>
-              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+              <h2 className="text-lg font-black text-gray-800">{editingReview ? '리뷰 수정' : '리뷰 등록'}</h2>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600" title="닫기">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {error ? (
-              <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                {error}
-              </div>
-            ) : null}
+            {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div> : null}
 
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
+            <form onSubmit={(event) => void handleSubmit(event)} className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-bold text-gray-600">
                   대상 업소 <span className="text-red-500">*</span>
@@ -388,14 +402,14 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 ) : (
                   <select
                     value={form.shopId}
-                    onChange={(e) => setForm((c) => ({ ...c, shopId: e.target.value }))}
-                    disabled={shopsLoading}
+                    onChange={(event) => setForm((current) => ({ ...current, shopId: event.target.value }))}
+                    disabled={shopsLoading || submitting}
                     className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-500 disabled:opacity-60"
                   >
-                    <option value="">업소를 선택해주세요</option>
-                    {shops.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
+                    <option value="">{shopsLoading ? '업소 목록을 불러오는 중입니다.' : '업소를 선택해주세요'}</option>
+                    {shops.map((shop) => (
+                      <option key={shop.id} value={shop.id}>
+                        {shop.name}
                       </option>
                     ))}
                   </select>
@@ -409,7 +423,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 <input
                   type="text"
                   value={form.authorName}
-                  onChange={(e) => setForm((c) => ({ ...c, authorName: e.target.value }))}
+                  onChange={(event) => setForm((current) => ({ ...current, authorName: event.target.value }))}
                   placeholder="작성자 닉네임 또는 이름"
                   className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
                 />
@@ -421,14 +435,14 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 </label>
                 <select
                   value={form.rating}
-                  onChange={(e) => setForm((c) => ({ ...c, rating: Number(e.target.value) }))}
+                  onChange={(event) => setForm((current) => ({ ...current, rating: Number(event.target.value) }))}
                   className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
                 >
-                  <option value={5}>⭐ 5점</option>
-                  <option value={4}>⭐ 4점</option>
-                  <option value={3}>⭐ 3점</option>
-                  <option value={2}>⭐ 2점</option>
-                  <option value={1}>⭐ 1점</option>
+                  {FORM_RATING_OPTIONS.map((score) => (
+                    <option key={score} value={score}>
+                      ⭐ {score}점
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -439,7 +453,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 <textarea
                   rows={4}
                   value={form.content}
-                  onChange={(e) => setForm((c) => ({ ...c, content: e.target.value }))}
+                  onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
                   placeholder="리뷰 내용을 성실히 남겨주세요."
                   className="w-full resize-none rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
                 />
@@ -448,14 +462,15 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 rounded bg-gray-100 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200"
+                  onClick={closeModal}
+                  disabled={submitting}
+                  className="flex-1 rounded bg-gray-100 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200 disabled:opacity-60"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || (!editingReview && shopsLoading)}
                   className="flex-1 rounded bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
                 >
                   {submitting ? '저장 중...' : '저장'}

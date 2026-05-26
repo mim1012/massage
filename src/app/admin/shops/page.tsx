@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Edit2, Plus, Search, Store } from 'lucide-react';
 import clsx from 'clsx';
@@ -13,6 +13,8 @@ export default function AdminShopsPage() {
   const [regionFilter, setRegionFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingShopIds, setPendingShopIds] = useState<string[]>([]);
+  const pendingShopIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     void loadShops();
@@ -38,7 +40,15 @@ export default function AdminShopsPage() {
     }
   }
 
+  const isPending = (shopId: string) => pendingShopIdsRef.current.has(shopId) || pendingShopIds.includes(shopId);
+
   async function toggleVisibility(shop: AdminShopListItem) {
+    if (isPending(shop.id)) {
+      return;
+    }
+
+    pendingShopIdsRef.current.add(shop.id);
+    setPendingShopIds((current) => (current.includes(shop.id) ? current : [...current, shop.id]));
     setError(null);
 
     try {
@@ -56,10 +66,19 @@ export default function AdminShopsPage() {
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : '업소 노출 상태를 변경하지 못했습니다.');
       console.error(updateError);
+    } finally {
+      pendingShopIdsRef.current.delete(shop.id);
+      setPendingShopIds((current) => current.filter((id) => id !== shop.id));
     }
   }
 
   async function togglePremium(shop: AdminShopListItem) {
+    if (isPending(shop.id)) {
+      return;
+    }
+
+    pendingShopIdsRef.current.add(shop.id);
+    setPendingShopIds((current) => (current.includes(shop.id) ? current : [...current, shop.id]));
     setError(null);
 
     try {
@@ -80,11 +99,17 @@ export default function AdminShopsPage() {
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : '프리미엄 상태를 변경하지 못했습니다.');
       console.error(updateError);
+    } finally {
+      pendingShopIdsRef.current.delete(shop.id);
+      setPendingShopIds((current) => current.filter((id) => id !== shop.id));
     }
   }
 
   async function updatePremiumOrder(shop: AdminShopListItem, order: number) {
-    if (shop.premiumOrder === order) return;
+    if (shop.premiumOrder === order || isPending(shop.id)) return;
+
+    pendingShopIdsRef.current.add(shop.id);
+    setPendingShopIds((current) => (current.includes(shop.id) ? current : [...current, shop.id]));
     setError(null);
 
     try {
@@ -101,6 +126,9 @@ export default function AdminShopsPage() {
     } catch (updateError) {
       setError('프리미엄 순서를 변경하지 못했습니다.');
       console.error(updateError);
+    } finally {
+      pendingShopIdsRef.current.delete(shop.id);
+      setPendingShopIds((current) => current.filter((id) => id !== shop.id));
     }
   }
 
@@ -181,6 +209,7 @@ export default function AdminShopsPage() {
                     <td data-label="노출" className="px-4 py-2 text-center">
                       <button
                         onClick={() => void toggleVisibility(shop)}
+                        disabled={isPending(shop.id)}
                         className={clsx('toggle-switch inline-block', shop.isVisible ? 'on' : 'off')}
                         title={shop.isVisible ? '노출 중 (클릭하여 숨김)' : '숨김 (클릭하여 노출)'}
                       >
@@ -199,6 +228,7 @@ export default function AdminShopsPage() {
                       <div className="flex flex-col items-center gap-1">
                         <button
                           onClick={() => void togglePremium(shop)}
+                          disabled={isPending(shop.id)}
                           className={clsx(
                             'rounded p-1 text-white transition-colors',
                             shop.isPremium ? 'bg-amber-500' : 'bg-gray-300 hover:bg-gray-400',
@@ -212,6 +242,7 @@ export default function AdminShopsPage() {
                             type="number"
                             defaultValue={shop.premiumOrder ?? 0}
                             onBlur={(e) => updatePremiumOrder(shop, parseInt(e.target.value))}
+                            disabled={isPending(shop.id)}
                             className="w-10 rounded border border-amber-200 bg-amber-50 text-center text-[10px] font-bold text-amber-700 outline-none focus:border-amber-500"
                             title="노출 순서 (낮을수록 먼저 노출)"
                           />

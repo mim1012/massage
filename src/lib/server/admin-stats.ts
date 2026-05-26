@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 
 export type AdminStatsData = {
@@ -38,6 +39,16 @@ function getKstStartOfMonth(baseDate = new Date()) {
   return new Date(utcMonthStart - KST_OFFSET_MS);
 }
 
+async function countDistinctSessionsSince(startDate: Date) {
+  const [result] = await prisma.$queryRaw<Array<{ count: bigint | number }>>(Prisma.sql`
+    SELECT COUNT(DISTINCT "session_id")::bigint AS "count"
+    FROM "page_view_events"
+    WHERE "created_at" >= ${startDate}
+  `);
+
+  return Number(result?.count ?? 0);
+}
+
 export async function getAdminStatsData(): Promise<AdminStatsData> {
   const startOfTodayKst = getKstStartOfDay();
   const startOfMonthKst = getKstStartOfMonth();
@@ -50,18 +61,8 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
   try {
     const [todayVisitors, monthlyVisitors, totalPageViews, topShopViewCounts] = await Promise.all([
-      prisma.pageViewEvent.groupBy({
-        by: ['sessionId'],
-        where: {
-          createdAt: { gte: startOfTodayKst },
-        },
-      }),
-      prisma.pageViewEvent.groupBy({
-        by: ['sessionId'],
-        where: {
-          createdAt: { gte: startOfMonthKst },
-        },
-      }),
+      countDistinctSessionsSince(startOfTodayKst),
+      countDistinctSessionsSince(startOfMonthKst),
       prisma.pageViewEvent.count(),
       prisma.pageViewEvent.groupBy({
         by: ['shopId'],
@@ -99,8 +100,8 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     return {
       summary: [
-        { label: '오늘 방문자', value: todayVisitors.length, helperText: '전월 대비 +12%' },
-        { label: '이번 달 방문자', value: monthlyVisitors.length, helperText: '전월 대비 +8%' },
+        { label: '오늘 방문자', value: todayVisitors, helperText: '전월 대비 +12%' },
+        { label: '이번 달 방문자', value: monthlyVisitors, helperText: '전월 대비 +8%' },
         { label: '총 페이지뷰', value: totalPageViews, helperText: '전월 대비 +21%' },
         { label: '오늘 회원가입', value: todaySignups, helperText: '전월 대비 -4%' },
       ],

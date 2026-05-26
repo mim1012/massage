@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildLegalDocumentBody, DEFAULT_LEGAL_DOCUMENTS, parseLegalDocumentBody, resolveLegalDocument } from '@/lib/legal-documents';
+import {
+  buildLegalDocumentBody,
+  DEFAULT_LEGAL_DOCUMENTS,
+  parseLegalDocumentBody,
+  resolveLegalDocument,
+  resolvePartnershipContactDetails,
+} from '@/lib/legal-documents';
 import { createCachedLegalDocumentGetter } from '@/lib/server/public-legal-documents';
 
 
@@ -62,6 +68,23 @@ test('default legal documents include youth, ad, and mobile pages and resolve fa
   assert.equal(mobile.slug, 'mobile');
   assert.equal(mobile.title, '모바일웹 안내');
   assert.ok(mobile.sections.length > 0);
+});
+
+test('resolvePartnershipContactDetails reads saved phone and kakao values without requiring exact default headings', () => {
+  const document = resolveLegalDocument('partnership', {
+    body: [
+      '## 대표 연락처',
+      '- 02-123-4567',
+      '',
+      '## 상담 채널',
+      '- healing_partner',
+    ].join('\n'),
+  });
+
+  assert.deepEqual(resolvePartnershipContactDetails(document), {
+    phone: '02-123-4567',
+    kakao: 'healing_partner',
+  });
 });
 
 

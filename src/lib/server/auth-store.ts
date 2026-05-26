@@ -15,6 +15,12 @@ type UserWithProfile = DbUser & {
   ownerProfile: OwnerProfile | null;
 };
 
+type SessionPayload = {
+  userId: string;
+  expiresAt: number;
+  sessionVersion: number;
+};
+
 function normalizeEmail(email: string) {
   const trimmed = email.trim().toLowerCase();
   if (trimmed && !trimmed.includes('@')) {
@@ -66,9 +72,9 @@ function sanitizeUser(user: UserWithProfile): User {
   };
 }
 
-function signSessionPayload(userId: string, expiresAt: number) {
+function signSessionPayload(userId: string, expiresAt: number, sessionVersion: number) {
   const sessionSecret = getSigningSecret();
-  const payload = Buffer.from(JSON.stringify({ userId, expiresAt })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ userId, expiresAt, sessionVersion })).toString('base64url');
   const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
@@ -95,12 +101,14 @@ function readSessionPayload(token: string) {
       !parsed.userId ||
       typeof parsed.userId !== 'string' ||
       typeof parsed.expiresAt !== 'number' ||
+      !Number.isInteger(parsed.sessionVersion) ||
+      parsed.sessionVersion < 0 ||
       parsed.expiresAt <= Date.now()
     ) {
       return null;
     }
 
-    return parsed as { userId: string; expiresAt: number };
+    return parsed as SessionPayload;
   } catch {
     return null;
   }
@@ -182,12 +190,32 @@ export async function registerOwner(input: {
   }
 }
 
-export function createSession(userId: string) {
-  return signSessionPayload(userId, Date.now() + SESSION_TTL_MS);
+export function createSession(userId: string, sessionVersion = 0) {
+  return signSessionPayload(userId, Date.now() + SESSION_TTL_MS, sessionVersion);
 }
 
-export async function deleteSession() {
-  return;
+export async function deleteSession(token: string | undefined) {
+  if (!token) {
+    return;
+  }
+
+  const payload = readSessionPayload(token);
+  if (!payload) {
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: payload.userId },
+      data: {
+        sessionVersion: {
+          increment: 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to revoke session:', error);
+  }
 }
 
 export async function getUserBySessionToken(token: string | undefined) {
@@ -210,6 +238,10 @@ export async function getUserBySessionToken(token: string | undefined) {
       return null;
     }
 
+    if (user.sessionVersion !== payload.sessionVersion) {
+      return null;
+    }
+
     return sanitizeUser(user);
   } catch (error) {
     console.error('Error in getUserBySessionToken:', error);
@@ -229,7 +261,7 @@ export async function login(input: { email: string; password: string }) {
 
     return {
       user: sanitizeUser(user),
-      token: createSession(user.id),
+      token: createSession(user.id, user.sessionVersion),
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : '';

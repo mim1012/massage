@@ -4,7 +4,7 @@ import { deleteSession } from '@/lib/server/auth-store';
 export async function POST() {
   const token = await getSessionCookie();
   if (token) {
-    await deleteSession();
+    await deleteSession(token);
   }
 
   await clearSessionCookie();

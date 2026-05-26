@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Crown, Search, X, Save, CheckCircle2 } from 'lucide-react';
 import { REGIONS } from '@/lib/catalog';
 import clsx from 'clsx';
@@ -14,29 +14,46 @@ interface Shop {
   premiumOrder?: number;
 }
 
+function isIgnorableShopFetchError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export default function PremiumManagementPage() {
   const [selectedRegion, setSelectedRegion] = useState('seoul');
   const [premiumShops, setPremiumShops] = useState<Shop[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Shop[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const saveInFlightRef = useRef(false);
 
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadPremiumShops = async () => {
-      const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
-      const data = await res.json();
-      const shops = (data.shops || []) as Shop[];
-      setPremiumShops(
-        shops
-          .filter((s) => s.isPremium)
-          .sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999))
-          .slice(0, 4),
-      );
+      try {
+        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`, { signal: controller.signal });
+        const data = await res.json();
+        const shops = (data.shops || []) as Shop[];
+        setPremiumShops(
+          shops
+            .filter((s) => s.isPremium)
+            .sort((a, b) => (a.premiumOrder ?? 999) - (b.premiumOrder ?? 999))
+            .slice(0, 4),
+        );
+      } catch (error) {
+        if (!isIgnorableShopFetchError(error)) {
+          console.error(error);
+        }
+      }
     };
 
     void loadPremiumShops();
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedRegion]);
 
   const handleDragStart = (idx: number) => {
@@ -65,18 +82,26 @@ export default function PremiumManagementPage() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadCandidates = async () => {
       try {
-        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
+        const res = await fetch(`/api/admin/shops?region=${selectedRegion}`, { signal: controller.signal });
         const data = await res.json();
         const shops = (data.shops || []) as Shop[];
         // Filter out shops that are already in the premium slots
         setSearchResults(shops.filter((s) => !premiumShops.some((p) => p.id === s.id)));
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        if (!isIgnorableShopFetchError(error)) {
+          console.error(error);
+        }
       }
     };
     void loadCandidates();
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedRegion, premiumShops]);
 
   async function handleSearch() {
@@ -106,6 +131,11 @@ export default function PremiumManagementPage() {
   }
 
   async function saveChanges() {
+    if (saveInFlightRef.current) {
+      return;
+    }
+
+    saveInFlightRef.current = true;
     setSaveStatus('saving');
     try {
       const res = await fetch(`/api/admin/shops?region=${selectedRegion}`);
@@ -134,6 +164,8 @@ export default function PremiumManagementPage() {
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch {
       setSaveStatus('error');
+    } finally {
+      saveInFlightRef.current = false;
     }
   }
 

@@ -9,15 +9,7 @@ import ShopCard from '@/components/ShopCard';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref, getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
 import { buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
-import { buildTop100PageData } from '@/lib/public-page-data';
 import type { ShopListItem } from '@/lib/types';
-
-type ShopListResponse = {
-  allShops: ShopListItem[];
-  premiumShops: ShopListItem[];
-  regularShops: ShopListItem[];
-  total: number;
-};
 
 export default function Top100PageClient({ initialShops }: { initialShops: ShopListItem[] }) {
   const searchParams = useSearchParams();
@@ -42,22 +34,15 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
     });
 
     try {
-      const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
-      const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
+      const response = await fetch(`/api/shops/top?${params.toString()}`, { cache: 'no-store' });
+      const result = (await response.json()) as ShopListItem[];
 
       if (!response.ok) {
         setShops([]);
         return;
       }
 
-      setShops(
-        buildTop100PageData({
-          allShops: result.allShops ?? [],
-          premiumShops: result.premiumShops ?? [],
-          regularShops: result.regularShops ?? [],
-          total: result.total ?? (result.allShops ?? []).length,
-        }),
-      );
+      setShops(result);
     } catch {
       setShops([]);
     } finally {

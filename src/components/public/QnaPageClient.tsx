@@ -1,10 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
-import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronDown, ChevronRight, ChevronUp, Plus, X } from 'lucide-react';
 import type { QnA, QnAComment, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -26,12 +25,19 @@ function getPrimaryAnswer(entry: QnA) {
   return entry.answer?.trim() || null;
 }
 
-function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
+function QnaContent({
+  initialEntries,
+  initialPage,
+  initialTotalPages,
+}: {
+  initialEntries: QnA[];
+  initialPage: number;
+  initialTotalPages: number;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const shopId = searchParams.get('shopId');
   const query = searchParams.get('q')?.trim() ?? '';
-  const initialPage = normalizePageParam(searchParams.get('page'));
 
   const [entries, setEntries] = useState<QnA[]>(initialEntries);
   const [user, setUser] = useState<User | null>(null);
@@ -44,13 +50,15 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const didInitPaginationReset = useRef(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState('');
+  const didInitPaginationReset = useRef(false);
 
   useEffect(() => {
     setEntries(initialEntries);
     setCurrentPage(initialPage);
+    setEditingId(null);
+    setEditingQuestion('');
   }, [initialEntries, initialPage]);
 
   useEffect(() => {
@@ -85,21 +93,9 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
     };
   }, []);
 
-  const filteredEntries = useMemo(() => {
-    const normalized = query.toLowerCase();
-    if (!normalized) {
-      return entries;
-    }
-
-    return entries.filter((entry) => {
-      const primaryAnswer = getPrimaryAnswer(entry) ?? '';
-      return [entry.question, entry.authorName, primaryAnswer].some((value) => value.toLowerCase().includes(normalized));
-    });
-  }, [entries, query]);
-
-  const QNA_PAGE_SIZE = 30;
-  const totalPages = getTotalPages(filteredEntries.length, QNA_PAGE_SIZE);
-  const visibleEntries = useMemo(() => paginateItems(filteredEntries, currentPage, QNA_PAGE_SIZE), [currentPage, filteredEntries]);
+  const filteredEntries = entries;
+  const totalPages = initialTotalPages;
+  const visibleEntries = entries;
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -151,14 +147,16 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
       setOpenId(result.qna.id);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '질문을 등록하지 못했습니다.');
-      console.error(submitError);
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleUpdate(id: string) {
-    if (!editingQuestion.trim()) return;
+    if (!editingQuestion.trim()) {
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -168,25 +166,46 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
         body: JSON.stringify({ question: editingQuestion }),
       });
       const result = (await response.json()) as { qna?: QnA; error?: string };
-      if (!response.ok || !result.qna) throw new Error(result.error ?? '수정 실패');
-      setEntries((current) => current.map((q) => (q.id === id ? (result.qna as QnA) : q)));
+      if (!response.ok || !result.qna) {
+        throw new Error(result.error ?? '질문을 수정하지 못했습니다.');
+      }
+
+      setEntries((current) => current.map((entry) => (entry.id === id ? result.qna ?? entry : entry)));
       setEditingId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '수정에 실패했습니다.');
+      setEditingQuestion('');
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : '질문을 수정하지 못했습니다.');
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleDelete(id: string) {
+    if (typeof window !== 'undefined' && !window.confirm('질문을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setSubmitting(true);
     setError(null);
     try {
       const response = await fetch(`/api/board/qna/${id}`, { method: 'DELETE' });
       const result = (await response.json()) as { success?: boolean; error?: string };
-      if (!response.ok || !result.success) throw new Error(result.error ?? '삭제 실패');
-      setEntries((current) => current.filter((q) => q.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '삭제에 실패했습니다.');
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? '질문을 삭제하지 못했습니다.');
+      }
+
+      setEntries((current) => current.filter((entry) => entry.id !== id));
+      if (openId === id) {
+        setOpenId(null);
+      }
+      if (editingId === id) {
+        setEditingId(null);
+        setEditingQuestion('');
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '질문을 삭제하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -276,20 +295,23 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
         ) : (
           visibleEntries.map((entry, idx) => {
             const answer = getPrimaryAnswer(entry);
-            const canManage = user && (user.id === entry.userId || user.role === 'ADMIN');
+            const canManage = Boolean(entry.canManage);
             return (
               <div key={entry.id} className={idx < visibleEntries.length - 1 ? 'border-b border-gray-100' : ''}>
                 {editingId === entry.id ? (
-                  <div className="p-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-3 space-y-2">
                     <textarea
                       value={editingQuestion}
-                      onChange={(e) => setEditingQuestion(e.target.value)}
-                      className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+                      onChange={(event) => setEditingQuestion(event.target.value)}
                       rows={3}
+                      className="w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500"
                     />
-                    <div className="mt-2 flex justify-end gap-1.5">
+                    <div className="flex justify-end gap-1.5">
                       <button
-                        onClick={() => setEditingId(null)}
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingQuestion('');
+                        }}
                         className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
                       >
                         취소
@@ -299,15 +321,24 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
                         disabled={submitting}
                         className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
                       >
-                        저장
+                        {submitting ? '저장 중' : '저장'}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <>
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={openId === entry.id}
                       onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
-                      className="w-full text-left transition-all hover:bg-gray-50 cursor-pointer"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setOpenId(openId === entry.id ? null : entry.id);
+                        }
+                      }}
+                      className="w-full cursor-pointer text-left transition-all hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                     >
                       <div className="flex items-start justify-between p-3">
                         <div className="flex min-w-0 items-start gap-2 flex-1">
@@ -320,37 +351,37 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-gray-700">Q. {entry.question}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
                               <span>{entry.authorName}</span>
                               <span>·</span>
                               <span>{formatDate(entry.createdAt)}</span>
-                              {canManage && (
+                              {canManage ? (
                                 <>
                                   <span>·</span>
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
                                       setEditingId(entry.id);
                                       setEditingQuestion(entry.question);
                                     }}
-                                    className="font-bold text-blue-600 hover:underline animate-pulse"
+                                    className="font-bold text-blue-600 hover:underline"
                                   >
                                     수정
                                   </button>
                                   <span>·</span>
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (confirm('질문을 삭제하시겠습니까?')) {
-                                        void handleDelete(entry.id);
-                                      }
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void handleDelete(entry.id);
                                     }}
                                     className="font-bold text-red-600 hover:underline"
                                   >
                                     삭제
                                   </button>
                                 </>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -387,7 +418,7 @@ function QnaContent({ initialEntries }: { initialEntries: QnA[] }) {
   );
 }
 
-export default function QnaPageClient(props: { initialEntries: QnA[] }) {
+export default function QnaPageClient(props: { initialEntries: QnA[]; initialPage: number; initialTotalPages: number }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
       <QnaContent {...props} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Edit2, Pin, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -15,6 +15,8 @@ export default function AdminNoticePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const deletingIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     void loadNotices();
@@ -84,6 +86,12 @@ export default function AdminNoticePage() {
   }
 
   async function handleDelete(id: string) {
+    if (deletingIdsRef.current.has(id) || deletingIds.includes(id)) {
+      return;
+    }
+
+    deletingIdsRef.current.add(id);
+    setDeletingIds((current) => (current.includes(id) ? current : [...current, id]));
     setError(null);
 
     try {
@@ -97,6 +105,9 @@ export default function AdminNoticePage() {
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : '공지를 삭제하지 못했습니다.');
       console.error(deleteError);
+    } finally {
+      deletingIdsRef.current.delete(id);
+      setDeletingIds((current) => current.filter((currentId) => currentId !== id));
     }
   }
 
@@ -232,7 +243,8 @@ export default function AdminNoticePage() {
                   </button>
                   <button
                     onClick={() => void handleDelete(notice.id)}
-                    className="rounded border border-red-100 p-1.5 text-red-500 hover:bg-red-50"
+                    disabled={deletingIdsRef.current.has(notice.id) || deletingIds.includes(notice.id)}
+                    className="rounded border border-red-100 p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

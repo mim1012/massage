@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
-import { deleteManagedQna, updateQna } from '@/lib/server/communityStore';
 import { prisma } from '@/lib/db/prisma';
+import { deleteManagedQna, updateQna } from '@/lib/server/communityStore';
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -12,14 +12,15 @@ export async function PATCH(request: Request, context: Context) {
     const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
 
-    // Check permissions
     const existing = await prisma.qnA.findUnique({
       where: { id },
       include: { shop: { select: { ownerId: true } } },
     });
+
     if (!existing) {
       return Response.json({ error: 'Q&A를 찾을 수 없습니다.' }, { status: 404 });
     }
+
     if (user.role !== 'ADMIN' && existing.shop?.ownerId !== user.id) {
       return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
@@ -30,6 +31,10 @@ export async function PATCH(request: Request, context: Context) {
     }
 
     const updated = await updateQna(id, { question: body.question.trim() }, { id: user.id, role: user.role });
+    if (!updated) {
+      return Response.json({ error: 'Q&A를 수정하지 못했습니다.' }, { status: 404 });
+    }
+
     return Response.json({ qna: updated });
   } catch (error) {
     return errorResponse(error);
@@ -40,9 +45,9 @@ export async function DELETE(_: Request, context: Context) {
   try {
     const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
+    const deleted = await deleteManagedQna(user, id);
 
-    const success = await deleteManagedQna(user, id);
-    if (!success) {
+    if (!deleted) {
       return Response.json({ error: 'Q&A를 찾을 수 없거나 권한이 없습니다.' }, { status: 404 });
     }
 
