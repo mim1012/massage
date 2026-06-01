@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
+import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import PaginationControls from '@/components/public/PaginationControls';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
@@ -408,6 +409,10 @@ export default function HomePageClient({
             <p className="text-sm leading-relaxed text-gray-600">{initialHomeSeo.section3Content}</p>
           </div>
         </div>
+
+        <aside className="hidden w-[120px] shrink-0 lg:block">
+          <HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />
+        </aside>
       </div>
     </div>
   );
