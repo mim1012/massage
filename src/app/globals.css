@@ -90,7 +90,7 @@ body {
 
 /* 작은 광고 배너 슬롯 */
 .ad-slot {
-  background: linear-gradient(135deg, #f8f8f8, #eee);
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
   border: 1px dashed var(--color-border);
   display: flex;
   align-items: center;
@@ -102,8 +102,8 @@ body {
 
 /* 프리미엄 영역 */
 .premium-box {
-  background: linear-gradient(to bottom, #fff9f0, #ffffff);
-  border: 2px solid #f59e0b;
+  background: linear-gradient(to bottom, var(--portal-premium-top), #ffffff);
+  border: 2px solid var(--portal-premium-border);
   border-radius: 6px;
 }
 
@@ -112,7 +112,7 @@ body {
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
 }
 .banner-item:hover {
-  box-shadow: 0 4px 16px rgba(180, 120, 60, 0.08);
+  box-shadow: 0 10px 25px rgba(30, 64, 175, 0.12);
   border-color: var(--portal-brand);
   transform: translateY(-2px);
 }
@@ -140,14 +140,14 @@ body {
 /* ===== 카드 그리드 반응형 ===== */
 .shop-grid.card-view {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
 }
-@media (max-width: 1024px) {
-  .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
-}
 @media (max-width: 768px) {
-  .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .shop-grid.card-view { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+}
+@media (min-width: 1280px) {
+  .shop-grid.card-view { grid-template-columns: repeat(4, 1fr); }
 }
 
 .shop-grid.list-view {
@@ -221,8 +221,8 @@ body {
 }
 .mobile-premium-center {
   min-height: 86px;
-  border: 2px solid #D4A373;
-  background: linear-gradient(180deg, #D4A373, #A78B71);
+  border: 2px solid #2563eb;
+  background: linear-gradient(180deg, var(--portal-brand), var(--portal-brand-dark));
 }
 .mobile-ad-guide {
   border: 2px solid var(--portal-blue-banner-border);
@@ -230,9 +230,9 @@ body {
   color: #fff;
 }
 .mobile-partnership {
-  border: 2px solid #D4A373;
-  background: #FFF9F0;
-  color: #5F4B32;
+  border: 2px solid var(--color-border);
+  background: var(--portal-brand-soft);
+  color: var(--color-text-primary);
 }
 .mobile-empty-slot {
   min-height: 96px;
