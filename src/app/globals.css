@@ -1,36 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --portal-brand: #D4A373;
-  --portal-brand-hover: #C29262;
-  --portal-brand-dark: #A78B71;
-  --portal-brand-soft: #FEFAE0;
+  --portal-brand: #1E40AF;
+  --portal-brand-hover: #1E3A8A;
+  --portal-brand-dark: #172554;
+  --portal-brand-soft: #EFF6FF;
 
-  --portal-bg: #FCF9F5;
-  --portal-text: #5F4B32;
-  --portal-gnb: #8B9A67;
-  --portal-gnb-hover: #7A8956;
+  --portal-bg: #FFFFFF;
+  --portal-text: #0F172A;
+  --portal-gnb: #0F172A;
+  --portal-gnb-hover: #1E293B;
 
-  --portal-rank: #D97706;
-  --portal-theme: #F59E0B;
-  --portal-support: #4B5563;
+  --portal-rank: #0EA5E9;
+  --portal-theme: #3B82F6;
+  --portal-support: #475569;
 
-  --portal-blue-banner: #183B70;
-  --portal-blue-banner-hover: #1F4A8A;
-  --portal-blue-banner-border: #102A52;
+  --portal-blue-banner: #1E3A8A;
+  --portal-blue-banner-hover: #1E40AF;
+  --portal-blue-banner-border: #2563EB;
 
-  --portal-premium-top: #FFF9F0;
-  --portal-premium-border: #F59E0B;
+  --portal-premium-top: #F8FBFF;
+  --portal-premium-border: #2563EB;
 
-  --color-primary: #D4A373;
-  --color-primary-hover: #C29262;
-  --color-primary-dark: #A78B71;
-  --color-primary-soft: #FEFAE0;
-  --color-bg: #FCF9F5;
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-dark: #1E3A8A;
+  --color-primary-soft: #EFF6FF;
+  --color-bg: #F8FAFC;
   --color-card: #FFFFFF;
-  --color-border: #E5E7EB;
-  --color-text-primary: #1F2937;
-  --color-text-secondary: #6B7280;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
