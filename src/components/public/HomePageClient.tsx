@@ -47,6 +47,23 @@ const themeEmoji: Record<string, string> = {
 
 const REGULAR_PAGE_SIZE = 30;
 
+function formatCoursePrice(price?: string) {
+  if (!price) {
+    return null;
+  }
+
+  const numeric = Number(price.toString().replace(/[^\\d.-]/g, ''));
+  if (!Number.isFinite(numeric)) {
+    return price;
+  }
+
+  return `${numeric.toLocaleString('ko-KR')}원`;
+}
+
+function formatRegionText(regionLabel: string, subRegionLabel?: string) {
+  return [regionLabel, subRegionLabel].filter(Boolean).join(' ');
+}
+
 export default function HomePageClient({
   initialPremiumShops,
   initialRegularShops,
@@ -275,7 +292,7 @@ export default function HomePageClient({
                       <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
                         <span className="flex items-center gap-0.5">
                           <MapPin className="h-3.5 w-3.5 text-[var(--portal-brand)]" />
-                          {shop.regionLabel}
+                          {formatRegionText(shop.regionLabel, shop.subRegionLabel)}
                         </span>
                         <span className="font-medium text-[#D4A373]">#{shop.themeLabel}</span>
                       </div>
@@ -288,7 +305,7 @@ export default function HomePageClient({
                           ))}
                         </div>
                         {shop.courses[0] ? (
-                          <span className="text-sm font-black text-[#D4A373] sm:text-base">{shop.courses[0].price}~</span>
+                          <span className="text-sm font-black text-[#D4A373] sm:text-base">{formatCoursePrice(shop.courses[0].price)}~</span>
                         ) : null}
                       </div>
                     </div>
@@ -307,7 +324,7 @@ export default function HomePageClient({
                   {themeLabel && !searchQuery && ` · ${themeLabel}`}
                 </span>
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
-                  ({(currentPage - 1) * REGULAR_PAGE_SIZE + 1}-{Math.min(currentPage * REGULAR_PAGE_SIZE, regularTotal)} / {regularTotal}개)
+                  ({regularTotal}개)
                 </span>
               </div>
               <div className="flex items-center gap-2">

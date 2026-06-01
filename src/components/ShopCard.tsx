@@ -13,6 +13,23 @@ interface ShopCardProps {
   detailHref?: string;
 }
 
+function formatCoursePrice(price?: string) {
+  if (!price) {
+    return null;
+  }
+
+  const numeric = Number(price.toString().replace(/[^\d.-]/g, ''));
+  if (!Number.isFinite(numeric)) {
+    return price;
+  }
+
+  return `${numeric.toLocaleString('ko-KR')}원`;
+}
+
+function formatRegionText(regionLabel: string, subRegionLabel?: string) {
+  return [regionLabel, subRegionLabel].filter(Boolean).join(' ');
+}
+
 const themeEmoji: Record<string, string> = {
   swedish: '🌿',
   aroma: '🌸',
@@ -63,9 +80,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
 
         <div className="mb-2 flex items-center gap-1 text-xs text-gray-500">
           <MapPin className="h-3 w-3 flex-shrink-0 text-[#D4A373]" />
-          <span className="truncate">
-            {shop.regionLabel} {shop.subRegionLabel}
-          </span>
+          <span className="truncate">{formatRegionText(shop.regionLabel, shop.subRegionLabel)}</span>
         </div>
 
         <div className="mb-2 flex h-[20px] flex-wrap gap-1 overflow-hidden line-clamp-1">
@@ -87,7 +102,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
             <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
           </div>
-          {shop.courses[0] ? <span className="text-xs font-bold text-[#D4A373]">{shop.courses[0].price}~</span> : null}
+          {shop.courses[0] ? <span className="text-xs font-bold text-[#D4A373]">{formatCoursePrice(shop.courses[0].price)}~</span> : null}
         </div>
       </div>
     </Link>
