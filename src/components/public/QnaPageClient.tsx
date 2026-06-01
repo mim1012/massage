@@ -327,17 +327,11 @@ function QnaContent({
                   </div>
                 ) : (
                   <>
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       aria-expanded={openId === entry.id}
+                      aria-controls={`answer-${entry.id}`}
                       onClick={() => setOpenId(openId === entry.id ? null : entry.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          setOpenId(openId === entry.id ? null : entry.id);
-                        }
-                      }}
                       className="w-full cursor-pointer text-left transition-all hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                     >
                       <div className="flex items-start justify-between p-3">
@@ -391,10 +385,10 @@ function QnaContent({
                           <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400" />
                         )}
                       </div>
-                    </div>
+                    </button>
 
                     {openId === entry.id ? (
-                      <div className="px-3 pb-3">
+                      <div id={`answer-${entry.id}`} className="px-3 pb-3">
                         {answer ? (
                           <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-gray-700">
                             <p className="mb-1 text-[11px] font-bold text-red-500">관리자 답변</p>
