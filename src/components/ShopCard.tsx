@@ -1,112 +1,86 @@
 'use client';
 
-import { memo } from 'react';
 import Link from 'next/link';
-import { Star, MapPin } from 'lucide-react';
-import type { ShopListItem } from '@/lib/types';
+import { Star, MapPin, Phone, Crown } from 'lucide-react';
+import { Shop } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
 import clsx from 'clsx';
 
 interface ShopCardProps {
-  shop: ShopListItem;
+  shop: Shop;
   variant?: 'premium' | 'regular';
-  detailHref?: string;
-}
-
-function formatCoursePrice(price?: string) {
-  if (!price) {
-    return null;
-  }
-
-  const numeric = Number(price.toString().replace(/[^\d.-]/g, ''));
-  if (!Number.isFinite(numeric)) {
-    return price;
-  }
-
-  return `${numeric.toLocaleString('ko-KR')}원`;
-}
-
-function formatRegionText(regionLabel: string, subRegionLabel?: string) {
-  return [regionLabel, subRegionLabel].filter(Boolean).join(' ');
 }
 
 const themeEmoji: Record<string, string> = {
-  swedish: '🌿',
-  aroma: '🌸',
-  thai: '🙏',
-  sport: '💪',
-  deep: '🔥',
-  hot_stone: '💎',
-  foot: '🦶',
-  couple: '👫',
+  swedish: '🌿', aroma: '🌸', thai: '🙏', sport: '💪',
+  deep: '🔥', hot_stone: '💎', foot: '🦶', couple: '👫',
 };
 
 const gradients = [
-  'from-orange-100 to-amber-50',
   'from-rose-100 to-pink-50',
-  'from-[#FEFAE0] to-white',
-  'from-yellow-100 to-amber-50',
-  'from-amber-100 to-orange-50',
-  'from-[#FEFAE0] to-[#FCF9F5]',
-  'from-orange-50 to-rose-50',
+  'from-purple-100 to-violet-50',
+  'from-blue-100 to-sky-50',
+  'from-emerald-100 to-teal-50',
+  'from-amber-100 to-yellow-50',
+  'from-cyan-100 to-blue-50',
+  'from-fuchsia-100 to-pink-50',
   'from-lime-100 to-green-50',
 ];
 
-function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
+export default function ShopCard({ shop, variant = 'regular' }: ShopCardProps) {
   const isPremium = variant === 'premium' || shop.isPremium;
-  const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
+  const gIdx = parseInt(shop.id.replace(/\D/g, ''), 10) % gradients.length;
 
   return (
     <Link
-      href={detailHref}
-      prefetch={false}
+      href={`/shop/${shop.slug}`}
       className={clsx(
-        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
-        isPremium ? 'border-amber-400' : 'border-gray-200 border-opacity-70',
+        'banner-item block bg-white border rounded overflow-hidden',
+        isPremium ? 'border-amber-400' : 'border-gray-200'
       )}
     >
-      <div className={clsx('shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br', gradients[gIdx])}>
-        <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
+      {/* 썸네일 */}
+      <div className={clsx(
+        'relative aspect-[4/3] bg-gradient-to-br flex items-center justify-center',
+        gradients[gIdx]
+      )}>
+        <span className="text-3xl opacity-60">
           {themeEmoji[shop.theme] ?? '✨'}
         </span>
+        {isPremium && (
+          <div className="absolute top-0 left-0 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-br flex items-center gap-0.5">
+            <Crown className="w-2.5 h-2.5" />AD
+          </div>
+        )}
+        {/* 평점 */}
+        <div className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5">
+          <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+          {formatRating(shop.rating)}
+        </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col p-3">
-        <div className="mb-1 flex items-start justify-between gap-1">
-          <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{shop.name}</h3>
-          {isPremium ? (
-            <span className="shrink-0 rounded bg-amber-500 px-1 py-0.5 text-[9px] font-black text-white">AD</span>
-          ) : null}
-        </div>
 
-        <div className="mb-2 flex items-center gap-1 text-xs text-gray-500">
-          <MapPin className="h-3 w-3 flex-shrink-0 text-[#D4A373]" />
-          <span className="truncate">{formatRegionText(shop.regionLabel, shop.subRegionLabel)}</span>
-        </div>
-
-        <div className="mb-2 flex h-[20px] flex-wrap gap-1 overflow-hidden line-clamp-1">
-          <span className="shrink-0 rounded border border-[#D4A373]/20 bg-[#FEFAE0] px-1.5 py-0.5 text-[10px] font-medium text-[#D4A373]">
+      {/* 정보 */}
+      <div className="p-1.5">
+        <h3 className="text-xs font-bold text-gray-900 line-clamp-1 leading-tight mb-0.5">
+          {shop.name}
+        </h3>
+        <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mb-1">
+          {shop.tagline}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-red-600 flex items-center gap-0.5">
+            <MapPin className="w-2.5 h-2.5" />{shop.regionLabel}
+          </span>
+          <span className="text-[10px] text-gray-400">
             #{shop.themeLabel}
           </span>
-          {shop.tags.slice(0, 2).map((tag, index) => (
-            <span
-              key={`${tag}-${index}`}
-              className="shrink-0 rounded border border-gray-100 bg-gray-50 px-1.5 py-0.5 text-[10px] text-gray-500"
-            >
-              {tag}
-            </span>
-          ))}
         </div>
-
-        <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2">
-          <div className="flex items-center gap-1 text-xs">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
+        {shop.courses.length > 0 && (
+          <div className="mt-1 pt-1 border-t border-gray-100 text-right">
+            <span className="text-[11px] font-bold text-red-600">{shop.courses[0].price}~</span>
           </div>
-          {shop.courses[0] ? <span className="text-xs font-bold text-[#D4A373]">{formatCoursePrice(shop.courses[0].price)}~</span> : null}
-        </div>
+        )}
       </div>
     </Link>
   );
 }
-
-export default memo(ShopCard);

@@ -1,49 +1,8 @@
 @import "tailwindcss";
 
-:root {
-  --portal-brand: #1E40AF;
-  --portal-brand-hover: #1E3A8A;
-  --portal-brand-dark: #172554;
-  --portal-brand-soft: #EFF6FF;
-
-  --portal-bg: #FFFFFF;
-  --portal-text: #0F172A;
-  --portal-gnb: #0F172A;
-  --portal-gnb-hover: #1E293B;
-
-  --portal-rank: #0EA5E9;
-  --portal-theme: #3B82F6;
-  --portal-support: #475569;
-
-  --portal-blue-banner: #1E3A8A;
-  --portal-blue-banner-hover: #1E40AF;
-  --portal-blue-banner-border: #2563EB;
-
-  --portal-premium-top: #F8FBFF;
-  --portal-premium-border: #2563EB;
-
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-primary-dark: #1E3A8A;
-  --color-primary-soft: #EFF6FF;
-  --color-bg: #F8FAFC;
-  --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
-  --color-premium: #FBBF24;
-}
-
 /* ===== 기본 설정 ===== */
 html { scroll-behavior: smooth; }
-body { 
-  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; 
-  background-color: var(--portal-bg);
-  color: var(--portal-text);
-}
+body { font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; }
 
 /* ===== 스크롤바 ===== */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -79,11 +38,11 @@ body {
   transition: background 0.15s;
 }
 .lnb-menu-item:hover {
-  background: var(--portal-brand-soft);
-  color: var(--portal-brand);
+  background: #fef2f2;
+  color: #dc2626;
 }
 .lnb-menu-item.active {
-  background: var(--portal-brand);
+  background: #dc2626;
   color: #fff;
   font-weight: 700;
 }
@@ -91,11 +50,11 @@ body {
 /* 작은 광고 배너 슬롯 */
 .ad-slot {
   background: linear-gradient(135deg, #f8f8f8, #eee);
-  border: 1px dashed var(--color-border);
+  border: 1px dashed #ccc;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-secondary);
+  color: #999;
   font-size: 11px;
   border-radius: 4px;
 }
@@ -109,225 +68,11 @@ body {
 
 /* 배너 아이템 호버 */
 .banner-item {
-  transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 .banner-item:hover {
-  box-shadow: 0 4px 16px rgba(180, 120, 60, 0.08);
-  border-color: var(--portal-brand);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  border-color: #dc2626;
 }
 
-::selection { background: color-mix(in srgb, var(--portal-brand) 20%, transparent); }
-
-/* ===== 프리미엄 배너 고정 비율 (1200x600 → 2:1) ===== */
-.premium-banner-img {
-  aspect-ratio: 2 / 1;
-  object-fit: cover;
-  width: 100%;
-  border-radius: 6px;
-}
-
-/* ===== 카드형 리스트 (600x600 → 1:1) ===== */
-.shop-card-img {
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  width: 100%;
-}
-@media (max-width: 768px) {
-  .card-view .shop-card-img { height: 120px; aspect-ratio: auto; }
-}
-
-/* ===== 카드 그리드 반응형 ===== */
-.shop-grid.card-view {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-@media (max-width: 1024px) {
-  .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
-}
-@media (max-width: 768px) {
-  .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-}
-
-.shop-grid.list-view {
-  display: flex !important;
-  flex-direction: column;
-  gap: 12px;
-}
-.list-view .shop-card {
-  flex-direction: row;
-}
-.list-view .shop-card-img {
-  width: 140px;
-  height: 100%;
-  aspect-ratio: auto;
-}
-@media (max-width: 768px) {
-  .list-view .shop-card-img { width: 100px; height: auto; min-height: 100px; }
-}
-
-/* ===== 프리미엄 배너 그리드 ===== */
-.premium-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-@media (max-width: 768px) {
-  .premium-grid { grid-template-columns: 1fr; }
-}
-
-.premium-shop-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-.premium-shop-media {
-  width: 144px;
-  border-right-width: 1px;
-}
-@media (min-width: 1200px) {
-  .premium-shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .premium-shop-media { width: 224px; }
-}
-@media (max-width: 1024px) {
-  .premium-shop-grid { grid-template-columns: 1fr; }
-  .premium-shop-card { flex-direction: column; }
-  .premium-shop-media {
-    aspect-ratio: 16 / 9 !important;
-    width: 100%;
-    border-right-width: 0;
-    border-bottom-width: 1px;
-  }
-}
-
-/* ===== 모바일 배너 레일 ===== */
-.mobile-banner-rail {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-.mobile-banner-card {
-  display: flex;
-  min-height: 74px;
-  width: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 8px;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-}
-.mobile-premium-center {
-  min-height: 86px;
-  border: 2px solid #D4A373;
-  background: linear-gradient(180deg, #D4A373, #A78B71);
-}
-.mobile-ad-guide {
-  border: 2px solid var(--portal-blue-banner-border);
-  background: var(--portal-blue-banner);
-  color: #fff;
-}
-.mobile-partnership {
-  border: 2px solid #D4A373;
-  background: #FFF9F0;
-  color: #5F4B32;
-}
-.mobile-empty-slot {
-  min-height: 96px;
-  border: 1px solid var(--color-border);
-  background: #f8fafc;
-  color: var(--color-text-secondary);
-}
-/* ===== 단계형 UI 스타일 ===== */
-.step-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-.step-item.active {
-  color: var(--portal-brand);
-}
-.step-item .step-num {
-  width: 28px;
-  height: 28px;
-  border-radius: 9999px;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #9ca3af;
-}
-.step-item.active .step-num {
-  background: var(--portal-brand);
-  color: #fff;
-}
-.step-item.completed .step-num {
-  background: #16a34a;
-  color: #fff;
-}
-.step-connector {
-  height: 2px;
-  flex: 1;
-  background: #e5e7eb;
-  margin: 0 8px;
-}
-.step-connector.active {
-  background: var(--portal-brand);
-}
-
-/* ===== 드래그 가능 아이템 ===== */
-.draggable-item {
-  cursor: grab;
-  transition: background 0.15s, box-shadow 0.15s;
-}
-.draggable-item:active {
-  cursor: grabbing;
-  background: var(--portal-brand-soft);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* ===== 토글 스위치 ===== */
-.toggle-switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  transition: background 0.2s;
-  cursor: pointer;
-}
-.toggle-switch .toggle-knob {
-  position: absolute;
-  top: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  transition: left 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.toggle-switch.on { background: #10b981; }
-.toggle-switch.on .toggle-knob { left: 18px; }
-.toggle-switch.off { background: #d1d5db; }
-.toggle-switch.off .toggle-knob { left: 2px; }
-
-/* ===== SEO 하단 영역 ===== */
-.seo-content h1 { font-size: 1.25rem; font-weight: 800; color: #1f2937; margin-bottom: 8px; }
-.seo-content h2 { font-size: 1rem; font-weight: 700; color: #374151; margin-bottom: 6px; margin-top: 16px; }
-.seo-content p { font-size: 0.875rem; color: #6b7280; line-height: 1.7; }
-
-/* ===== 모바일 하단 여백 (바텀 내비 겹침 방지) ===== */
-@media (max-width: 768px) {
-  main { padding-bottom: 60px; }
-}
+::selection { background: rgba(220, 38, 38, 0.15); }
