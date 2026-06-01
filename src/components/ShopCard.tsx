@@ -13,59 +13,58 @@ interface ShopCardProps {
   detailHref?: string;
 }
 
-function formatCoursePrice(price?: string) {
-  if (!price) {
-    return null;
-  }
-
-  const numeric = Number(price.toString().replace(/[^\d.-]/g, ''));
-  if (!Number.isFinite(numeric)) {
-    return price;
-  }
-
-  return `${numeric.toLocaleString('ko-KR')}원`;
-}
-
-function formatRegionText(regionLabel: string, subRegionLabel?: string) {
-  return [regionLabel, subRegionLabel].filter(Boolean).join(' ');
-}
-
 const themeEmoji: Record<string, string> = {
-  swedish: '🌿',
+  swedish: '',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '🔥',
+  deep: '',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
 };
 
 const gradients = [
-  'from-orange-100 to-amber-50',
-  'from-rose-100 to-pink-50',
-  'from-[#FEFAE0] to-white',
-  'from-yellow-100 to-amber-50',
-  'from-amber-100 to-orange-50',
-  'from-[#FEFAE0] to-[#FCF9F5]',
-  'from-orange-50 to-rose-50',
-  'from-lime-100 to-green-50',
+  'from-[var(--portal-brand-soft)] to-white',
+  'from-[color-mix(in_srgb,var(--portal-brand)_12%,white)] to-white',
+  'from-[color-mix(in_srgb,var(--portal-theme)_12%,white)] to-[var(--portal-brand-soft)]',
+  'from-white to-[var(--portal-brand-soft)]',
+  'from-[color-mix(in_srgb,var(--portal-rank)_10%,white)] to-white',
+  'from-[var(--portal-brand-soft)] to-[color-mix(in_srgb,var(--portal-theme)_8%,white)]',
+  'from-slate-50 to-[var(--portal-brand-soft)]',
+  'from-white to-[color-mix(in_srgb,var(--portal-brand)_10%,white)]',
 ];
 
 function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
+  const thumbnailUrl = shop.thumbnailUrl?.trim();
 
   return (
     <Link
       href={detailHref}
       prefetch={false}
       className={clsx(
-        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg',
-        isPremium ? 'border-amber-400' : 'border-gray-200 border-opacity-70',
+        'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[color-mix(in_srgb,var(--portal-brand)_35%,white)]',
+        isPremium ? 'border-[var(--portal-blue-banner-border)]' : 'border-gray-200 border-opacity-70',
       )}
     >
-      <div className={clsx('shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br', gradients[gIdx])}>
+      <div
+        className={clsx(
+          'shop-card-img relative flex shrink-0 items-center justify-center bg-gradient-to-br',
+          gradients[gIdx],
+        )}
+      >
+        {thumbnailUrl && (
+          <img
+            src={thumbnailUrl}
+            alt={shop.name}
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-90"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        )}
         <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
           {themeEmoji[shop.theme] ?? '✨'}
         </span>
@@ -74,17 +73,19 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
         <div className="mb-1 flex items-start justify-between gap-1">
           <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{shop.name}</h3>
           {isPremium ? (
-            <span className="shrink-0 rounded bg-amber-500 px-1 py-0.5 text-[9px] font-black text-white">AD</span>
+            <span className="shrink-0 rounded bg-[var(--portal-brand)] px-1 py-0.5 text-[9px] font-black text-white">AD</span>
           ) : null}
         </div>
 
         <div className="mb-2 flex items-center gap-1 text-xs text-gray-500">
-          <MapPin className="h-3 w-3 flex-shrink-0 text-[#D4A373]" />
-          <span className="truncate">{formatRegionText(shop.regionLabel, shop.subRegionLabel)}</span>
+          <MapPin className="h-3 w-3 flex-shrink-0 text-[var(--portal-brand)]" />
+          <span className="truncate">
+            {shop.regionLabel} {shop.subRegionLabel}
+          </span>
         </div>
 
         <div className="mb-2 flex h-[20px] flex-wrap gap-1 overflow-hidden line-clamp-1">
-          <span className="shrink-0 rounded border border-[#D4A373]/20 bg-[#FEFAE0] px-1.5 py-0.5 text-[10px] font-medium text-[#D4A373]">
+          <span className="shrink-0 rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,transparent)] bg-[var(--portal-brand-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--portal-brand)]">
             #{shop.themeLabel}
           </span>
           {shop.tags.slice(0, 2).map((tag, index) => (
@@ -99,10 +100,10 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
 
         <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2">
           <div className="flex items-center gap-1 text-xs">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <Star className="h-3 w-3 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
             <span className="font-bold text-gray-700">{formatRating(shop.rating)}</span>
           </div>
-          {shop.courses[0] ? <span className="text-xs font-bold text-[#D4A373]">{formatCoursePrice(shop.courses[0].price)}~</span> : null}
+          {shop.courses[0] ? <span className="text-xs font-bold text-[var(--portal-brand)]">{shop.courses[0].price}~</span> : null}
         </div>
       </div>
     </Link>
