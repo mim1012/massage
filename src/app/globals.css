@@ -1,11 +1,48 @@
 @import "tailwindcss";
 
+:root {
+  --portal-brand: #1E40AF;
+  --portal-brand-hover: #1E3A8A;
+  --portal-brand-dark: #172554;
+  --portal-brand-soft: #EFF6FF;
+
+  --portal-bg: #FFFFFF;
+  --portal-text: #0F172A;
+  --portal-gnb: #0F172A;
+  --portal-gnb-hover: #1E293B;
+
+  --portal-rank: #0EA5E9;
+  --portal-theme: #3B82F6;
+  --portal-support: #475569;
+
+  --portal-blue-banner: #1E3A8A;
+  --portal-blue-banner-hover: #1E40AF;
+  --portal-blue-banner-border: #2563EB;
+
+  --portal-premium-top: #F8FBFF;
+  --portal-premium-border: #2563EB;
+
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-dark: #1E3A8A;
+  --color-primary-soft: #EFF6FF;
+  --color-bg: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-premium: #FBBF24;
+}
+
 /* ===== 기본 설정 ===== */
 html { scroll-behavior: smooth; }
 body { 
   font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif; 
-  background-color: #FCF9F5;
-  color: #5F4B32;
+  background-color: var(--portal-bg);
+  color: var(--portal-text);
 }
 
 /* ===== 스크롤바 ===== */
@@ -42,11 +79,11 @@ body {
   transition: background 0.15s;
 }
 .lnb-menu-item:hover {
-  background: #FEFAE0;
-  color: #D4A373;
+  background: var(--portal-brand-soft);
+  color: var(--portal-brand);
 }
 .lnb-menu-item.active {
-  background: #D4A373;
+  background: var(--portal-brand);
   color: #fff;
   font-weight: 700;
 }
@@ -54,11 +91,11 @@ body {
 /* 작은 광고 배너 슬롯 */
 .ad-slot {
   background: linear-gradient(135deg, #f8f8f8, #eee);
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--color-text-secondary);
   font-size: 11px;
   border-radius: 4px;
 }
@@ -75,12 +112,12 @@ body {
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
 }
 .banner-item:hover {
-  box-shadow: 0 4px 16px rgba(180,120,60,0.08);
-  border-color: #D4A373;
+  box-shadow: 0 4px 16px rgba(180, 120, 60, 0.08);
+  border-color: var(--portal-brand);
   transform: translateY(-2px);
 }
 
-::selection { background: rgba(212, 163, 115, 0.2); }
+::selection { background: color-mix(in srgb, var(--portal-brand) 20%, transparent); }
 
 /* ===== 프리미엄 배너 고정 비율 (1200x600 → 2:1) ===== */
 .premium-banner-img {
@@ -140,6 +177,69 @@ body {
   .premium-grid { grid-template-columns: 1fr; }
 }
 
+.premium-shop-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.premium-shop-media {
+  width: 144px;
+  border-right-width: 1px;
+}
+@media (min-width: 1200px) {
+  .premium-shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .premium-shop-media { width: 224px; }
+}
+@media (max-width: 1024px) {
+  .premium-shop-grid { grid-template-columns: 1fr; }
+  .premium-shop-card { flex-direction: column; }
+  .premium-shop-media {
+    aspect-ratio: 16 / 9 !important;
+    width: 100%;
+    border-right-width: 0;
+    border-bottom-width: 1px;
+  }
+}
+
+/* ===== 모바일 배너 레일 ===== */
+.mobile-banner-rail {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.mobile-banner-card {
+  display: flex;
+  min-height: 74px;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+.mobile-premium-center {
+  min-height: 86px;
+  border: 2px solid #D4A373;
+  background: linear-gradient(180deg, #D4A373, #A78B71);
+}
+.mobile-ad-guide {
+  border: 2px solid var(--portal-blue-banner-border);
+  background: var(--portal-blue-banner);
+  color: #fff;
+}
+.mobile-partnership {
+  border: 2px solid #D4A373;
+  background: #FFF9F0;
+  color: #5F4B32;
+}
+.mobile-empty-slot {
+  min-height: 96px;
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  color: var(--color-text-secondary);
+}
 /* ===== 단계형 UI 스타일 ===== */
 .step-indicator {
   display: flex;
@@ -151,40 +251,40 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #999;
+  color: var(--color-text-secondary);
   font-weight: 600;
 }
 .step-item.active {
-  color: #D4A373;
+  color: var(--portal-brand);
 }
 .step-item .step-num {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 9999px;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 700;
-  background: #e5e7eb;
+  font-weight: 800;
   color: #9ca3af;
 }
 .step-item.active .step-num {
-  background: #D4A373;
+  background: var(--portal-brand);
   color: #fff;
 }
 .step-item.completed .step-num {
-  background: #10b981;
+  background: #16a34a;
   color: #fff;
 }
 .step-connector {
-  flex: 1;
   height: 2px;
+  flex: 1;
   background: #e5e7eb;
   margin: 0 8px;
 }
 .step-connector.active {
-  background: #D4A373;
+  background: var(--portal-brand);
 }
 
 /* ===== 드래그 가능 아이템 ===== */
@@ -194,7 +294,7 @@ body {
 }
 .draggable-item:active {
   cursor: grabbing;
-  background: #fef9c3;
+  background: var(--portal-brand-soft);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
