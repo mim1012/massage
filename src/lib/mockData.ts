@@ -1,17 +1,7 @@
-import {
-  Shop,
-  Review,
-  Notice,
-  QnA,
-  User,
-  PartnershipInquiry,
-  SiteSettings,
-  HomeSeoContent,
-} from './types';
-import { DEFAULT_HOME_SEO, DEFAULT_SITE_SETTINGS } from './site-content-defaults';
+import { Shop, Review, Notice, QnA, User, PartnershipInquiry, SiteSettings, HomeSeoContent } from './types';
 
 // ===== 모의 사용자 데이터 =====
-export const MOCK_USERS: User[] = [
+export let MOCK_USERS: User[] = [
   {
     id: 'admin',
     email: 'admin@healing.com',
@@ -364,20 +354,6 @@ export const MOCK_QNA: QnA[] = [
     answer: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
     authorName: '방문자',
     isAnswered: true,
-    canComment: false,
-    commentCount: 1,
-    latestCommentAt: '2024-06-03',
-    latestCommentPreview: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
-    comments: [
-      {
-        id: 'qna-001-comment-001',
-        qnaId: 'qna-001',
-        authorName: '운영자',
-        role: 'ADMIN',
-        content: '고객센터 Q&A를 통해 업체명, 지역, 연락처를 남겨주시면 1~2일 내 담당자가 연락드립니다.',
-        createdAt: '2024-06-03',
-      },
-    ],
     createdAt: '2024-06-03',
   },
   {
@@ -386,20 +362,6 @@ export const MOCK_QNA: QnA[] = [
     answer: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
     authorName: '홍길동',
     isAnswered: true,
-    canComment: false,
-    commentCount: 1,
-    latestCommentAt: '2024-06-04',
-    latestCommentPreview: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
-    comments: [
-      {
-        id: 'qna-002-comment-001',
-        qnaId: 'qna-002',
-        authorName: '운영자',
-        role: 'ADMIN',
-        content: '각 업소 상세 페이지의 전화번호로 직접 연락하시거나 카카오톡 채널을 통해 예약하실 수 있습니다.',
-        createdAt: '2024-06-04',
-      },
-    ],
     createdAt: '2024-06-04',
   },
   {
@@ -408,41 +370,54 @@ export const MOCK_QNA: QnA[] = [
     question: '강남 힐링스파 주말 예약 가능한가요?',
     authorName: '방문예정',
     isAnswered: false,
-    canComment: false,
-    commentCount: 0,
-    comments: [],
     createdAt: '2024-06-05',
   },
 ];
 
 export const MOCK_PARTNERSHIPS: PartnershipInquiry[] = [
   {
-    id: 'partnership-001',
-    shopName: 'Gangnam Aroma Lounge',
-    region: 'Seoul',
-    subRegion: 'Gangnam',
-    theme: 'Aroma',
-    contactName: 'Kim Chulsoo',
+    id: 'p-001',
+    shopName: '힐링 아로마 강남점',
+    region: 'seoul',
+    subRegion: 'gangnam',
+    theme: 'aroma',
+    contactName: '김철수',
     phone: '010-1234-5678',
-    kakaoId: 'healing_partner',
-    message: 'We want to list the shop and ask about premium exposure options.',
+    kakaoId: 'chulsoo_h',
+    message: '강남역 인근에 새로 오픈할 예정입니다. 프리미엄 배너 입점 비용 문의드립니다.',
     status: 'pending',
-    createdAt: '2024-03-21T10:00:00Z',
+    createdAt: '2024-03-21T10:00:00Z'
   },
   {
-    id: 'partnership-002',
-    shopName: 'Bundang Swedish House',
-    region: 'Gyeonggi',
-    subRegion: 'Bundang',
-    theme: 'Swedish',
-    contactName: 'Lee Younghee',
+    id: 'p-002',
+    shopName: '스웨디시 하우스 분당',
+    region: 'gyeonggi',
+    subRegion: 'bundang',
+    theme: 'swedish',
+    contactName: '이영희',
     phone: '010-9876-5432',
-    message: 'Please share listing costs and the owner onboarding process.',
+    message: '기존 타 플랫폼 사용 중인데 이동 시 혜택이 있는지 궁금합니다.',
     status: 'contacted',
-    createdAt: '2024-03-20T16:20:00Z',
-  },
+    createdAt: '2024-03-20T16:20:00Z'
+  }
 ];
 
-export const MOCK_SITE_SETTINGS: SiteSettings = DEFAULT_SITE_SETTINGS;
+export const MOCK_SITE_SETTINGS: SiteSettings = {
+  siteName: '힐링찾기',
+  siteTitle: '전국 제휴업소 디렉토리',
+  siteDescription: 'HEALING DIRECTORY',
+  heroMainText: '🔥 내 주변 최고의 힐링 업소 찾기',
+  heroSubText: '전국 500개+ 제휴업소 | 매일 업데이트되는 검증된 정보',
+  contactPhone: '1588-0000',
+  footerInfo: '힐링찾기 | 대표자: 홍길동 | 사업자번호: 000-00-00000 | 서울특별시 강남구 테헤란로 123',
+};
 
-export const MOCK_HOME_SEO: HomeSeoContent = DEFAULT_HOME_SEO;
+export const MOCK_HOME_SEO: HomeSeoContent = {
+  section1Title: '힐링찾기 - 전국 마사지·힐링업소 디렉토리',
+  section1Content: '힐링찾기는 전국 마사지·힐링 제휴업소를 지역별·테마별로 한눈에 비교할 수 있는 디렉토리 플랫폼입니다. 서울, 경기, 부산 등 전국 주요 도시의 검증된 업소를 소개합니다.',
+  section2Title: '지역별 마사지 업소 찾기',
+  section2Content: '강남, 홍대, 해운대 등 인기 지역부터 수원, 인천, 대전까지 다양한 지역의 업소를 손쉽게 검색하세요. 스웨디시, 아로마, 타이, 스포츠 마사지 등 테마별 필터로 원하는 업소를 빠르게 찾을 수 있습니다.',
+  section3Title: '프리미엄 추천업소',
+  section3Content: '매일 업데이트되는 프리미엄 추천업소를 통해 최고 수준의 서비스를 경험하세요. 업소 상세 페이지에서 코스 정보, 요금표, 실제 방문 후기를 확인할 수 있습니다.',
+};
+

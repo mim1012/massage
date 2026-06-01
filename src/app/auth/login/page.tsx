@@ -10,7 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,7 +35,7 @@ export default function LoginPage() {
           {/* Tab Menu */}
           <div className="flex border-b border-gray-200">
             <button 
-              onClick={() => { setActiveTab('user'); setForm({ email: '', password: '' }); setShowPw(false); }}
+              onClick={() => { setActiveTab('user'); setForm({ id: '', password: '' }); setShowPw(false); }}
               className={clsx(
                 "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors",
                 activeTab === 'user' ? "text-red-600 border-b-2 border-red-600 bg-white" : "text-gray-400 bg-gray-50 hover:bg-gray-100"
@@ -43,7 +43,7 @@ export default function LoginPage() {
               <User className="w-4 h-4"/> 일반 고객
             </button>
             <button 
-              onClick={() => { setActiveTab('owner'); setForm({ email: '', password: '' }); setShowPw(false); }}
+              onClick={() => { setActiveTab('owner'); setForm({ id: '', password: '' }); setShowPw(false); }}
               className={clsx(
                 "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors",
                 activeTab === 'owner' ? "text-red-600 border-b-2 border-red-600 bg-white" : "text-gray-400 bg-gray-50 hover:bg-gray-100"
@@ -68,9 +68,9 @@ export default function LoginPage() {
 
 
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input type="email" required value={form.email}
-                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder={activeTab === 'user' ? "이메일" : "가입하신 대표 이메일"}
+              <input type="text" required value={form.id}
+                onChange={e => setForm(p => ({ ...p, id: e.target.value }))}
+                placeholder={activeTab === 'user' ? "아이디" : "가입하신 대표 아이디"}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
               <div className="relative">
                 <input type={showPw ? 'text' : 'password'} required value={form.password}

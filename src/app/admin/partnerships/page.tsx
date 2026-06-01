@@ -1,189 +1,97 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Building2,
-  Calendar,
-  ClipboardList,
-  Eye,
-  MapPin,
-  Search,
-  Tag,
-  Trash2,
-  User,
-  X,
+import { useState } from 'react';
+import { 
+  ClipboardList, Search, Filter, MoreVertical, Eye, 
+  CheckCircle, Clock, MessageCircle, Trash2, Calendar, 
+  MapPin, Phone, User, Tag, Building2
 } from 'lucide-react';
-import clsx from 'clsx';
-import type { PartnershipInquiry } from '@/lib/types';
+import { MOCK_PARTNERSHIPS } from '@/lib/mockData';
+import { PartnershipInquiry } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: '전체 상태' },
-  { value: 'pending', label: '접수대기' },
-  { value: 'contacted', label: '상담중' },
-  { value: 'completed', label: '완료' },
-] as const;
+import clsx from 'clsx';
 
 export default function AdminPartnershipsPage() {
-  const [inquiries, setInquiries] = useState<PartnershipInquiry[]>([]);
+  const [inquiries, setInquiries] = useState<PartnershipInquiry[]>(MOCK_PARTNERSHIPS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]['value']>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'contacted' | 'completed'>('all');
   const [selectedInquiry, setSelectedInquiry] = useState<PartnershipInquiry | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingInquiryIds, setPendingInquiryIds] = useState<string[]>([]);
-  const pendingInquiryIdsRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
 
-      try {
-        const response = await fetch('/api/admin/partnerships', { cache: 'no-store' });
-        const result = (await response.json()) as { inquiries?: PartnershipInquiry[]; error?: string };
-        if (!response.ok || !result.inquiries) {
-          throw new Error(result.error ?? '제휴 문의 목록을 불러오지 못했습니다.');
-        }
+  const filtered = inquiries.filter(item => {
+    const matchesSearch = item.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          item.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          item.phone.includes(searchQuery);
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-        setInquiries(result.inquiries);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : '제휴 문의 목록을 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
-    return inquiries.filter((item) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        item.shopName.toLowerCase().includes(normalizedSearch) ||
-        item.contactName.toLowerCase().includes(normalizedSearch) ||
-        item.phone.includes(normalizedSearch);
-      const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [inquiries, searchQuery, statusFilter]);
-
-  const hasActiveFilters = searchQuery.trim().length > 0 || statusFilter !== 'all';
-  const isActionPending = (id: string) => pendingInquiryIdsRef.current.has(id) || pendingInquiryIds.includes(id);
-
-  async function removeInquiry(id: string) {
-    if (isActionPending(id)) {
-      return;
+  const updateStatus = (id: string, newStatus: PartnershipInquiry['status']) => {
+    setInquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+    if (selectedInquiry?.id === id) {
+      setSelectedInquiry(prev => prev ? { ...prev, status: newStatus } : null);
     }
+  };
 
-    pendingInquiryIdsRef.current.add(id);
-    setPendingInquiryIds((current) => (current.includes(id) ? current : [...current, id]));
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/admin/partnerships/${id}`, { method: 'DELETE' });
-      if (!response.ok && response.status !== 204) {
-        const result = (await response.json()) as { error?: string };
-        setError(result.error ?? '제휴 문의를 삭제하지 못했습니다.');
-        return;
-      }
-
-      setInquiries((current) => current.filter((item) => item.id !== id));
-      if (selectedInquiry?.id === id) {
-        setSelectedInquiry(null);
-      }
-    } finally {
-      pendingInquiryIdsRef.current.delete(id);
-      setPendingInquiryIds((current) => current.filter((currentId) => currentId !== id));
+  const deleteInquiry = (id: string) => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      setInquiries(prev => prev.filter(item => item.id !== id));
+      setSelectedInquiry(null);
     }
-  }
-
-  async function updateStatus(id: string, status: PartnershipInquiry['status']) {
-    if (isActionPending(id)) {
-      return;
-    }
-
-    pendingInquiryIdsRef.current.add(id);
-    setPendingInquiryIds((current) => (current.includes(id) ? current : [...current, id]));
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/admin/partnerships/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        const result = (await response.json()) as { error?: string };
-        setError(result.error ?? '제휴 문의 상태를 변경하지 못했습니다.');
-        return;
-      }
-
-      setInquiries((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
-      setSelectedInquiry((current) => (current?.id === id ? { ...current, status } : current));
-    } finally {
-      pendingInquiryIdsRef.current.delete(id);
-      setPendingInquiryIds((current) => current.filter((currentId) => currentId !== id));
-    }
-  }
+  };
 
   const getStatusBadge = (status: PartnershipInquiry['status']) => {
     switch (status) {
       case 'pending':
-        return <span className="rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-bold text-yellow-700">접수대기</span>;
+        return <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-bold">접수대기</span>;
       case 'contacted':
-        return <span className="rounded-full bg-[var(--portal-brand-soft)] px-2 py-1 text-[11px] font-bold text-[var(--portal-brand-dark)]">상담중</span>;
+        return <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">상담중</span>;
       case 'completed':
-        return <span className="rounded-full bg-green-100 px-2 py-1 text-[11px] font-bold text-green-700">완료</span>;
+        return <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-[11px] font-bold">완료</span>;
     }
   };
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-            <ClipboardList className="h-5 w-5 text-red-600" /> 입점 문의 관리
+          <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-red-600" /> 입점 문의 관리
           </h1>
-          <p className="mt-1 text-xs text-gray-500">사용자가 접수한 입점 문의 내역을 확인하고 처리 상태를 관리합니다.</p>
+          <p className="text-xs text-gray-500 mt-1">사용자가 접수한 입점 문의 내역을 확인하고 처리 상태를 관리합니다.</p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+      {/* 필터 바 */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="업체명, 담당자, 연락처 검색..."
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className="w-full rounded-lg border border-gray-200 py-2 pl-10 pr-4 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
           />
         </div>
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as (typeof STATUS_OPTIONS)[number]['value'])}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+            onChange={e => setStatusFilter(e.target.value as any)}
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-500"
           >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            <option value="all">전체 상태</option>
+            <option value="pending">접수대기</option>
+            <option value="contacted">상담중</option>
+            <option value="completed">완료</option>
           </select>
         </div>
       </div>
 
-      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
-
-      <div className="table-wrap overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* 목록 테이블 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden table-wrap">
         <div className="overflow-x-auto">
-          <table className="table-responsive w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50">
+          <table className="w-full text-left text-sm table-responsive">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 font-bold text-gray-600">접수일</th>
                 <th className="px-4 py-3 font-bold text-gray-600">업체명</th>
@@ -191,168 +99,139 @@ export default function AdminPartnershipsPage() {
                 <th className="px-4 py-3 font-bold text-gray-600">테마</th>
                 <th className="px-4 py-3 font-bold text-gray-600">담당자</th>
                 <th className="px-4 py-3 font-bold text-gray-600">상태</th>
-                <th className="px-4 py-3 text-right font-bold text-gray-600">관리</th>
+                <th className="px-4 py-3 font-bold text-gray-600 text-right">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? (
+              {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                    제휴 문의 목록을 불러오는 중입니다.
+                  <td colSpan={7} className="px-4 py-10 text-center text-gray-400">데이터가 없습니다.</td>
+                </tr>
+              ) : filtered.map(item => (
+                <tr key={item.id} className="hover:bg-gray-100 transition-colors">
+                  <td data-label="접수일" className="px-4 py-4 text-gray-500 whitespace-nowrap">{formatDate(item.createdAt)}</td>
+                  <td data-label="업체명" className="px-4 py-4 font-bold text-gray-900">{item.shopName}</td>
+                  <td data-label="지역" className="px-4 py-4 text-gray-600">{item.region} / {item.subRegion}</td>
+                  <td data-label="테마" className="px-4 py-4 text-gray-600 whitespace-nowrap">{item.theme}</td>
+                  <td data-label="담당자" className="px-4 py-4">
+                    <div className="text-gray-900 font-medium">{item.contactName}</div>
+                    <div className="text-xs text-gray-400">{item.phone}</div>
+                  </td>
+                  <td data-label="상태" className="px-4 py-4">{getStatusBadge(item.status)}</td>
+                  <td data-label="관리" className="px-4 py-4 text-right">
+                    <button 
+                      onClick={() => setSelectedInquiry(item)}
+                      className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
+                      title="상세 보기"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
-              ) : null}
-
-              {!loading && filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
-                    {inquiries.length === 0 && !hasActiveFilters
-                      ? '등록된 입점 문의가 없습니다.'
-                      : '검색 조건에 맞는 입점 문의가 없습니다.'}
-                  </td>
-                </tr>
-              ) : null}
-
-              {!loading &&
-                filtered.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-gray-100">
-                    <td data-label="접수일" className="whitespace-nowrap px-4 py-4 text-gray-500">
-                      {formatDate(item.createdAt)}
-                    </td>
-                    <td data-label="업체명" className="px-4 py-4 font-bold text-gray-900">
-                      {item.shopName}
-                    </td>
-                    <td data-label="지역" className="px-4 py-4 text-gray-600">
-                      {item.region} / {item.subRegion}
-                    </td>
-                    <td data-label="테마" className="whitespace-nowrap px-4 py-4 text-gray-600">
-                      {item.theme}
-                    </td>
-                    <td data-label="담당자" className="px-4 py-4">
-                      <div className="font-medium text-gray-900">{item.contactName}</div>
-                      <div className="text-xs text-gray-400">{item.phone}</div>
-                    </td>
-                    <td data-label="상태" className="px-4 py-4">
-                      {getStatusBadge(item.status)}
-                    </td>
-                    <td data-label="관리" className="px-4 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedInquiry(item)}
-                        className="rounded-lg p-1.5 text-gray-600 transition-colors hover:bg-gray-200"
-                        title="상세 보기"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {selectedInquiry ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white font-sans shadow-2xl">
-            <div className="flex items-center justify-between bg-red-600 p-4 text-white">
+      {/* 상세 보기 모달 */}
+      {selectedInquiry && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 font-sans">
+            <div className="bg-red-600 p-4 text-white flex items-center justify-between">
               <h2 className="font-bold">입점 문의 상세 정보</h2>
-              <button onClick={() => setSelectedInquiry(null)} className="rounded-lg p-1 hover:bg-white/20">
-                <X className="h-5 w-5" />
+              <button onClick={() => setSelectedInquiry(null)} className="hover:bg-white/20 p-1 rounded-lg">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-5 p-6">
+            <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">업체명</p>
-                  <p className="flex items-center gap-1.5 text-sm font-black text-gray-800">
-                    <Building2 className="h-3.5 w-3.5 text-red-500" /> {selectedInquiry.shopName}
-                  </p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">업체명</p>
+                  <p className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-red-500" /> {selectedInquiry.shopName}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">테마</p>
-                  <p className="flex items-center gap-1.5 text-sm font-bold text-red-600">
-                    <Tag className="h-3.5 w-3.5" /> {selectedInquiry.theme}
-                  </p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">테마</p>
+                  <p className="text-sm font-bold text-red-600 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> {selectedInquiry.theme}</p>
                 </div>
               </div>
-
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">담당자 / 연락처</p>
-                  <p className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-                    <User className="h-3.5 w-3.5" /> {selectedInquiry.contactName}
-                  </p>
-                  <p className="ml-5 text-sm font-medium text-gray-600">{selectedInquiry.phone}</p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">담당자 / 연락처</p>
+                  <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {selectedInquiry.contactName}</p>
+                  <p className="text-sm text-gray-600 flex items-center gap-1.5 ml-5 font-medium">{selectedInquiry.phone}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">지역</p>
-                  <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
-                    <MapPin className="h-3.5 w-3.5" /> {selectedInquiry.region} / {selectedInquiry.subRegion}
-                  </p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">지역</p>
+                  <p className="text-sm text-gray-800 flex items-center gap-1.5 font-medium"><MapPin className="w-3.5 h-3.5" /> {selectedInquiry.region} / {selectedInquiry.subRegion}</p>
                 </div>
               </div>
 
-              {selectedInquiry.kakaoId ? (
+              {selectedInquiry.kakaoId && (
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">카카오톡 ID</p>
-                  <p className="ml-1 text-sm font-bold text-yellow-600">💬 {selectedInquiry.kakaoId}</p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">카카오톡 ID</p>
+                  <p className="text-sm font-bold text-yellow-600 flex items-center gap-1.5 ml-1">💬 {selectedInquiry.kakaoId}</p>
                 </div>
-              ) : null}
+              )}
 
-              <div className="space-y-1 rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">문의 내용</p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{selectedInquiry.message}</p>
+              <div className="space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-2">문의 내용</p>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedInquiry.message}</p>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">상태 변경</p>
+              <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">
+                <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">상태 변경</p>
                 <div className="flex gap-2">
-                  {(['pending', 'contacted', 'completed'] as const).map((status) => {
-                    const actionPending = isActionPending(selectedInquiry.id);
-
-                    return (
+                  {(['pending', 'contacted', 'completed'] as const).map(s => (
                     <button
-                      key={status}
-                      onClick={() => void updateStatus(selectedInquiry.id, status)}
-                      disabled={actionPending}
+                      key={s}
+                      onClick={() => updateStatus(selectedInquiry.id, s)}
                       className={clsx(
-                        'flex-1 rounded-lg border py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60',
-                        selectedInquiry.status === status
-                          ? 'border-red-600 bg-red-600 text-white shadow-md shadow-red-100'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-red-200',
+                        "flex-1 py-2 text-xs font-bold rounded-lg border transition-all",
+                        selectedInquiry.status === s 
+                          ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-100" 
+                          : "bg-white border-gray-200 text-gray-500 hover:border-red-200"
                       )}
                     >
-                      {status === 'pending' ? '접수대기' : status === 'contacted' ? '상담중' : '완료'}
+                      {s === 'pending' ? '접수대기' : s === 'contacted' ? '상담중' : '완료'}
                     </button>
-                    );
-                  })}
+                  ))}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  onClick={() => void removeInquiry(selectedInquiry.id)}
-                  disabled={isActionPending(selectedInquiry.id)}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+              <div className="flex justify-between items-center pt-2">
+                <button 
+                  onClick={() => deleteInquiry(selectedInquiry.id)}
+                  className="flex items-center gap-1.5 text-xs text-red-500 font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  <Trash2 className="h-4 w-4" /> 내역 삭제
+                  <Trash2 className="w-4 h-4" /> 내역 삭제
                 </button>
-                <div className="flex items-center gap-1 text-[11px] text-gray-400">
-                  <Calendar className="h-3 w-3" /> 접수: {formatDate(selectedInquiry.createdAt)}
+                <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> 접수: {formatDate(selectedInquiry.createdAt)}
                 </div>
               </div>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
 
+function X({ className }: { className?: string }) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+}
+
+// 모바일 대응 커스텀 CSS
 const styles = `
   .table-wrap {
     width: 100%;
     overflow-x: auto;
+  }
+
+  .table td {
+    word-break: keep-all;
   }
 
   @media (max-width: 768px) {
@@ -402,6 +281,7 @@ const styles = `
   }
 `;
 
+// 컴포넌트에 주입
 if (typeof document !== 'undefined') {
   const styleId = 'partnership-admin-styles';
   if (!document.getElementById(styleId)) {

@@ -32,11 +32,11 @@ const themeEmoji: Record<string, string> = {
 };
 
 const bgColors = [
+  'from-orange-200 to-amber-100',
   'from-rose-200 to-pink-100',
-  'from-purple-200 to-violet-100',
-  'from-blue-200 to-sky-100',
-  'from-emerald-200 to-teal-100',
+  'from-[#FEFAE0] to-[#FCF9F5]',
   'from-amber-200 to-orange-100',
+  'from-yellow-200 to-amber-100',
 ];
 
 export default async function ShopDetailPage({ params }: Props) {
@@ -51,9 +51,9 @@ export default async function ShopDetailPage({ params }: Props) {
     <div className="max-w-[1400px] mx-auto px-3 py-3">
       {/* 브레드크럼 */}
       <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-        <Link href="/" className="hover:text-red-600">홈</Link>
+        <Link href="/" className="hover:text-[#D4A373]">홈</Link>
         <ChevronRight className="w-3 h-3" />
-        <Link href={`/?region=${shop.region}`} className="hover:text-red-600">{shop.regionLabel}</Link>
+        <Link href={`/?region=${shop.region}`} className="hover:text-[#D4A373]">{shop.regionLabel}</Link>
         <ChevronRight className="w-3 h-3" />
         <span className="text-gray-800 font-medium">{shop.name}</span>
       </div>
@@ -116,7 +116,7 @@ export default async function ShopDetailPage({ params }: Props) {
                       {course.description && <p className="text-[11px] text-gray-400 mt-0.5">{course.description}</p>}
                     </td>
                     <td className="text-center text-gray-500">{course.duration}</td>
-                    <td className="text-right font-bold text-red-600">{course.price}</td>
+                    <td className="text-right font-bold text-[#D4A373]">{course.price}</td>
                   </tr>
                 ))}
               </tbody>
@@ -127,7 +127,7 @@ export default async function ShopDetailPage({ params }: Props) {
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
               <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
-              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-red-600 hover:underline">전체보기 &raquo;</Link>
+              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[#D4A373] hover:underline">전체보기 &raquo;</Link>
             </div>
             {reviews.length === 0 ? (
               <p className="text-center py-6 text-gray-400 text-sm">아직 후기가 없습니다.</p>
@@ -159,7 +159,7 @@ export default async function ShopDetailPage({ params }: Props) {
           {/* 전화 CTA */}
           <a
             href={`tel:${shop.phone}`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors active:scale-95"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-[#D4A373] text-white font-bold text-sm hover:bg-[#C29262] transition-colors active:scale-95"
           >
             <Phone className="w-4 h-4" />
             지금 전화하기
@@ -170,21 +170,21 @@ export default async function ShopDetailPage({ params }: Props) {
             <h3 className="text-sm font-black text-gray-800 mb-3 pb-2 border-b border-gray-200">📌 영업 정보</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
-                <Phone className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <Phone className="w-4 h-4 text-[#D4A373] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-[11px] text-gray-400 mb-0.5">전화번호</p>
-                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-red-600">{shop.phone}</a>
+                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[#D4A373]">{shop.phone}</a>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Clock className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <Clock className="w-4 h-4 text-[#D4A373] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-[11px] text-gray-400 mb-0.5">영업시간</p>
                   <p className="text-gray-800">{shop.hours}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <MapPin className="w-4 h-4 text-[#D4A373] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-[11px] text-gray-400 mb-0.5">주소</p>
                   <p className="text-gray-800">{shop.address}</p>
@@ -196,11 +196,11 @@ export default async function ShopDetailPage({ params }: Props) {
           {/* Q&A */}
           <Link
             href={`/board/qna?shopId=${shop.id}`}
-            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-red-300 transition-all group"
+            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-[#D4A373] transition-all group"
           >
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-semibold text-gray-800 group-hover:text-red-600">Q&A 문의</span>
+              <MessageCircle className="w-4 h-4 text-[#D4A373]" />
+              <span className="text-sm font-semibold text-gray-800 group-hover:text-[#D4A373]">Q&A 문의</span>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>

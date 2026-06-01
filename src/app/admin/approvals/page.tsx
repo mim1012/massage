@@ -1,181 +1,106 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Building, Check, Mail, Phone, Store, UserCheck, X } from 'lucide-react';
+import { useState } from 'react';
+import { UserCheck, Check, X, Phone, Store, MapPin, Tag, Clock } from 'lucide-react';
+import { MOCK_SHOPS } from '@/lib/mockData';
+import { Shop } from '@/lib/types';
 import clsx from 'clsx';
-import type { User } from '@/lib/types';
-
-type ApprovalResponse = {
-  pendingUsers?: User[];
-  processedUsers?: User[];
-  error?: string;
-};
 
 export default function ApprovalsPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingActionUserIds, setPendingActionUserIds] = useState<string[]>([]);
-  const pendingActionUserIdsRef = useRef<Set<string>>(new Set());
+  const [shops, setShops] = useState<Shop[]>(MOCK_SHOPS);
 
-  const pendingUsers = useMemo(() => users.filter((user) => user.status === 'pending'), [users]);
-  const processedUsers = useMemo(() => users.filter((user) => user.status !== 'pending'), [users]);
-  const isActionPending = (id: string) => pendingActionUserIdsRef.current.has(id) || pendingActionUserIds.includes(id);
+  // 업소 승인 관련 데이터
+  const pendingShops = shops.filter(s => s.approvalStatus === 'pending');
+  const processedShops = shops.filter(s => s.approvalStatus && s.approvalStatus !== 'pending');
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/admin/approvals', { cache: 'no-store' });
-      const result = (await response.json()) as ApprovalResponse;
-
-      if (!response.ok) {
-        setError(result.error ?? '승인 요청 목록을 불러오지 못했습니다.');
-        setLoading(false);
-        return;
-      }
-
-      setUsers([...(result.pendingUsers ?? []), ...(result.processedUsers ?? [])]);
-      setLoading(false);
-    };
-
-    void load();
-  }, []);
-
-  const updateStatus = async (id: string, action: 'approve' | 'reject') => {
-    if (isActionPending(id)) {
-      return;
+  const handleApproveShop = (id: string) => {
+    if (confirm('업소 등록을 승인하시겠습니까?')) {
+      setShops(prev => prev.map(s => s.id === id ? { ...s, approvalStatus: 'approved', isVisible: true } : s));
     }
+  };
 
-    pendingActionUserIdsRef.current.add(id);
-    setPendingActionUserIds((current) => (current.includes(id) ? current : [...current, id]));
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/admin/approvals/${id}/${action}`, {
-        method: 'PATCH',
-      });
-      const result = (await response.json()) as { user?: User; error?: string };
-
-      if (!response.ok || !result.user) {
-        setError(result.error ?? '상태를 변경하지 못했습니다.');
-        return;
-      }
-
-      setUsers((current) => current.map((user) => (user.id === id ? result.user! : user)));
-    } finally {
-      pendingActionUserIdsRef.current.delete(id);
-      setPendingActionUserIds((current) => current.filter((currentId) => currentId !== id));
+  const handleRejectShop = (id: string) => {
+    if (confirm('업소 등록을 반려하시겠습니까?')) {
+      setShops(prev => prev.map(s => s.id === id ? { ...s, approvalStatus: 'rejected', isVisible: false } : s));
     }
   };
 
   return (
     <div className="max-w-[1200px] space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-          <Store className="h-5 w-5 text-red-600" /> 입점 업소 승인 관리
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
+          <Store className="w-5 h-5 text-red-600" /> 입점 업소 승인 관리
         </h1>
-        <div className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-500">
-          대기 중인 요청: {pendingUsers.length}건
+        <div className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+          대기 중인 요청: {pendingShops.length}건
         </div>
       </div>
 
-      {error ? <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
-
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">대기 중인 업소 등록 요청 ({pendingUsers.length})</h2>
-
-        {loading ? <div className="mb-4 text-sm text-gray-500">승인 요청을 불러오는 중...</div> : null}
-
-        {!loading && pendingUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">대기 중인 업소 등록 요청이 없습니다.</div>
-        ) : null}
-
-        {!loading ? (
+      {/* 업소 등록 승인 대기 목록 */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">대기 중인 업소 등록 요청 ({pendingShops.length})</h2>
+        
+        {pendingShops.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">대기 중인 업소 등록 요청이 없습니다.</div>
+        ) : (
           <div className="grid gap-4">
-            {pendingUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex flex-col justify-between gap-4 rounded-lg border border-red-100 bg-red-50/30 p-4 md:flex-row md:items-center"
-              >
+            {pendingShops.map(shop => (
+              <div key={shop.id} className="border border-red-100 bg-red-50/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-gray-800">{user.businessName || '상호 정보 없음'}</span>
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">업소심사대기</span>
+                    <span className="font-bold text-lg text-gray-800">{shop.name}</span>
+                    <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-bold">업소심사대기</span>
                   </div>
-                  <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-gray-600 sm:grid-cols-2">
-                    <div className="flex items-center gap-1.5">
-                      <Building className="h-3.5 w-3.5" />
-                      사업자번호: {user.businessNumber || '-'}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <UserCheck className="h-3.5 w-3.5" />
-                      담당자: {user.name}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5" />
-                      연락처: {user.phone || '-'}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" />
-                      이메일: {user.email}
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5"/> 지역: {shop.regionLabel} {shop.subRegionLabel}</div>
+                    <div className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5"/> 테마: {shop.themeLabel}</div>
+                    <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5"/> 연락처: {shop.phone}</div>
+                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> 영업시간: {shop.hours}</div>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => void updateStatus(user.id, 'approve')}
-                    disabled={isActionPending(user.id)}
-                    className="flex items-center gap-1 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Check className="h-4 w-4" /> 등록승인
+                  <button onClick={() => handleApproveShop(shop.id)} className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors">
+                    <Check className="w-4 h-4"/> 등록승인
                   </button>
-                  <button
-                    onClick={() => void updateStatus(user.id, 'reject')}
-                    disabled={isActionPending(user.id)}
-                    className="flex items-center gap-1 rounded bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <X className="h-4 w-4" /> 반려
+                  <button onClick={() => handleRejectShop(shop.id)} className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-bold text-sm transition-colors">
+                    <X className="w-4 h-4"/> 반려
                   </button>
                 </div>
               </div>
             ))}
           </div>
-        ) : null}
+        )}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 border-b pb-2 text-lg font-bold text-gray-800">최근 업소 처리 내역</h2>
-        {processedUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">처리 내역이 없습니다.</div>
+      {/* 최근 처리 내역 - 업소 */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">최근 업소 처리 내역</h2>
+        {processedShops.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">처리 내역이 없습니다.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full whitespace-nowrap text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs text-gray-500">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
                 <tr>
-                  <th className="px-4 py-2 text-center font-bold">상태</th>
+                  <th className="px-4 py-2 font-bold text-center">상태</th>
                   <th className="px-4 py-2 font-bold">업소명</th>
-                  <th className="px-4 py-2 font-bold">이메일</th>
+                  <th className="px-4 py-2 font-bold">지역/테마</th>
                   <th className="px-4 py-2 font-bold">연락처</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {processedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                {processedShops.map(shop => (
+                  <tr key={shop.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-center">
-                      <span
-                        className={clsx(
-                          'rounded-full px-2 py-1 text-xs font-bold',
-                          user.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700',
-                        )}
-                      >
-                        {user.status === 'approved' ? '승인완료' : '반려됨'}
+                      <span className={clsx("px-2 py-1 text-xs rounded-full font-bold", 
+                        shop.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      )}>
+                        {shop.approvalStatus === 'approved' ? '승인완료' : '반려됨'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 font-bold text-gray-800">{user.businessName || '-'}</td>
-                    <td className="px-4 py-2 text-gray-500">{user.email}</td>
-                    <td className="px-4 py-2 text-gray-500">{user.phone || '-'}</td>
+                    <td className="px-4 py-2 font-bold text-gray-800">{shop.name}</td>
+                    <td className="px-4 py-2 text-gray-500">{shop.regionLabel} / {shop.themeLabel}</td>
+                    <td className="px-4 py-2 text-gray-500">{shop.phone}</td>
                   </tr>
                 ))}
               </tbody>

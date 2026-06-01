@@ -1,80 +1,61 @@
-import type { Metadata } from 'next';
-import { AlertTriangle, BarChart2, TrendingUp } from 'lucide-react';
-import { getAdminStatsData } from '@/lib/server/admin-stats';
+import { Metadata } from 'next';
+import { BarChart2, TrendingUp } from 'lucide-react';
 
 export const metadata: Metadata = { title: '통계 | 관리자' };
 
-export const dynamic = 'force-dynamic';
+export default function AdminStatsPage() {
+  const stats = [
+    { label: '오늘 방문자', value: '1,247', change: '+12%', positive: true },
+    { label: '이번 달 방문자', value: '38,592', change: '+8%', positive: true },
+    { label: '총 페이지뷰', value: '142,830', change: '+21%', positive: true },
+    { label: '당일 회원가입', value: '45명', change: '-4%', positive: false },
+  ];
 
-export default async function AdminStatsPage() {
-  let stats: Awaited<ReturnType<typeof getAdminStatsData>> | null = null;
-  let loadError = false;
-
-  try {
-    stats = await getAdminStatsData();
-  } catch (error) {
-    loadError = true;
-    console.error('Failed to load admin stats', error);
-  }
-
-  const maxViewCount = stats?.topShops[0]?.viewCount ?? 0;
+  const topShops = [
+    { name: '강남 힐링스파', views: 3240, region: '서울' },
+    { name: '부산 타이마사지', views: 2810, region: '부산' },
+    { name: '홍대 아로마테라피', views: 2540, region: '서울' },
+    { name: '제주 쉼표 마사지', views: 1960, region: '제주' },
+    { name: '인천 딥티슈 센터', views: 1340, region: '인천' },
+  ];
 
   return (
     <div className="max-w-[1000px] space-y-4">
-      <h1 className="flex items-center gap-2 text-xl font-black text-gray-800">
-        <BarChart2 className="h-5 w-5 text-red-600" />
-        통계 보고서
+      <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
+        <BarChart2 className="w-5 h-5 text-red-600" /> 통계 보고서
       </h1>
 
-      {loadError ? (
-        <div className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-bold">통계 데이터를 불러오지 못했습니다.</p>
-            <p className="mt-1 text-xs text-amber-700">page_view_events 테이블과 집계 로직을 다시 확인해 주세요.</p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {(stats?.summary ?? []).map((item) => (
-          <div key={item.label} className="rounded border border-gray-200 bg-white p-4 text-center">
-            <p className="mb-1 text-[11px] text-gray-500">{item.label}</p>
-            <p className="text-2xl font-black text-gray-800">{item.value.toLocaleString()}</p>
-            <p className="mt-1 text-[10px] font-bold text-blue-500">{item.helperText}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <div key={s.label} className="bg-white border border-gray-200 rounded p-4 text-center">
+            <p className="text-[11px] text-gray-500 mb-1">{s.label}</p>
+            <p className="text-2xl font-black text-gray-800">{s.value}</p>
+            <p className={`text-[10px] mt-1 font-bold ${s.positive ? 'text-green-500' : 'text-red-500'}`}>
+              전월 대비 {s.change}
+            </p>
           </div>
         ))}
       </div>
 
-      <div className="rounded border border-gray-200 bg-white p-4">
-        <h2 className="mb-4 flex items-center gap-1.5 border-b border-gray-100 pb-2 text-sm font-bold text-gray-800">
-          <TrendingUp className="h-4 w-4 text-blue-500" />
-          인기 조회 업소 TOP 5
+      <div className="bg-white border border-gray-200 rounded p-4">
+        <h2 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-1.5">
+          <TrendingUp className="w-4 h-4 text-blue-500" /> 인기 조회 업소 TOP 5
         </h2>
         <div className="space-y-3">
-          {(stats?.topShops ?? []).map((shop, index) => (
-            <div key={shop.id} className="flex items-center gap-3">
-              <span className="w-5 text-center text-xs font-bold text-gray-400">{index + 1}</span>
+          {topShops.map((shop, idx) => (
+            <div key={shop.name} className="flex items-center gap-3">
+              <span className="w-5 text-center text-xs font-bold text-gray-400">{idx + 1}</span>
               <div className="flex-1">
-                <div className="mb-1 flex justify-between text-[11px]">
-                  <span className="font-bold text-gray-700">
-                    {shop.name}
-                    <span className="ml-1 font-normal text-gray-400">({shop.regionLabel})</span>
-                  </span>
-                  <span className="text-gray-500">{shop.viewCount.toLocaleString()}</span>
+                <div className="flex justify-between mb-1 text-[11px]">
+                  <span className="font-bold text-gray-700">{shop.name} <span className="font-normal text-gray-400 ml-1">({shop.region})</span></span>
+                  <span className="text-gray-500">{shop.views.toLocaleString()}</span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-red-500"
-                    style={{ width: `${maxViewCount > 0 ? (shop.viewCount / maxViewCount) * 100 : 0}%` }}
-                  />
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-red-500 rounded-full" style={{ width: `${(shop.views / topShops[0].views) * 100}%` }} />
                 </div>
               </div>
             </div>
           ))}
-          {!loadError && (stats?.topShops?.length ?? 0) === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">표시할 업소 통계가 없습니다.</div>
-          ) : null}
         </div>
       </div>
     </div>

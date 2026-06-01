@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MOCK_SITE_SETTINGS } from '@/lib/mockData';
 
 export default function Footer() {
   return (
@@ -30,24 +31,18 @@ export default function Footer() {
           <div className="flex-1 space-y-4">
             {/* 로고 대체 (원본 텍스트 기반) */}
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center">
-                <span className="text-white font-black text-sm">힐</span>
+              <div className="w-8 h-8 rounded bg-sky-600 flex items-center justify-center">
+                <span className="text-white font-black text-sm">{MOCK_SITE_SETTINGS.siteName[0]}</span>
               </div>
               <div className="leading-tight">
-                <span className="text-gray-900 font-black text-xl tracking-tight">힐링찾기</span>
-                <span className="text-red-500 font-bold text-[10px] block -mt-1 ml-0.5">#마사지 커뮤니티</span>
+                <span className="text-gray-900 font-black text-xl tracking-tight">{MOCK_SITE_SETTINGS.siteName}</span>
+                <span className="text-sky-500 font-bold text-[10px] block -mt-1 ml-0.5">#마사지 커뮤니티</span>
               </div>
             </div>
 
             <div className="text-[12px] text-gray-500 leading-relaxed uppercase tracking-tight font-medium">
-              <p>
-                상호명 (주) 뷰리드 <span className="text-gray-300 mx-1">|</span> 
-                대표자 박현구 <span className="text-gray-300 mx-1">|</span> 
-                사업자등록번호 450-86-01760
-              </p>
-              <p>소재지 경기도 화성시 동탄첨단산업1로 27, 금강펜테리움 IX타워 B동 3135호</p>
-              <p>통신판매업신고번호 제2020-화성동탄1423호</p>
-              <p className="mt-4 font-normal">Copyright 2018 www.healing.com. All rights reseved.</p>
+              <p>{MOCK_SITE_SETTINGS.footerInfo}</p>
+              <p className="mt-4 font-normal">Copyright 2018 {MOCK_SITE_SETTINGS.siteName}. All rights reseved.</p>
             </div>
           </div>
 
@@ -56,7 +51,7 @@ export default function Footer() {
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-1">고객센터</h3>
               <div className="text-[32px] font-black text-[#0078d7] leading-none mb-4 -ml-0.5 tracking-tight">
-                1644-8396
+                {MOCK_SITE_SETTINGS.contactPhone}
               </div>
               <div className="text-[12px] text-gray-500 space-y-1.5 font-medium tracking-tight">
                 <p>평일 : 월~금 09:00 ~ 18:00</p>
