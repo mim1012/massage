@@ -84,7 +84,7 @@ function LoginContent() {
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'user'
-                  ? 'border-b-2 border-blue-600 bg-white text-blue-600'
+                  ? 'border-b-2 border-red-600 bg-white text-red-600'
                   : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
@@ -96,7 +96,7 @@ function LoginContent() {
               className={clsx(
                 'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
                 activeTab === 'owner'
-                  ? 'border-b-2 border-blue-600 bg-white text-blue-600'
+                  ? 'border-b-2 border-red-600 bg-white text-red-600'
                   : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
               )}
             >
@@ -106,7 +106,7 @@ function LoginContent() {
 
           <div className="p-6">
             <div className="mb-6 text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-blue-600">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-red-600">
                 <span className="text-lg font-black text-white">힐</span>
               </div>
               <h1 className="mb-1 text-lg font-black text-gray-800">
@@ -121,7 +121,7 @@ function LoginContent() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               {loginNotice ? (
-                <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
                   {loginNotice.message}
                 </div>
               ) : null}
@@ -131,7 +131,7 @@ function LoginContent() {
                 value={form.id}
                 onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
                 placeholder={activeTab === 'user' ? '아이디' : '가입하신 대표 아이디'}
-                className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
               />
               <div className="relative">
                 <input
@@ -140,7 +140,7 @@ function LoginContent() {
                   value={form.password}
                   onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="비밀번호"
-                  className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-red-500 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -153,7 +153,7 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded bg-blue-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+                className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
@@ -161,10 +161,10 @@ function LoginContent() {
             </form>
 
             <div className="mt-4 flex items-center justify-between text-xs">
-              <Link href="/auth/forgot" className="text-gray-500 hover:text-blue-600">
+              <Link href="/auth/forgot" className="text-gray-500 hover:text-red-600">
                 비밀번호 찾기
               </Link>
-              <Link href="/auth/register" className="font-bold text-blue-600 hover:underline">
+              <Link href="/auth/register" className="font-bold text-red-600 hover:underline">
                 회원가입 →
               </Link>
             </div>
@@ -173,7 +173,7 @@ function LoginContent() {
               <div className="mt-6 border-t border-gray-100 pt-4 text-center">
                 <Link
                   href="/admin"
-                  className="text-[11px] text-gray-400 transition-colors hover:text-blue-600"
+                  className="text-[11px] text-gray-400 transition-colors hover:text-red-600"
                 >
                   관리자 전용 로그인
                 </Link>
@@ -193,3 +193,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

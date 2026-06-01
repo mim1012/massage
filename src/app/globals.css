@@ -1,36 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --portal-brand: #1E40AF;
-  --portal-brand-hover: #1E3A8A;
-  --portal-brand-dark: #172554;
-  --portal-brand-soft: #EFF6FF;
+  --portal-brand: #D4A373;
+  --portal-brand-hover: #C29262;
+  --portal-brand-dark: #A78B71;
+  --portal-brand-soft: #FEFAE0;
 
-  --portal-bg: #FFFFFF;
-  --portal-text: #0F172A;
-  --portal-gnb: #0F172A;
-  --portal-gnb-hover: #1E293B;
+  --portal-bg: #FCF9F5;
+  --portal-text: #5F4B32;
+  --portal-gnb: #8B9A67;
+  --portal-gnb-hover: #7A8956;
 
-  --portal-rank: #0EA5E9;
-  --portal-theme: #3B82F6;
-  --portal-support: #475569;
+  --portal-rank: #D97706;
+  --portal-theme: #F59E0B;
+  --portal-support: #4B5563;
 
-  --portal-blue-banner: #1E3A8A;
-  --portal-blue-banner-hover: #1E40AF;
-  --portal-blue-banner-border: #2563EB;
+  --portal-blue-banner: #183B70;
+  --portal-blue-banner-hover: #1F4A8A;
+  --portal-blue-banner-border: #102A52;
 
-  --portal-premium-top: #F8FBFF;
-  --portal-premium-border: #2563EB;
+  --portal-premium-top: #FFF9F0;
+  --portal-premium-border: #F59E0B;
 
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-primary-dark: #1E3A8A;
-  --color-primary-soft: #EFF6FF;
-  --color-bg: #F8FAFC;
+  --color-primary: #D4A373;
+  --color-primary-hover: #C29262;
+  --color-primary-dark: #A78B71;
+  --color-primary-soft: #FEFAE0;
+  --color-bg: #FCF9F5;
   --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-border: #E5E7EB;
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #6B7280;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
@@ -90,7 +90,7 @@ body {
 
 /* 작은 광고 배너 슬롯 */
 .ad-slot {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  background: linear-gradient(135deg, #f8f8f8, #eee);
   border: 1px dashed var(--color-border);
   display: flex;
   align-items: center;
@@ -102,8 +102,8 @@ body {
 
 /* 프리미엄 영역 */
 .premium-box {
-  background: linear-gradient(to bottom, var(--portal-premium-top), #ffffff);
-  border: 2px solid var(--portal-premium-border);
+  background: linear-gradient(to bottom, #fff9f0, #ffffff);
+  border: 2px solid #f59e0b;
   border-radius: 6px;
 }
 
@@ -112,7 +112,7 @@ body {
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.2s;
 }
 .banner-item:hover {
-  box-shadow: 0 10px 25px rgba(30, 64, 175, 0.12);
+  box-shadow: 0 4px 16px rgba(180, 120, 60, 0.08);
   border-color: var(--portal-brand);
   transform: translateY(-2px);
 }
@@ -140,14 +140,14 @@ body {
 /* ===== 카드 그리드 반응형 ===== */
 .shop-grid.card-view {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
-@media (max-width: 768px) {
-  .shop-grid.card-view { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+@media (max-width: 1024px) {
+  .shop-grid.card-view { grid-template-columns: repeat(3, 1fr); }
 }
-@media (min-width: 1280px) {
-  .shop-grid.card-view { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 768px) {
+  .shop-grid.card-view { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
 
 .shop-grid.list-view {
@@ -221,8 +221,8 @@ body {
 }
 .mobile-premium-center {
   min-height: 86px;
-  border: 2px solid #2563eb;
-  background: linear-gradient(180deg, var(--portal-brand), var(--portal-brand-dark));
+  border: 2px solid #D4A373;
+  background: linear-gradient(180deg, #D4A373, #A78B71);
 }
 .mobile-ad-guide {
   border: 2px solid var(--portal-blue-banner-border);
@@ -230,9 +230,9 @@ body {
   color: #fff;
 }
 .mobile-partnership {
-  border: 2px solid var(--color-border);
-  background: var(--portal-brand-soft);
-  color: var(--color-text-primary);
+  border: 2px solid #D4A373;
+  background: #FFF9F0;
+  color: #5F4B32;
 }
 .mobile-empty-slot {
   min-height: 96px;

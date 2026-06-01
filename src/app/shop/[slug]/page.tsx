@@ -2,23 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
-import { DISTRICTS } from '@/lib/catalog';
-import { buildShopBrowseHref, getShopBrowseLabel } from '@/lib/browse-context';
 import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
-import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
+import { stripShopDescriptionToText } from '@/lib/shop-description';
 import { getShopBySlug } from '@/lib/server/shop-store';
-import ShopReviewForm from '@/components/public/ShopReviewForm';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{
-    source?: string;
-    view?: string;
-    region?: string;
-    subRegion?: string;
-    theme?: string;
-  }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -38,11 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export const dynamic = 'force-dynamic';
 
 const themeEmoji: Record<string, string> = {
-  swedish: '',
+  swedish: '🌿',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '',
+  deep: '🔥',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
@@ -51,14 +41,13 @@ const themeEmoji: Record<string, string> = {
 const bgColors = [
   'from-orange-200 to-amber-100',
   'from-rose-200 to-pink-100',
-  'from-[var(--portal-brand-soft)] to-[var(--portal-bg)]',
+  'from-[#FEFAE0] to-[#FCF9F5]',
   'from-amber-200 to-orange-100',
   'from-yellow-200 to-amber-100',
 ];
 
-export default async function ShopDetailPage({ params, searchParams }: Props) {
+export default async function ShopDetailPage({ params }: Props) {
   const { slug } = await params;
-  const currentSearchParams = searchParams ? await searchParams : undefined;
   const data = await getShopBySlug(slug);
 
   if (!data) {
@@ -66,54 +55,18 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   }
 
   const { shop, reviews } = data;
-  const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
-  const shopGalleryImages = Array.from(new Set([shop.thumbnailUrl, ...shop.images].map((value) => value.trim()).filter(Boolean)));
-  const primaryImage = shop.bannerUrl.trim() || shopGalleryImages[0] || '';
+  const shopDescription = stripShopDescriptionToText(shop.description);
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
-  const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
-  const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
-  const preservedRegion =
-    source === 'top100'
-      ? currentSearchParams?.region === shop.region
-        ? currentSearchParams.region
-        : undefined
-      : currentSearchParams?.region === shop.region
-        ? currentSearchParams.region
-        : shop.region;
-  const preservedSubRegion =
-    currentSearchParams?.subRegion && currentSearchParams.subRegion === shop.subRegion ? currentSearchParams.subRegion : undefined;
-  const preservedTheme =
-    currentSearchParams?.theme && currentSearchParams.theme === shop.theme ? currentSearchParams.theme : undefined;
-  const browseHref = buildShopBrowseHref({
-    mode: preservedMode,
-    source,
-    region: preservedRegion,
-    subRegion: preservedSubRegion,
-    theme: preservedTheme,
-  });
-  const browseLabel = getShopBrowseLabel({
-    mode: preservedMode,
-    source,
-    region: preservedRegion,
-    subRegion: preservedSubRegion,
-    theme: preservedTheme,
-    fallbackRegionLabel: shop.regionLabel,
-    fallbackThemeLabel: shop.themeLabel,
-    subRegionLabel:
-      currentSearchParams?.region && currentSearchParams?.subRegion
-        ? DISTRICTS[currentSearchParams.region]?.find((district) => district.code === currentSearchParams.subRegion)?.label
-        : undefined,
-  });
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-3">
       <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-        <Link href="/" className="hover:text-[var(--portal-brand)]">
+        <Link href="/" className="hover:text-[#D4A373]">
           홈
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href={browseHref} className="hover:text-[var(--portal-brand)]">
-          {browseLabel}
+        <Link href={`/?region=${shop.region}`} className="hover:text-[#D4A373]">
+          {shop.regionLabel}
         </Link>
         <ChevronRight className="h-3 w-3" />
         <span className="font-medium text-gray-800">{shop.name}</span>
@@ -148,37 +101,9 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             </div>
           </div>
 
-          {primaryImage ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
-                <h2 className="text-sm font-black text-gray-800">📸 업소 사진</h2>
-                <span className="text-[11px] text-gray-400">썸네일/갤러리 {shopGalleryImages.length}장</span>
-              </div>
-              <div className="space-y-3">
-                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
-                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="aspect-[16/9] w-full object-cover" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {shopGalleryImages.map((imageUrl, index) => (
-                    <div key={`${imageUrl.slice(0, 40)}-${index}`} className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                      <img src={imageUrl} alt={`${shop.name} 갤러리 ${index + 1}`} className="aspect-square w-full object-cover" />
-                      <div className="flex items-center justify-between border-t border-gray-100 px-2 py-1 text-[11px] text-gray-500">
-                        <span>{index === 0 ? '썸네일' : `사진 ${index + 1}`}</span>
-                        {imageUrl === primaryImage ? <span className="font-semibold text-[var(--portal-brand)]">대표 노출</span> : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>
-            <div
-              className="prose prose-sm max-w-none text-gray-600 prose-img:rounded-2xl prose-img:shadow-sm prose-p:leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: shopDescriptionHtml }}
-            />
+            <p className="text-sm leading-relaxed text-gray-600">{shopDescription}</p>
             {shop.tags.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1">
                 {shop.tags.map((tag) => (
@@ -211,7 +136,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
                       {course.description ? <p className="mt-0.5 text-[11px] text-gray-400">{course.description}</p> : null}
                     </td>
                     <td className="text-center text-gray-500">{course.duration}</td>
-                    <td className="text-right font-bold text-[var(--portal-brand)]">{course.price}</td>
+                    <td className="text-right font-bold text-[#D4A373]">{course.price}</td>
                   </tr>
                 ))}
               </tbody>
@@ -221,13 +146,11 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
               <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
-              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[var(--portal-brand)] hover:underline">
+              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[#D4A373] hover:underline">
                 전체보기 &raquo;
               </Link>
             </div>
 
-            {/* 후기 입력 폼 추가 */}
-            <ShopReviewForm shopId={shop.id} shopName={shop.name} />
 
             {reviews.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
@@ -262,7 +185,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
         <div className="space-y-3">
           <a
             href={`tel:${shop.phone}`}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--portal-brand)] py-3 text-sm font-bold text-white transition-colors active:scale-95 hover:bg-[var(--portal-brand-hover)]"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4A373] py-3 text-sm font-bold text-white transition-colors active:scale-95 hover:bg-[#C29262]"
           >
             <Phone className="h-4 w-4" />
             지금 전화하기
@@ -272,23 +195,23 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             <h3 className="mb-3 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📌 영업 정보</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">전화번호</p>
-                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[var(--portal-brand)]">
+                  <a href={`tel:${shop.phone}`} className="font-semibold text-gray-800 hover:text-[#D4A373]">
                     {shop.phone}
                   </a>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">영업시간</p>
                   <p className="text-gray-800">{shop.hours}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--portal-brand)]" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A373]" />
                 <div>
                   <p className="mb-0.5 text-[11px] text-gray-400">주소</p>
                   <p className="text-gray-800">{shop.address}</p>
@@ -302,8 +225,8 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:border-[var(--portal-brand)]"
           >
             <div className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-[var(--portal-brand)]" />
-              <span className="text-sm font-semibold text-gray-800 group-hover:text-[var(--portal-brand)]">Q&A 문의</span>
+              <MessageCircle className="h-4 w-4 text-[#D4A373]" />
+              <span className="text-sm font-semibold text-gray-800 group-hover:text-[#D4A373]">Q&A 문의</span>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400" />
           </Link>

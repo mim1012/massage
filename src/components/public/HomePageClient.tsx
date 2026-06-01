@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
-import MobileBannerRail from '@/components/public/MobileBannerRail';
 import PaginationControls from '@/components/public/PaginationControls';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
@@ -35,11 +34,11 @@ type ShopListResponse = {
 type ViewMode = 'card' | 'list';
 
 const themeEmoji: Record<string, string> = {
-  swedish: '',
+  swedish: '🌿',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '',
+  deep: '🔥',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
@@ -177,7 +176,7 @@ export default function HomePageClient({
         <Sidebar />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-4 text-white shadow-md">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#A78B71] to-[#D4A373] p-4 text-white shadow-md">
             <div>
               <p className="text-base font-black">{initialSiteSettings.heroMainText}</p>
               <p className="mt-0.5 text-sm text-white/80">{initialSiteSettings.heroSubText}</p>
@@ -198,7 +197,7 @@ export default function HomePageClient({
               prefetch={false}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 isAllCategorySelected
-                  ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                  ? 'border-[#D4A373] bg-[#D4A373] text-white'
                   : 'border-gray-300 bg-white text-gray-600'
               }`}
             >
@@ -214,7 +213,7 @@ export default function HomePageClient({
                 prefetch={false}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   selectedRegion === region.code
-                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                    ? 'border-[#D4A373] bg-[#D4A373] text-white'
                     : 'border-gray-300 bg-white text-gray-600'
                 }`}
               >
@@ -226,10 +225,10 @@ export default function HomePageClient({
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-[var(--portal-brand)] text-base">👑</span>
-                <span className="text-sm font-black text-[var(--portal-brand-dark)]">PREMIUM 추천업소</span>
-                <div className="h-px flex-1 bg-[color-mix(in_srgb,var(--portal-brand)_25%,white)]" />
-                <span className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-1.5 py-0.5 text-[10px] text-[var(--portal-brand)]">광고 · 최대 4개</span>
+                <span className="text-amber-500 text-base">👑</span>
+                <span className="text-sm font-black text-amber-700">PREMIUM 추천업소</span>
+                <div className="h-px flex-1 bg-amber-200" />
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-500">광고 · 최대 4개</span>
               </div>
 
               <div className="premium-shop-grid">
@@ -243,9 +242,9 @@ export default function HomePageClient({
                       theme: selectedTheme !== 'all' ? selectedTheme : undefined,
                     })}
                     prefetch={false}
-                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
+                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-amber-300 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
                   >
-                    <div className="premium-shop-media relative flex aspect-[4/3] shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
+                    <div className="premium-shop-media relative flex aspect-[4/3] shrink-0 items-center justify-center border-amber-100 bg-gradient-to-br from-amber-100 to-orange-50">
                       {shop.bannerUrl?.trim() && (
                         <img
                           src={shop.bannerUrl}
@@ -262,14 +261,14 @@ export default function HomePageClient({
                       <div className="mb-2 flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center gap-1.5">
-                            <span className="rounded bg-[var(--portal-brand)] px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
+                            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">AD</span>
                             <h3 className="truncate text-base font-bold text-gray-900 sm:text-lg">{shop.name}</h3>
                           </div>
                           <p className="line-clamp-1 text-xs text-gray-500 sm:text-sm">{shop.tagline}</p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-2 py-1">
-                          <Star className="h-4 w-4 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
-                          <span className="text-sm font-bold text-[var(--portal-brand-dark)]">{formatRating(shop.rating)}</span>
+                        <div className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1">
+                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                          <span className="text-sm font-bold text-amber-700">{formatRating(shop.rating)}</span>
                         </div>
                       </div>
                       <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
@@ -277,7 +276,7 @@ export default function HomePageClient({
                           <MapPin className="h-3.5 w-3.5 text-[var(--portal-brand)]" />
                           {shop.regionLabel}
                         </span>
-                        <span className="font-medium text-[var(--portal-brand)]">#{shop.themeLabel}</span>
+                        <span className="font-medium text-[#D4A373]">#{shop.themeLabel}</span>
                       </div>
                       <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-2">
                         <div className="flex flex-wrap gap-1.5">
@@ -288,7 +287,7 @@ export default function HomePageClient({
                           ))}
                         </div>
                         {shop.courses[0] ? (
-                          <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">{shop.courses[0].price}~</span>
+                          <span className="text-sm font-black text-[#D4A373] sm:text-base">{shop.courses[0].price}~</span>
                         ) : null}
                       </div>
                     </div>
@@ -320,7 +319,7 @@ export default function HomePageClient({
                       theme: selectedTheme,
                     })}
                     prefetch={false}
-                    className="text-[11px] font-bold text-[var(--portal-brand)] hover:underline"
+                    className="text-[11px] font-bold text-[#D4A373] hover:underline"
                   >
                     정렬 초기화
                   </Link>
@@ -330,7 +329,7 @@ export default function HomePageClient({
                     onClick={() => setViewMode('card')}
                     className={`rounded-md p-1.5 transition-colors ${
                       viewMode === 'card'
-                        ? 'bg-white text-[var(--portal-brand)] shadow-sm'
+                        ? 'bg-white text-[#D4A373] shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
                     aria-label="카드형 보기"
@@ -341,7 +340,7 @@ export default function HomePageClient({
                     onClick={() => setViewMode('list')}
                     className={`rounded-md p-1.5 transition-colors ${
                       viewMode === 'list'
-                        ? 'bg-white text-[var(--portal-brand)] shadow-sm'
+                        ? 'bg-white text-[#D4A373] shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
                     aria-label="리스트형 보기"
@@ -352,7 +351,7 @@ export default function HomePageClient({
                 <button
                   onClick={() => setRegularShops((current) => sortRegularShops(current, sortType))}
                   disabled={isLoading}
-                  className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)] disabled:opacity-50"
+                  className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[#FEFAE0] hover:text-[#D4A373] disabled:opacity-50"
                 >
                   <Shuffle className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                   랜덤
@@ -397,8 +396,7 @@ export default function HomePageClient({
             )}
           </div>
 
-          <MobileBannerRail />
-
+          
           <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
             <h1 className="mb-3 text-xl font-bold text-slate-800">{initialHomeSeo.section1Title}</h1>
             <p className="mb-6 text-sm leading-relaxed text-gray-600">{initialHomeSeo.section1Content}</p>
@@ -414,3 +412,4 @@ export default function HomePageClient({
     </div>
   );
 }
+

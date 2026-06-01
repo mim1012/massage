@@ -82,7 +82,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
         <Sidebar />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-5 text-white shadow-sm">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-red-600 to-rose-500 p-5 text-white shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-white/20 p-2">
                 <Trophy className="h-8 w-8 text-yellow-300" />
@@ -116,13 +116,13 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
                 <div className="flex rounded-lg bg-gray-100 p-0.5">
                   <button
                     onClick={() => setViewMode('card')}
-                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'card' ? 'bg-white text-[var(--portal-brand)] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'card' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <LayoutGrid className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-white text-[var(--portal-brand)] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <ListIcon className="h-4 w-4" />
                   </button>
@@ -177,3 +177,4 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
     </div>
   );
 }
+
