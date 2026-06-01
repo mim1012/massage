@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
 import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
-import { ChevronRight, PenLine, Search, Star, X, Pencil, Trash2 } from 'lucide-react';
+import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, ShopListItem, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -84,17 +84,19 @@ function ReviewContent({
   const didInitPaginationReset = useRef(false);
   const [form, setForm] = useState({ shopId: initialShopId, authorName: '', rating: 5, content: '' });
   const [editingReview, setEditingReview] = useState<ReviewWithRegion | null>(null);
+  const [lastSubmittedMode, setLastSubmittedMode] = useState<'create' | 'edit' | null>(null);
 
   function handleEditClick(review: ReviewWithRegion) {
     setEditingReview(review);
+    setSubmitted(false);
+    setLastSubmittedMode(null);
+    setError(null);
     setForm({
       shopId: review.shopId,
       authorName: review.authorName,
       rating: review.rating,
       content: review.content,
     });
-    setSubmitted(false);
-    setError(null);
     setShowModal(true);
   }
 
@@ -292,6 +294,7 @@ function ReviewContent({
 
   function handleOpenModal() {
     setSubmitted(false);
+    setLastSubmittedMode(null);
     setError(null);
     if (!user) {
       setShowModal(true);
@@ -327,6 +330,7 @@ function ReviewContent({
     setSubmitting(true);
     setError(null);
     setSubmitted(false);
+    setLastSubmittedMode(null);
 
     try {
       if (editingReview) {
@@ -345,9 +349,10 @@ function ReviewContent({
           throw new Error(result.error ?? '리뷰를 수정하지 못했습니다.');
         }
 
-        setReviews((current) =>
-          current.map((r) => (r.id === editingReview.id ? { ...r, rating: updatedReview.rating, content: updatedReview.content } : r))
-        );
+        const [decoratedReview] = mapReviewsWithRegion([updatedReview!], shops);
+        setReviews((current) => current.map((review) => (review.id === editingReview.id ? decoratedReview : review)));
+        setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
+        setLastSubmittedMode('edit');
         setSubmitted(true);
         setShowModal(false);
         setEditingReview(null);
@@ -371,6 +376,7 @@ function ReviewContent({
         const [decoratedReview] = mapReviewsWithRegion([createdReview], shops);
         setReviews((current) => [decoratedReview, ...current]);
         setForm({ shopId: initialShopId || '', authorName: user.name, rating: 5, content: '' });
+        setLastSubmittedMode('create');
         setSubmitted(true);
         setShowModal(false);
       }
@@ -480,7 +486,9 @@ function ReviewContent({
       </div>
 
       {submitted ? (
-        <div className="mb-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">리뷰가 등록되었습니다.</div>
+        <div className="mb-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+          {lastSubmittedMode === 'edit' ? '리뷰가 수정되었습니다.' : '리뷰가 등록되었습니다.'}
+        </div>
       ) : null}
       {error ? <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div> : null}
 

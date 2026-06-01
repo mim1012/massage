@@ -342,6 +342,18 @@ async function main() {
       role: UserRole.OWNER,
       status: UserStatus.APPROVED,
       phone: '010-1111-2222',
+      ownerProfile: {
+        upsert: {
+          update: {
+            businessName: 'Healing Spa',
+            businessNumber: '123-45-67890',
+          },
+          create: {
+            businessName: 'Healing Spa',
+            businessNumber: '123-45-67890',
+          },
+        },
+      },
     },
     create: {
       email: 'owner@massage.local',

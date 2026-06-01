@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
 import PageViewTracker from './PageViewTracker';
+import AgeVerificationGate from './AgeVerificationGate';
 import { SiteContentProvider } from '@/lib/use-site-content';
 
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const bypassAgeGate = pathname ? ['/youth', '/privacy', '/terms', '/mobile'].some((route) => pathname.startsWith(route)) : false;
 
   if (isAdmin) {
     return <main className="flex-1">{children}</main>;
@@ -17,6 +19,7 @@ export default function GlobalLayout({ children }: { children: React.ReactNode }
 
   return (
     <SiteContentProvider>
+      {bypassAgeGate ? null : <AgeVerificationGate />}
       <Suspense fallback={<div className="h-14 bg-white border-b-2 border-[var(--portal-brand)]"></div>}>
         <Header />
       </Suspense>
