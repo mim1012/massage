@@ -37,10 +37,10 @@ export default function AdvertisingPageClient({ document }: Props) {
     document.sections.forEach((section) => {
       const allLines = [...section.paragraphs, ...(section.items ?? [])];
       allLines.forEach((line) => {
-        const phoneMatch = line.match(/(?:TEL|전화|연락처|대표번호)\s*[:：]\s*([^\n]+)/i);
-        const emailMatch = line.match(/(?:E-mail|이메일|메일)\s*[:：]\s*([^\n]+)/i);
-        const kakaoMatch = line.match(/(?:Kakao|카카오톡|카톡|ID)\s*[:：]\s*([^\n]+)/i);
-        const hoursMatch = line.match(/(?:운영시간|업무시간|시간)\s*[:：]\s*([^\n]+)/i);
+        const phoneMatch = line.match(/(?:TEL|전화|연락처|대표번호)\s*[:：]\s*([\w\s-]+)/i);
+        const emailMatch = line.match(/(?:E-mail|이메일|메일)\s*[:：]\s*([\w@.-]+)/i);
+        const kakaoMatch = line.match(/(?:Kakao|카카오톡|카톡|ID)\s*[:：]\s*([\w_-]+)/i);
+        const hoursMatch = line.match(/(?:운영시간|업무시간|시간)\s*[:：]\s*(.+)/i);
 
         if (phoneMatch) phone = phoneMatch[1].trim();
         if (emailMatch) email = emailMatch[1].trim();
@@ -50,44 +50,6 @@ export default function AdvertisingPageClient({ document }: Props) {
     });
 
     return { phone, email, kakao, hours };
-  }, [document]);
-
-  // Parse banner background URL dynamically
-  const bannerUrl = useMemo(() => {
-    let url = '';
-    document.sections.forEach((section) => {
-      const allLines = [...section.paragraphs, ...(section.items ?? [])];
-      allLines.forEach((line) => {
-        const bannerMatch = line.match(/(?:Image URL|배너 이미지|배너)\s*[:：]\s*([^\n]+)/i);
-        if (bannerMatch) url = bannerMatch[1].trim();
-      });
-    });
-    return url;
-  }, [document]);
-
-  // Parse dynamic descriptions of products
-  const productTexts = useMemo(() => {
-    let mainBanner = '메인화면 최상단 영역에 고정적으로 노출되는 가장 주목도가 높은 상품입니다.';
-    let categoryAd = '특정 업종이나 카테고리 검색 리스트 최상단에 배치되는 타겟 최적화 상품입니다.';
-    let recomShop = '리스트 내에서 추천 마크와 함께 노출 우선순위를 부여받는 실속형 상품입니다.';
-    let popupAd = '사용자 접속 시 최초로 레이어로 화면 중앙에 노출되는 기간 한정 광고 상품입니다.';
-
-    document.sections.forEach((section) => {
-      const allLines = [...section.paragraphs, ...(section.items ?? [])];
-      allLines.forEach((line) => {
-        const mainMatch = line.match(/(?:메인 배너 광고|메인 배너)\s*[:：]\s*([^\n]+)/);
-        const categoryMatch = line.match(/(?:카테고리 상단 광고|카테고리 상단)\s*[:：]\s*([^\n]+)/);
-        const recomMatch = line.match(/(?:추천업소 노출|추천업소|추천업체 노출|추천업체)\s*[:：]\s*([^\n]+)/);
-        const popupMatch = line.match(/(?:팝업 광고|팝업)\s*[:：]\s*([^\n]+)/);
-
-        if (mainMatch) mainBanner = mainMatch[1].trim();
-        if (categoryMatch) categoryAd = categoryMatch[1].trim();
-        if (recomMatch) recomShop = recomMatch[1].trim();
-        if (popupMatch) popupAd = popupMatch[1].trim();
-      });
-    });
-
-    return { mainBanner, categoryAd, recomShop, popupAd };
   }, [document]);
 
   // Split notice list from note field
@@ -119,7 +81,7 @@ export default function AdvertisingPageClient({ document }: Props) {
   const products = [
     {
       title: '메인 배너 광고',
-      desc: productTexts.mainBanner,
+      desc: '메인화면 최상단 영역에 고정적으로 노출되는 가장 주목도가 높은 상품입니다.',
       badge: '인지도 극대화',
       features: ['PC / 모바일 동시 고정 노출', '유니크 브랜드 배너 적용', '클릭율 최상위 기록'],
       icon: Megaphone,
@@ -128,7 +90,7 @@ export default function AdvertisingPageClient({ document }: Props) {
     },
     {
       title: '카테고리 상단 광고',
-      desc: productTexts.categoryAd,
+      desc: '특정 업종이나 카테고리 검색 리스트 최상단에 배치되는 타겟 최적화 상품입니다.',
       badge: '타겟 세분화',
       features: ['지역 기반 타겟 노출 가능', '리스트 스크롤 시작점 배치', '실수요 고객 타겟팅'],
       icon: Layers,
@@ -137,7 +99,7 @@ export default function AdvertisingPageClient({ document }: Props) {
     },
     {
       title: '추천업소 노출',
-      desc: productTexts.recomShop,
+      desc: '리스트 내에서 추천 마크와 함께 노출 우선순위를 부여받는 실속형 상품입니다.',
       badge: '선호도 상승',
       features: ['목록 우선 배치 우선권', '추천 뱃지 자동 부여', '가성비 최우수 추천 상품'],
       icon: Sparkles,
@@ -146,7 +108,7 @@ export default function AdvertisingPageClient({ document }: Props) {
     },
     {
       title: '팝업 광고',
-      desc: productTexts.popupAd,
+      desc: '사용자 접속 시 최초로 레이어로 화면 중앙에 노출되는 기간 한정 광고 상품입니다.',
       badge: '단기 프로모션',
       features: ['이벤트 및 신규 오픈 알림', '일별 무제한 팝업 호출', '정교한 기간 스케줄 관리'],
       icon: Smartphone,
@@ -174,10 +136,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       </div>
 
       {/* 히어로 타이틀 */}
-      <div
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-8 text-center text-white shadow-xl sm:p-12 bg-cover bg-center"
-        style={bannerUrl ? { backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url('${bannerUrl}')` } : undefined}
-      >
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-8 text-center text-white shadow-xl sm:p-12">
         <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
         <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
         
@@ -196,7 +155,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       {/* 광고 상품 섹션 */}
       <section className="space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">프리미엄 광고 상품</h2>
+          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">🔥 프리미엄 광고 상품</h2>
           <p className="text-xs text-gray-400 mt-1">업체 성격과 홍보 전략에 따라 알맞은 광고 상품을 선택해보세요.</p>
         </div>
 
