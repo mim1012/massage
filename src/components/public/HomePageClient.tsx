@@ -52,7 +52,7 @@ function formatCoursePrice(price?: string) {
     return null;
   }
 
-  const numeric = Number(price.toString().replace(/[^\\d.-]/g, ''));
+  const numeric = Number(price.toString().replace(/[^\d.-]/g, ''));
   if (!Number.isFinite(numeric)) {
     return price;
   }
