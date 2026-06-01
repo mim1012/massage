@@ -1,4 +1,4 @@
-import { Shop } from './types';
+import { Shop, REGION_MAP } from './types';
 
 /**
  * 일반 업소 목록을 랜덤으로 섞는 함수
@@ -9,7 +9,7 @@ export function shuffleRegularShops(shops: Shop[]): Shop[] {
     .filter(s => s.isPremium)
     .sort((a, b) => (a.premiumOrder ?? 0) - (b.premiumOrder ?? 0));
   
-  const regular = shops.filter(s => !s.isPremium);
+  const regular = [...shops.filter(s => !s.isPremium)];
   
   // Fisher-Yates 셔플
   for (let i = regular.length - 1; i > 0; i--) {
@@ -18,6 +18,20 @@ export function shuffleRegularShops(shops: Shop[]): Shop[] {
   }
   
   return [...premium, ...regular];
+}
+
+/**
+ * 업소를 인기순(리뷰수 > 평점순)으로 정렬하는 함수
+ */
+export function sortShopsByPopularity(shops: Shop[]): Shop[] {
+  return [...shops].sort((a, b) => {
+    // 1차: 리뷰 많은 순
+    if (b.reviewCount !== a.reviewCount) {
+      return b.reviewCount - a.reviewCount;
+    }
+    // 2차: 평점 높은 순
+    return b.rating - a.rating;
+  });
 }
 
 /**
@@ -32,7 +46,17 @@ export function filterShops(
 ): Shop[] {
   return shops.filter(s => {
     if (!s.isVisible) return false;
-    if (region !== 'all' && region !== '' && s.region !== region) return false;
+
+    if (region !== 'all' && region !== '') {
+      // 신규 개별 코드가 기존 묶음 데이터와 매핑될 때
+      const mappedRegion = REGION_MAP[region];
+      if (mappedRegion) {
+        if (s.region !== mappedRegion) return false;
+      } else {
+        if (s.region !== region) return false;
+      }
+    }
+
     if (subRegion !== 'all' && subRegion !== '' && s.subRegion !== subRegion) return false;
     if (theme !== 'all' && theme !== '' && s.theme !== theme) return false;
     if (query) {

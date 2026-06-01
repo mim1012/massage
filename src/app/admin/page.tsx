@@ -1,118 +1,80 @@
-import type { Metadata } from 'next';
+import { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertCircle, AlertTriangle, BarChart2, MessageCircle, Star, Store, TrendingUp } from 'lucide-react';
-import { getAdminDashboardData } from '@/lib/server/communityStore';
-import type { AdminDashboardData } from '@/lib/communityTypes';
+import { Store, BarChart2, Star, MessageCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import { MOCK_SHOPS, MOCK_QNA, MOCK_REVIEWS } from '@/lib/mockData';
+import { formatRating } from '@/lib/utils';
 
-export const metadata: Metadata = {
-  title: '대시보드 | 관리자',
-};
+export const metadata: Metadata = { title: '대시보드 | 관리자' };
 
-export const dynamic = 'force-dynamic';
+export default function AdminDashboard() {
+  const pendingQnA = MOCK_QNA.filter(q => !q.isAnswered).length;
 
-const summaryCards = [
-  { label: '전체 업소', icon: Store, color: 'text-[var(--portal-brand)]', bg: 'bg-[var(--portal-brand-soft)]' },
-  { label: '프리미엄(AD)', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-  { label: '미답변 Q&A', icon: MessageCircle, color: 'text-[var(--portal-brand)]', bg: 'bg-[var(--portal-brand-soft)]' },
-  { label: '오늘 페이지뷰', icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
-] as const;
-
-export default async function AdminDashboardPage() {
-  let dashboard: AdminDashboardData | null = null;
-  let loadError = false;
-
-  try {
-    dashboard = await getAdminDashboardData();
-  } catch (error) {
-    loadError = true;
-    console.error('Failed to load admin dashboard data', error);
-  }
+  const summary = [
+    { label: '전체 업소', value: MOCK_SHOPS.length, icon: Store, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: '프리미엄(AD)', value: MOCK_SHOPS.filter(s => s.isPremium).length, icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { label: '미답변 Q&A', value: pendingQnA, icon: MessageCircle, color: 'text-[#D4A373]', bg: 'bg-[#FEFAE0]' },
+    { label: '오늘 페이지뷰', value: '1,247', icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
+  ];
 
   return (
-    <div className="max-w-[1000px] space-y-4">
+    <div className="space-y-4 max-w-[1000px]">
       <h1 className="text-xl font-black text-gray-800">대시보드</h1>
 
-      {loadError ? (
-        <div className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-bold">대시보드 데이터를 불러오지 못했습니다.</p>
-            <p className="mt-1 text-xs text-amber-700">DB 연결 상태를 확인한 뒤 다시 시도해 주세요.</p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {(dashboard?.summary ?? []).map((item, index) => {
-          const card = summaryCards[index] ?? summaryCards[0];
-          const Icon = card.icon;
-
-          return (
-            <div
-              key={`${card.label}-${index}`}
-              className="flex items-center justify-between rounded border border-gray-200 bg-white p-4"
-            >
-              <div>
-                <p className="mb-1 text-[11px] text-gray-500">{card.label}</p>
-                <p className="text-xl font-black text-gray-800">{item.value}</p>
-              </div>
-              <div className={`rounded p-2 ${card.bg}`}>
-                <Icon className={`h-5 w-5 ${card.color}`} />
-              </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {summary.map(item => (
+          <div key={item.label} className="bg-white border border-gray-200 rounded p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] text-gray-500 mb-1">{item.label}</p>
+              <p className="text-xl font-black text-gray-800">{item.value}</p>
             </div>
-          );
-        })}
+            <div className={`p-2 rounded ${item.bg}`}>
+              <item.icon className={`w-5 h-5 ${item.color}`} />
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <section className="rounded border border-gray-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-              <AlertCircle className="h-4 w-4 text-[var(--portal-brand)]" /> 처리 필요 Q&amp;A
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* 미답변 Q&A */}
+        <div className="bg-white border border-gray-200 rounded p-4">
+          <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-[#D4A373]" /> 처리 필요 Q&amp;A
             </h2>
-            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-[var(--portal-brand)]">
-              더보기
-            </Link>
+            <Link href="/admin/qna" className="text-[10px] text-gray-400 hover:text-[#D4A373]">더보기</Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {(dashboard?.pendingQna ?? []).map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="min-w-0 truncate pr-3 text-gray-700">{item.question}</span>
-                <Link href="/admin/qna" className="shrink-0 rounded bg-[var(--portal-brand-soft)] px-2 py-1 text-[11px] text-[var(--portal-brand)]">
-                  답변하기
-                </Link>
+            {MOCK_QNA.filter(q => !q.isAnswered).slice(0, 4).map(qna => (
+              <div key={qna.id} className="py-2 flex justify-between items-center text-sm">
+                <span className="text-gray-700 truncate min-w-0 pr-3">{qna.question}</span>
+                <Link href="/admin/qna" className="shrink-0 text-[11px] px-2 py-1 bg-[#FEFAE0] text-[#D4A373] rounded">답변하기</Link>
               </div>
             ))}
-            {!loadError && (dashboard?.pendingQna?.length ?? 0) === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">새로운 문의가 없습니다.</p>
-            ) : null}
+            {pendingQnA === 0 && <p className="text-xs text-center py-4 text-gray-400">새로운 문의가 없습니다.</p>}
           </div>
-        </section>
+        </div>
 
-        <section className="rounded border border-gray-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-              <TrendingUp className="h-4 w-4 text-[var(--portal-brand)]" /> 최근 작성된 후기
+        {/* 최근 후기 요약 */}
+        <div className="bg-white border border-gray-200 rounded p-4">
+          <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-blue-500" /> 최근 작성된 후기
             </h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {(dashboard?.recentReviews ?? []).map((review) => (
+            {MOCK_REVIEWS.slice(0, 4).map(review => (
               <div key={review.id} className="py-2 text-sm">
-                <div className="mb-0.5 flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-gray-800">{review.shopName}</span>
-                  <div className="flex items-center text-[10px] font-bold text-amber-500">
-                    <Star className="mr-0.5 h-2.5 w-2.5 fill-amber-500" />
-                    {review.rating.toFixed(1)}
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-semibold text-gray-800 text-[11px]">{review.shopName}</span>
+                  <div className="flex items-center text-[10px] text-amber-500 font-bold">
+                    <Star className="w-2.5 h-2.5 fill-amber-500 mr-0.5" />{review.rating}.0
                   </div>
                 </div>
-                <p className="truncate text-xs text-gray-600">{review.content}</p>
+                <p className="text-gray-600 text-xs truncate">{review.content}</p>
               </div>
             ))}
-            {!loadError && (dashboard?.recentReviews?.length ?? 0) === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-400">최근 등록된 후기가 없습니다.</p>
-            ) : null}
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

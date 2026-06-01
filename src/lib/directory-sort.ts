@@ -2,7 +2,7 @@ import type { ShopListItem } from '@/lib/types';
 
 export type DirectorySortType = 'random' | 'popular' | 'new';
 
-function shuffleRegularShops(shops: ShopListItem[]) {
+function shuffleRegularShops<T extends ShopListItem>(shops: T[]): T[] {
   const copy = [...shops];
   for (let index = copy.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
@@ -19,7 +19,7 @@ export function getDirectorySortType(sort: string | null | undefined): Directory
   return 'random';
 }
 
-export function sortRegularShops(shops: ShopListItem[], sortType: DirectorySortType) {
+export function sortRegularShops<T extends ShopListItem>(shops: T[], sortType: DirectorySortType): T[] {
   if (sortType === 'popular') {
     return [...shops].sort((left, right) => {
       if (right.reviewCount !== left.reviewCount) {

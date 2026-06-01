@@ -1,196 +1,106 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, Store, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, User, Store } from 'lucide-react';
 import clsx from 'clsx';
-import { getPostLoginRedirect } from '@/lib/auth/redirects';
-import { getLoginNotice } from '@/lib/auth/login-notice';
-import { useAuthSession } from '@/lib/use-auth-session';
 
-type LoginResult = {
-  user?: {
-    role: 'ADMIN' | 'OWNER' | 'USER';
-  };
-  error?: string;
-};
-
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = useMemo(() => {
-    const target = searchParams.get('redirect');
-    return target && target.startsWith('/') ? target : null;
-  }, [searchParams]);
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
-  const { user, authChecked } = useAuthSession();
 
-  useEffect(() => {
-    if (!authChecked || !user || loading) {
-      return;
-    }
-
-    router.replace(getPostLoginRedirect(user.role, redirectTo));
-  }, [authChecked, loading, redirectTo, router, user]);
-
-  const resetFormState = (tab: 'user' | 'owner') => {
-    setActiveTab(tab);
-    setForm({ id: '', password: '' });
-    setShowPw(false);
-    setError(null);
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.id,
-          password: form.password,
-        }),
-      });
-      const result = (await response.json()) as LoginResult;
-
-      if (!response.ok || !result.user) {
-        setError(result.error ?? '로그인에 실패했습니다.');
-        return;
-      }
-
-      router.push(getPostLoginRedirect(result.user.role, redirectTo));
-    } finally {
+    setTimeout(() => {
       setLoading(false);
-    }
+      // 로그인 성공 후 권한에 따른 분기 처리
+      if (activeTab === 'owner') {
+        router.push('/admin/shops');
+      } else {
+        router.push('/');
+      }
+    }, 1000);
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center bg-gray-50 px-4 py-8">
+    <div className="min-h-[70vh] flex items-center justify-center px-4 py-8 bg-gray-50">
       <div className="w-full max-w-sm">
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          
+          {/* Tab Menu */}
           <div className="flex border-b border-gray-200">
-            <button
-              type="button"
-              onClick={() => resetFormState('user')}
+            <button 
+              onClick={() => { setActiveTab('user'); setForm({ id: '', password: '' }); setShowPw(false); }}
               className={clsx(
-                'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
-                activeTab === 'user'
-                  ? 'border-b-2 border-red-600 bg-white text-red-600'
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
-              )}
-            >
-              <User className="h-4 w-4" /> 일반 고객
+                "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors",
+                activeTab === 'user' ? "text-red-600 border-b-2 border-red-600 bg-white" : "text-gray-400 bg-gray-50 hover:bg-gray-100"
+              )}>
+              <User className="w-4 h-4"/> 일반 고객
             </button>
-            <button
-              type="button"
-              onClick={() => resetFormState('owner')}
+            <button 
+              onClick={() => { setActiveTab('owner'); setForm({ id: '', password: '' }); setShowPw(false); }}
               className={clsx(
-                'flex flex-1 items-center justify-center gap-1.5 py-4 text-sm font-bold transition-colors',
-                activeTab === 'owner'
-                  ? 'border-b-2 border-red-600 bg-white text-red-600'
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
-              )}
-            >
-              <Store className="h-4 w-4" /> 입점사(업체)
+                "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors",
+                activeTab === 'owner' ? "text-red-600 border-b-2 border-red-600 bg-white" : "text-gray-400 bg-gray-50 hover:bg-gray-100"
+              )}>
+              <Store className="w-4 h-4"/> 입점사(업체)
             </button>
           </div>
 
           <div className="p-6">
-            <div className="mb-6 text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded bg-red-600">
-                <span className="text-lg font-black text-white">힐</span>
+            <div className="text-center mb-6">
+              <div className="w-10 h-10 rounded bg-red-600 flex items-center justify-center mx-auto mb-3">
+                <span className="text-white font-black text-lg">힐</span>
               </div>
-              <h1 className="mb-1 text-lg font-black text-gray-800">
+              <h1 className="text-lg font-black text-gray-800 mb-1">
                 {activeTab === 'user' ? '일반 회원 로그인' : '사장님 로그인'}
               </h1>
               <p className="text-xs text-gray-400">
-                {activeTab === 'user'
-                  ? '힐링찾기 계정으로 안전하게 로그인하세요'
-                  : '입점사 관리 시스템에 접속합니다'}
+                {activeTab === 'user' ? '힐링찾기 계정으로 안전하게 로그인하세요' : '입점사 관리 시스템에 접속합니다'}
               </p>
             </div>
 
+
+
             <form onSubmit={handleSubmit} className="space-y-3">
-              {loginNotice ? (
-                <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
-                  {loginNotice.message}
-                </div>
-              ) : null}
-              <input
-                type="text"
-                required
-                value={form.id}
-                onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
-                placeholder={activeTab === 'user' ? '아이디' : '가입하신 대표 아이디'}
-                className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
-              />
+              <input type="text" required value={form.id}
+                onChange={e => setForm(p => ({ ...p, id: e.target.value }))}
+                placeholder={activeTab === 'user' ? "아이디" : "가입하신 대표 아이디"}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
               <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  required
-                  value={form.password}
-                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                <input type={showPw ? 'text' : 'password'} required value={form.password}
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                   placeholder="비밀번호"
-                  className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-red-500 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((current) => !current)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500 pr-10" />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
-              >
+              <button type="submit" disabled={loading}
+                className="w-full py-2.5 bg-red-600 text-white font-bold text-sm rounded hover:bg-red-700 disabled:opacity-60 transition-colors">
                 {loading ? '로그인 중...' : '로그인'}
               </button>
-              {error && !loginNotice ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 
-            <div className="mt-4 flex items-center justify-between text-xs">
-              <Link href="/auth/forgot" className="text-gray-500 hover:text-red-600">
-                비밀번호 찾기
-              </Link>
-              <Link href="/auth/register" className="font-bold text-red-600 hover:underline">
-                회원가입 →
-              </Link>
+            <div className="mt-4 flex justify-between items-center text-xs">
+              <Link href="/auth/forgot" className="text-gray-500 hover:text-red-600">비밀번호 찾기</Link>
+              <Link href="/auth/register" className="text-red-600 font-bold hover:underline">회원가입 →</Link>
             </div>
-
-            {activeTab === 'user' ? (
-              <div className="mt-6 border-t border-gray-100 pt-4 text-center">
-                <Link
-                  href="/admin"
-                  className="text-[11px] text-gray-400 transition-colors hover:text-red-600"
-                >
-                  관리자 전용 로그인
-                </Link>
+            
+            {activeTab === 'user' && (
+              <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+                <Link href="/admin" className="text-[11px] text-gray-400 hover:text-red-600 transition-colors">관리자 전용 로그인</Link>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-[70vh] bg-gray-50" />}>
-      <LoginContent />
-    </Suspense>
-  );
-}
-
