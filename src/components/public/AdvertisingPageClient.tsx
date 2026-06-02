@@ -77,7 +77,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       allLines.forEach((line) => {
         const mainMatch = line.match(/(?:메인 배너 광고|메인 배너)\s*[:：]\s*([^\n]+)/);
         const categoryMatch = line.match(/(?:카테고리 상단 광고|카테고리 상단)\s*[:：]\s*([^\n]+)/);
-        const recomMatch = line.match(/(?:추천업소 노출|추천업소|추천업체 노출|추천업체)\s*[:：]\s*([^\n]+)/);
+        const recomMatch = line.match(/(?:추천업소 노출|추천업소|추천업체 노출)\s*[:：]\s*([^\n]+)/);
         const popupMatch = line.match(/(?:팝업 광고|팝업)\s*[:：]\s*([^\n]+)/);
 
         if (mainMatch) mainBanner = mainMatch[1].trim();
@@ -196,7 +196,7 @@ export default function AdvertisingPageClient({ document }: Props) {
       {/* 광고 상품 섹션 */}
       <section className="space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">프리미엄 광고 상품</h2>
+          <h2 className="text-xl font-black text-gray-800 sm:text-2xl">🔥 프리미엄 광고 상품</h2>
           <p className="text-xs text-gray-400 mt-1">업체 성격과 홍보 전략에 따라 알맞은 광고 상품을 선택해보세요.</p>
         </div>
 
