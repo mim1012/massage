@@ -1,81 +1,76 @@
 'use client';
 
 import Link from 'next/link';
-import clsx from 'clsx';
 import { useSiteContent } from '@/lib/use-site-content';
 
 export default function Footer() {
   const { siteSettings } = useSiteContent();
 
-  const socialItems = [
-    { label: 'YT', href: '#', className: 'bg-[var(--portal-brand)]' },
-    { label: 'IG', href: '#', className: 'bg-[var(--portal-brand-hover)]' },
-    { label: 'BL', href: '#', className: 'bg-[var(--portal-blue-banner-hover)]' },
-  ];
-
   return (
-    <footer className="mt-6 w-full border-t border-gray-200 bg-white pb-16 md:pb-0">
-      <div className="border-b border-gray-200 bg-slate-50">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 text-[13px] font-medium text-slate-600">
-          <Link href="/ad" prefetch={false} className="hover:text-[var(--portal-brand)]">광고안내</Link>
+    <footer className="w-full bg-white border-t border-gray-200 mt-6 pb-16 md:pb-0">
+      <div className="bg-[#f8f8f8] border-b border-gray-200">
+        <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 text-[13px] text-gray-600 font-medium">
+          <Link href="/ad" className="hover:text-gray-900">광고안내</Link>
           <span className="text-gray-300">|</span>
-          <Link href="/terms" prefetch={false} className="hover:text-[var(--portal-brand)]">이용약관</Link>
+          <Link href="/terms" className="hover:text-gray-900">이용약관</Link>
           <span className="text-gray-300">|</span>
-          <Link href="/privacy" prefetch={false} className="font-bold hover:text-[var(--portal-brand)]">개인정보처리방침</Link>
+          <Link href="/privacy" className="font-bold hover:text-gray-900">개인정보처리방침</Link>
           <span className="text-gray-300">|</span>
-          <Link href="/youth" prefetch={false} className="hover:text-[var(--portal-brand)]">청소년보호정책</Link>
+          <Link href="/youth" className="hover:text-gray-900">청소년보호정책</Link>
           <span className="text-gray-300">|</span>
-          <Link href="/mobile" prefetch={false} className="hover:text-[var(--portal-brand)]">모바일웹</Link>
+          <Link href="/mobile" className="hover:text-gray-900">모바일웹</Link>
           <span className="text-gray-300">|</span>
-          <Link href="/rss" prefetch={false} className="rounded-sm bg-[var(--portal-brand)] px-1.5 py-0.5 text-[11px] text-white hover:opacity-80">RSS</Link>
+          <Link href="/rss" className="bg-[#ff6600] text-white p-0.5 rounded-sm hover:opacity-80">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+          </Link>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1400px] px-4 py-8">
-        <div className="flex flex-col justify-between gap-8 md:flex-row">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between gap-8">
           <div className="flex-1 space-y-4">
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--portal-brand)]">
-                <span className="text-sm font-black text-white">{siteSettings.siteName[0]}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded bg-sky-600 flex items-center justify-center">
+                <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
               </div>
               <div className="leading-tight">
-                <span className="text-xl font-black tracking-tight text-gray-900">{siteSettings.siteName}</span>
-                <span className="ml-0.5 block -mt-1 text-[10px] font-bold text-[var(--portal-brand)]">ENTERPRISE DIRECTORY</span>
+                <span className="text-gray-900 font-black text-xl tracking-tight">{siteSettings.siteName}</span>
+                <span className="text-sky-500 font-bold text-[10px] block -mt-1 ml-0.5">#마사지 커뮤니티</span>
               </div>
             </div>
 
-            <div className="text-[12px] font-medium leading-relaxed text-gray-500">
+            <div className="text-[12px] text-gray-500 leading-relaxed uppercase tracking-tight font-medium">
               <p>{siteSettings.footerInfo}</p>
-              <p className="mt-4 font-normal">Copyright © 2026 {siteSettings.siteName}. All rights reserved.</p>
+              <p className="mt-4 font-normal">Copyright 2018 {siteSettings.siteName}. All rights reseved.</p>
             </div>
           </div>
 
-          <div className="flex flex-col justify-between md:w-[450px]">
+          <div className="md:w-[450px] flex flex-col justify-between">
             <div>
-              <h3 className="mb-1 text-lg font-bold text-slate-800">고객센터</h3>
-              <div className="-ml-0.5 mb-4 text-[32px] font-black leading-none tracking-tight text-[var(--portal-brand)]">
+              <h3 className="text-lg font-bold text-gray-800 mb-1">고객센터</h3>
+              <div className="text-[32px] font-black text-[#0078d7] leading-none mb-4 -ml-0.5 tracking-tight">
                 {siteSettings.contactPhone}
               </div>
-              <div className="space-y-1.5 text-[12px] font-medium tracking-tight text-slate-500">
+              <div className="text-[12px] text-gray-500 space-y-1.5 font-medium tracking-tight">
                 <p>평일 : 월~금 09:00 ~ 18:00</p>
                 <p>점심시간 : 12:00 ~ 13:30 (주말, 공휴일 휴무)</p>
-                <p>E-MAIL : help@healing.co.kr</p>
+                <p>E-MAIL : help@beaulead.co.kr</p>
               </div>
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              {socialItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  prefetch={false}
-                  className={clsx('flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white transition-opacity hover:opacity-80', item.className)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+            <div className="flex items-center gap-3 mt-6">
+              <Link href="#" className="w-10 h-10 rounded-full bg-[#ff0000] text-white flex items-center justify-center hover:opacity-80 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+              </Link>
+              <Link href="#" className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-80 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              </Link>
+              <Link href="#" className="w-10 h-10 rounded-full bg-[#03c75a] text-white flex items-center justify-center hover:opacity-80 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </Link>
             </div>
           </div>
+
         </div>
       </div>
     </footer>
