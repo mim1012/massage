@@ -14,6 +14,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 import MobileBannerRail from '@/components/public/MobileBannerRail';
+import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import PaginationControls from '@/components/public/PaginationControls';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { buildShopDetailHref } from '@/lib/browse-context';
@@ -410,6 +411,8 @@ export default function HomePageClient({
             <p className="text-sm leading-relaxed text-gray-600">{initialHomeSeo.section3Content}</p>
           </div>
         </div>
+
+        <HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />
       </div>
     </div>
   );
