@@ -7,14 +7,13 @@ export async function GET(request: Request) {
     const user = await requireRole('ADMIN', 'OWNER');
     const url = new URL(request.url);
     const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
-    const shopId =
-      user.role === 'OWNER'
-        ? (user.managedShopId ?? undefined)
-        : (url.searchParams.get('shopId') ?? undefined);
+    const shopId = user.role !== 'OWNER' ? (url.searchParams.get('shopId') ?? undefined) : undefined;
+    const shopOwnerId = user.role === 'OWNER' ? user.id : undefined;
 
     const qnaList = await listQna({
       search: search?.trim() || undefined,
       shopId,
+      shopOwnerId,
       viewer: { id: user.id, role: user.role },
     });
 

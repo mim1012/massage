@@ -5,7 +5,7 @@ import { addTheme, deleteTheme, listThemes, type ThemeItem } from '@/lib/server/
 export async function GET() {
   try {
     await requireRole('ADMIN');
-    return Response.json({ themes: listThemes() });
+    return Response.json({ themes: await listThemes() });
   } catch (error) {
     return errorResponse(error);
   }
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!body.label?.trim()) {
       return Response.json({ error: 'label이 필요합니다.' }, { status: 400 });
     }
-    const result = addTheme({
+    const result = await addTheme({
       code: body.code,
       label: body.label,
       emoji: body.emoji ?? '',
@@ -42,7 +42,7 @@ export async function DELETE(request: Request) {
     if (!code?.trim()) {
       return Response.json({ error: 'code가 필요합니다.' }, { status: 400 });
     }
-    const deleted = deleteTheme(code);
+    const deleted = await deleteTheme(code);
     if (!deleted) {
       return Response.json({ error: '존재하지 않는 테마입니다.' }, { status: 404 });
     }

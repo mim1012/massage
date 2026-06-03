@@ -632,6 +632,25 @@ async function main() {
     },
   });
 
+  const SEED_THEMES = [
+    { code: 'swedish',   label: '스웨디시', emoji: '🌿', sortOrder: 0 },
+    { code: 'aroma',     label: '아로마',   emoji: '🌸', sortOrder: 1 },
+    { code: 'thai',      label: '타이',     emoji: '🙏', sortOrder: 2 },
+    { code: 'sport',     label: '스포츠',   emoji: '💪', sortOrder: 3 },
+    { code: 'deep',      label: '딥티슈',   emoji: '🔥', sortOrder: 4 },
+    { code: 'hot_stone', label: '핫스톤',   emoji: '💎', sortOrder: 5 },
+    { code: 'foot',      label: '발마사지', emoji: '🦶', sortOrder: 6 },
+    { code: 'couple',    label: '커플',     emoji: '👫', sortOrder: 7 },
+    { code: 'geonma',    label: '건마',     emoji: '💆', sortOrder: 8 },
+  ];
+  for (const theme of SEED_THEMES) {
+    await prisma.theme.upsert({
+      where: { code: theme.code },
+      update: { label: theme.label, emoji: theme.emoji, sortOrder: theme.sortOrder },
+      create: theme,
+    });
+  }
+
   await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },
     update: {

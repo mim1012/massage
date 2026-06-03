@@ -676,6 +676,7 @@ export async function deleteNotice(id: string) {
 
 type QnaListOptions = {
   shopId?: string;
+  shopOwnerId?: string;
   search?: string;
   viewer?: ViewerContext;
 };
@@ -740,9 +741,10 @@ const boardLandingQnaSelect = {
   },
 } satisfies Prisma.QnASelect;
 
-function buildQnaWhere(shopId?: string, search?: string) {
+function buildQnaWhere(shopId?: string, search?: string, shopOwnerId?: string) {
   return {
     ...(shopId ? { shopId } : {}),
+    ...(shopOwnerId ? { shop: { ownerId: shopOwnerId } } : {}),
     ...(search
       ? {
           OR: [
@@ -755,9 +757,10 @@ function buildQnaWhere(shopId?: string, search?: string) {
   } satisfies Prisma.QnAWhereInput;
 }
 
-function buildLegacyQnaWhere(shopId?: string, search?: string) {
+function buildLegacyQnaWhere(shopId?: string, search?: string, shopOwnerId?: string) {
   return {
     ...(shopId ? { shopId } : {}),
+    ...(shopOwnerId ? { shop: { ownerId: shopOwnerId } } : {}),
     ...(search
       ? {
           OR: [
@@ -867,8 +870,9 @@ export async function listPublicQnaPage(
 export async function listQna(options: string | QnaListOptions = {}) {
   const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
   const shopId = normalizedOptions.shopId?.trim();
+  const shopOwnerId = normalizedOptions.shopOwnerId?.trim();
   const search = normalizedOptions.search?.trim();
-  const where = buildQnaWhere(shopId, search);
+  const where = buildQnaWhere(shopId, search, shopOwnerId);
 
   try {
     const entries = await prisma.qnA.findMany({
@@ -883,7 +887,7 @@ export async function listQna(options: string | QnaListOptions = {}) {
       throw error;
     }
 
-    const legacyWhere = buildLegacyQnaWhere(shopId, search);
+    const legacyWhere = buildLegacyQnaWhere(shopId, search, shopOwnerId);
 
     const entries = await loadLegacyQnaRecords(legacyWhere);
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));

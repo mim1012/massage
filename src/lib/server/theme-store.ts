@@ -1,4 +1,4 @@
-import { THEMES } from '@/lib/catalog';
+import { prisma } from '@/lib/db/prisma';
 
 export interface ThemeItem {
   code: string;
@@ -6,56 +6,36 @@ export interface ThemeItem {
   emoji: string;
 }
 
-const DEFAULT_EMOJI: Record<string, string> = {
-  all: '',
-  swedish: '🌿',
-  aroma: '🌸',
-  thai: '🙏',
-  sport: '💪',
-  deep: '🔥',
-  hot_stone: '💎',
-  foot: '🦶',
-  couple: '👫',
-  geonma: '💆',
-};
+const SELECT = { code: true, label: true, emoji: true } as const;
 
-const globalForThemes = globalThis as typeof globalThis & {
-  __themeStore?: ThemeItem[];
-};
-
-function initThemes(): ThemeItem[] {
-  return THEMES.filter((t) => t.code !== 'all').map((t) => ({
-    code: t.code,
-    label: t.label,
-    emoji: DEFAULT_EMOJI[t.code] ?? '',
-  }));
+export async function listThemes(): Promise<ThemeItem[]> {
+  return prisma.theme.findMany({ orderBy: { sortOrder: 'asc' }, select: SELECT });
 }
 
-function getStore(): ThemeItem[] {
-  if (!globalForThemes.__themeStore) {
-    globalForThemes.__themeStore = initThemes();
-  }
-  return globalForThemes.__themeStore;
-}
-
-export function listThemes(): ThemeItem[] {
-  return [...getStore()];
-}
-
-export function addTheme(item: ThemeItem): { ok: true; theme: ThemeItem } | { ok: false; error: string } {
-  const store = getStore();
+export async function addTheme(
+  item: ThemeItem,
+): Promise<{ ok: true; theme: ThemeItem } | { ok: false; error: string }> {
   const code = item.code.trim().toLowerCase();
   if (!code) return { ok: false, error: 'code가 필요합니다.' };
-  if (store.some((t) => t.code === code)) return { ok: false, error: '이미 존재하는 코드입니다.' };
-  const theme: ThemeItem = { code, label: item.label.trim(), emoji: item.emoji.trim() };
-  store.push(theme);
+
+  const existing = await prisma.theme.findUnique({ where: { code } });
+  if (existing) return { ok: false, error: '이미 존재하는 코드입니다.' };
+
+  const agg = await prisma.theme.aggregate({ _max: { sortOrder: true } });
+  const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+
+  const theme = await prisma.theme.create({
+    data: { code, label: item.label.trim(), emoji: item.emoji.trim(), sortOrder },
+    select: SELECT,
+  });
   return { ok: true, theme };
 }
 
-export function deleteTheme(code: string): boolean {
-  const store = getStore();
-  const idx = store.findIndex((t) => t.code === code);
-  if (idx === -1) return false;
-  store.splice(idx, 1);
-  return true;
+export async function deleteTheme(code: string): Promise<boolean> {
+  try {
+    await prisma.theme.delete({ where: { code: code.trim() } });
+    return true;
+  } catch {
+    return false;
+  }
 }

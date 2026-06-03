@@ -254,6 +254,16 @@ model SiteSettings {
   @@map("site_settings")
 }
 
+model Theme {
+  code      String   @id
+  label     String
+  emoji     String   @default("")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("themes")
+}
+
 model PageViewEvent {
   id        String   @id @default(cuid())
   path      String
