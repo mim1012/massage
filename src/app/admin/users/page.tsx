@@ -1,24 +1,30 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Users, Crown, Store, UserCheck, Shield } from 'lucide-react';
-
-// export const metadata: Metadata = { title: '회원 관리 | 관리자' };
-
-
-const MOCK_USERS = [
-  { id: 'u1', name: '관리자', email: 'admin@healing.kr', role: 'super_admin', joinDate: '2024-01-01' },
-  { id: 'u2', name: '강남힐링 담당', email: 'gangnam@healing.kr', role: 'shop_admin', joinDate: '2024-02-01' },
-  { id: 'u3', name: '홍대아로 담당', email: 'hongdae@healing.kr', role: 'shop_admin', joinDate: '2024-02-15' },
-  { id: 'u4', name: '일반회원1', email: 'user1@example.com', role: 'user', joinDate: '2024-03-01' },
-];
+import type { User } from '@/lib/types';
 
 const roleMap: Record<string, { label: string; bg: string; text: string; icon: typeof Crown }> = {
-  super_admin: { label: '최고관리자', bg: 'bg-purple-100', text: 'text-purple-700', icon: Shield },
-  shop_admin: { label: '업체관리자', bg: 'bg-amber-100', text: 'text-amber-700', icon: Store },
-  user: { label: '일반회원', bg: 'bg-gray-100', text: 'text-gray-600', icon: UserCheck },
+  ADMIN: { label: '최고관리자', bg: 'bg-purple-100', text: 'text-purple-700', icon: Shield },
+  OWNER: { label: '업체관리자', bg: 'bg-amber-100', text: 'text-amber-700', icon: Store },
+  USER: { label: '일반회원', bg: 'bg-gray-100', text: 'text-gray-600', icon: UserCheck },
+};
+
+const roleEmoji: Record<string, string> = {
+  ADMIN: '👑',
+  OWNER: '🏢',
+  USER: '👤',
 };
 
 export default function AdminUsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/users')
+      .then(r => r.json())
+      .then(({ users: data }: { users: User[] }) => setUsers(data ?? []));
+  }, []);
+
   return (
     <div className="max-w-[1000px] space-y-4">
       <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
@@ -33,23 +39,25 @@ export default function AdminUsersPage() {
               <th className="px-4 py-2 font-bold">이름</th>
               <th className="px-4 py-2 font-bold">이메일</th>
               <th className="px-4 py-2 font-bold text-center">권한</th>
-              <th className="px-4 py-2 font-bold">가입일</th>
+              <th className="px-4 py-2 font-bold">상태</th>
               <th className="px-4 py-2 font-bold text-center">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
-            {MOCK_USERS.map(user => {
-              const r = roleMap[user.role];
+            {users.map(user => {
+              const r = roleMap[user.role] ?? roleMap['USER'];
               return (
                 <tr key={user.id} className="hover:bg-gray-100 transition-colors">
                   <td data-label="이름" className="px-4 py-2.5 font-bold text-gray-800">{user.name}</td>
                   <td data-label="이메일" className="px-4 py-2.5 text-gray-600">{user.email}</td>
                   <td data-label="권한" className="px-4 py-2.5 text-center">
                     <span className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${r.bg} ${r.text}`}>
-                      {user.role === 'super_admin' ? '👑' : user.role === 'shop_admin' ? '🏢' : '👤'} {r.label}
+                      {roleEmoji[user.role] ?? '👤'} {r.label}
                     </span>
                   </td>
-                  <td data-label="가입일" className="px-4 py-2.5 text-gray-400">{user.joinDate}</td>
+                  <td data-label="상태" className="px-4 py-2.5 text-gray-400">
+                    {user.status === 'pending' ? '심사중' : user.status === 'rejected' ? '반려' : '정상'}
+                  </td>
                   <td data-label="관리" className="px-4 py-2.5 text-center">
                     <button className="px-2 py-1 bg-white border border-gray-300 rounded text-[10px] text-gray-600 hover:bg-gray-100">
                       수정
@@ -58,6 +66,11 @@ export default function AdminUsersPage() {
                 </tr>
               );
             })}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">회원 정보가 없습니다.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

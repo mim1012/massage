@@ -1,18 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageCircle, Send, CheckCircle, Clock, Search } from 'lucide-react';
-import { MOCK_QNA } from '@/lib/mockData';
-import { QnA } from '@/lib/types';
+import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import clsx from 'clsx';
 
 export default function AdminQnAPage() {
-  const [qnaList, setQnaList] = useState<QnA[]>(MOCK_QNA);
+  const [qnaList, setQnaList] = useState<QnA[]>([]);
   const [answeringId, setAnsweringId] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [tab, setTab] = useState<'all' | 'pending' | 'done'>('all');
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/qna')
+      .then(r => r.json())
+      .then(({ qnaList: data }: { qnaList: QnA[] }) => setQnaList(data ?? []));
+  }, []);
 
   const pendingCount = qnaList.filter(q => !q.isAnswered).length;
   const doneCount = qnaList.filter(q => q.isAnswered).length;
@@ -23,11 +28,18 @@ export default function AdminQnAPage() {
     return matchTab && matchSearch;
   });
 
-  const handleAnswer = (id: string) => {
+  const handleAnswer = async (id: string) => {
     if (!answerText.trim()) return;
-    setQnaList(prev => prev.map(q => q.id === id ? { ...q, answer: answerText, isAnswered: true } : q));
-    setAnsweringId(null);
-    setAnswerText('');
+    const res = await fetch(`/api/admin/qna/${id}/answer`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: answerText }),
+    });
+    if (res.ok) {
+      setQnaList(prev => prev.map(q => q.id === id ? { ...q, answer: answerText, isAnswered: true } : q));
+      setAnsweringId(null);
+      setAnswerText('');
+    }
   };
 
   return (
@@ -43,7 +55,7 @@ export default function AdminQnAPage() {
           { key: 'pending', label: '미완료', count: pendingCount },
           { key: 'done', label: '답변완료', count: doneCount },
         ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key as any)}
+          <button key={t.key} onClick={() => setTab(t.key as 'all' | 'pending' | 'done')}
             className={clsx(
               'px-4 py-2.5 text-sm font-bold border-b-2 flex items-center gap-1.5 transition-colors',
               tab === t.key ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-800'

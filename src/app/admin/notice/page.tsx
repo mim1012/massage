@@ -1,29 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Plus, Pin, Edit2, Trash2, Save, X } from 'lucide-react';
-import { MOCK_NOTICES } from '@/lib/mockData';
-import { Notice } from '@/lib/types';
+import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import clsx from 'clsx';
 
 export default function AdminNoticePage() {
-  const [notices, setNotices] = useState<Notice[]>(MOCK_NOTICES);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Notice | null>(null);
   const [form, setForm] = useState({ title: '', content: '', isPinned: false });
 
+  useEffect(() => {
+    fetch('/api/admin/notices')
+      .then(r => r.json())
+      .then(({ notices: data }: { notices: Notice[] }) => setNotices(data ?? []));
+  }, []);
+
   const openNew = () => { setEditing(null); setForm({ title: '', content: '', isPinned: false }); setShowForm(true); };
   const openEdit = (notice: Notice) => { setEditing(notice); setForm({ title: notice.title, content: notice.content, isPinned: notice.isPinned }); setShowForm(true); };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editing) setNotices(prev => prev.map(n => n.id === editing.id ? { ...n, ...form } : n));
-    else setNotices(prev => [{ id: `notice-${Date.now()}`, ...form, createdAt: new Date().toISOString() }, ...prev]);
-    setShowForm(false);
+    if (editing) {
+      const res = await fetch(`/api/admin/notices/${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const { notice } = await res.json() as { notice: Notice };
+        setNotices(prev => prev.map(n => n.id === editing.id ? notice : n));
+        setShowForm(false);
+      }
+    } else {
+      const res = await fetch('/api/admin/notices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const { notice } = await res.json() as { notice: Notice };
+        setNotices(prev => [notice, ...prev]);
+        setShowForm(false);
+      }
+    }
   };
 
-  const handleDelete = (id: string) => setNotices(prev => prev.filter(n => n.id !== id));
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
+    if (res.ok) setNotices(prev => prev.filter(n => n.id !== id));
+  };
 
   return (
     <div className="max-w-[800px] space-y-4">

@@ -24,7 +24,17 @@ export async function PATCH(request: Request, context: Context) {
       return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const body = (await request.json()) as { rating?: number; content?: string; authorName?: string };
+    const body = (await request.json()) as { rating?: number; content?: string; authorName?: string; isHidden?: boolean };
+
+    if (body.isHidden !== undefined && body.rating === undefined && body.content === undefined && body.authorName === undefined) {
+      const toggled = await prisma.review.update({
+        where: { id },
+        data: { isHidden: body.isHidden },
+        include: { shop: { select: { name: true } } },
+      });
+      return Response.json({ review: { id: toggled.id, shopId: toggled.shopId, shopName: toggled.shop.name, authorName: toggled.authorName, rating: toggled.rating, content: toggled.content, isHidden: toggled.isHidden, createdAt: toggled.createdAt.toISOString() } });
+    }
+
     if (body.rating !== undefined && (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5)) {
       return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
     }

@@ -3,55 +3,72 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit2, Crown, Store } from 'lucide-react';
-import { MOCK_SHOPS, MOCK_USERS } from '@/lib/mockData';
-import { Shop, REGIONS, REGION_MAP, UserRole } from '@/lib/types';
+import type { AdminShopListItem } from '@/lib/communityTypes';
+import type { User } from '@/lib/types';
+import { REGIONS, REGION_MAP } from '@/lib/types';
 import clsx from 'clsx';
 
 export default function AdminShopsPage() {
-  const [shops, setShops] = useState<Shop[]>(MOCK_SHOPS);
+  const [shops, setShops] = useState<AdminShopListItem[]>([]);
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkRole = () => {
-      const isOwner = document.body.innerText.includes('내 업소 관리 모드');
-      setCurrentUser(isOwner ? MOCK_USERS[1] : MOCK_USERS[0]);
-    };
-    checkRole();
-    const interval = setInterval(checkRole, 1000);
-    return () => clearInterval(interval);
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(({ user }: { user: User | null }) => setCurrentUser(user));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/shops')
+      .then(r => r.json())
+      .then(({ shops: data }: { shops: AdminShopListItem[] }) => setShops(data ?? []));
   }, []);
 
   const filtered = shops.filter(shop => {
-    const isMyShop = currentUser.role === 'OWNER' ? shop.ownerId === currentUser.id : true;
+    const isMyShop = currentUser?.role === 'OWNER' ? shop.ownerId === currentUser.id : true;
     let mRegion = regionFilter === 'all';
     if (!mRegion) {
       const mapped = REGION_MAP[regionFilter];
       mRegion = mapped ? shop.region === mapped : shop.region === regionFilter;
     }
-    const mSearch = !search || shop.name.includes(search) || shop.address.includes(search);
+    const mSearch = !search || shop.name.includes(search) || shop.phone.includes(search);
     return isMyShop && mRegion && mSearch;
   });
 
-  const toggleVisibility = (id: string) => {
-    if (currentUser.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
-    setShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
+  const toggleVisibility = async (id: string) => {
+    if (currentUser?.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
+    const shop = shops.find(s => s.id === id);
+    if (!shop) return;
+    const res = await fetch(`/api/admin/shops/${id}/visibility`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isVisible: !shop.isVisible }),
+    });
+    if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
   };
 
-  const togglePremium = (id: string) => {
-    if (currentUser.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
-    setShops(prev => prev.map(s => s.id === id ? { ...s, isPremium: !s.isPremium } : s));
+  const togglePremium = async (id: string) => {
+    if (currentUser?.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
+    const shop = shops.find(s => s.id === id);
+    if (!shop) return;
+    const res = await fetch(`/api/admin/shops/${id}/premium`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPremium: !shop.isPremium }),
+    });
+    if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isPremium: !s.isPremium } : s));
   };
 
   return (
     <div className="max-w-[1200px] space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
-          <Store className="w-5 h-5 text-[#D4A373]" /> {currentUser.role === 'ADMIN' ? '업소 목록 관리' : '내 업소 관리'}
+          <Store className="w-5 h-5 text-[#D4A373]" /> {currentUser?.role === 'ADMIN' ? '업소 목록 관리' : '내 업소 관리'}
         </h1>
-        {(currentUser.role === 'ADMIN' || currentUser.role === 'OWNER') && (
+        {(currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER') && (
           <Link href="/admin/shops/new"
             className="flex items-center gap-1 bg-[#D4A373] text-white px-3 py-1.5 rounded text-sm font-bold hover:bg-[#C29262] transition-colors">
             <Plus className="w-4 h-4" /> 업소 등록
@@ -63,7 +80,7 @@ export default function AdminShopsPage() {
       <div className="flex flex-col sm:flex-row gap-2 bg-white p-3 border border-gray-200 rounded">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="업소명, 주소 검색" value={search} onChange={e => setSearch(e.target.value)}
+          <input type="text" placeholder="업소명, 연락처 검색" value={search} onChange={e => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:border-[#D4A373] outline-none" />
         </div>
         <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
@@ -93,11 +110,11 @@ export default function AdminShopsPage() {
                 <td data-label="노출" className="px-4 py-2 text-center">
                   <button
                     onClick={() => toggleVisibility(shop.id)}
-                    disabled={currentUser.role !== 'ADMIN'}
+                    disabled={currentUser?.role !== 'ADMIN'}
                     className={clsx(
                       'toggle-switch inline-block',
                       shop.isVisible ? 'on' : 'off',
-                      currentUser.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
+                      currentUser?.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
                     )}
                     title={shop.isVisible ? '노출 중 (클릭하여 숨김)' : '숨김 (클릭하여 노출)'}
                   >
@@ -110,11 +127,11 @@ export default function AdminShopsPage() {
                 <td data-label="AD" className="px-4 py-2 text-center">
                   <button
                     onClick={() => togglePremium(shop.id)}
-                    disabled={currentUser.role !== 'ADMIN'}
+                    disabled={currentUser?.role !== 'ADMIN'}
                     className={clsx('p-1 rounded text-white transition-colors',
                       shop.isPremium ? 'bg-amber-500' : 'bg-gray-300',
-                      currentUser.role === 'ADMIN' && !shop.isPremium && 'hover:bg-gray-400',
-                      currentUser.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
+                      currentUser?.role === 'ADMIN' && !shop.isPremium && 'hover:bg-gray-400',
+                      currentUser?.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
                     )}
                     title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
                   >

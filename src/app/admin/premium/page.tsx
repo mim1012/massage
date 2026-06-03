@@ -1,22 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Crown, Save, Info, GripVertical, X, Plus } from 'lucide-react';
-import { MOCK_SHOPS } from '@/lib/mockData';
-import { Shop, REGIONS } from '@/lib/types';
+import type { AdminShopListItem } from '@/lib/communityTypes';
+import type { PremiumBoardData } from '@/lib/communityTypes';
+import { REGIONS } from '@/lib/types';
 import clsx from 'clsx';
 
 const MAX_PER_REGION = 4;
 
 export default function AdminPremiumPage() {
-  const [premiumShops, setPremiumShops] = useState<Shop[]>(
-    MOCK_SHOPS.filter(s => s.isPremium).sort((a, b) => (a.premiumOrder ?? 0) - (b.premiumOrder ?? 0))
-  );
-  const [allShops] = useState<Shop[]>(MOCK_SHOPS.filter(s => !s.isPremium));
+  const [premiumShops, setPremiumShops] = useState<AdminShopListItem[]>([]);
+  const [allShops, setAllShops] = useState<AdminShopListItem[]>([]);
   const [filterRegion, setFilterRegion] = useState('all');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/premium')
+      .then(r => r.json())
+      .then((data: PremiumBoardData) => {
+        setPremiumShops((data.premiumShops ?? []).sort((a, b) => (a.premiumOrder ?? 0) - (b.premiumOrder ?? 0)));
+        setAllShops(data.availableShops ?? []);
+      });
+  }, []);
 
   // 지역별 카운트
   const countByRegion = (region: string) =>
@@ -55,9 +63,16 @@ export default function AdminPremiumPage() {
   };
   const handleDragEnd = () => { setDragIndex(null); setDragOverIndex(null); };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    const res = await fetch('/api/admin/premium', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: premiumShops.map(s => s.id) }),
+    });
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   const displayPremium = filterRegion === 'all'
