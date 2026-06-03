@@ -3,7 +3,6 @@ type OwnerRegistrationBody = {
   email?: string;
   password?: string;
   businessName?: string;
-  businessNumber?: string;
   phone?: string;
 };
 
@@ -22,7 +21,6 @@ type RegisterOwnerDeps = {
     email: string;
     password: string;
     businessName: string;
-    businessNumber: string;
     phone: string;
   }) => Promise<RegisteredOwner>;
 };
@@ -42,7 +40,7 @@ export function getOwnerRegistrationSuccessState(input: OwnerRegistrationSuccess
 }
 
 export async function registerOwnerRoute(body: OwnerRegistrationBody, deps: RegisterOwnerDeps) {
-  if (!body.name || !body.email || !body.password || !body.businessName || !body.businessNumber || !body.phone) {
+  if (!body.name || !body.email || !body.password || !body.businessName || !body.phone) {
     return Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 });
   }
 
@@ -51,7 +49,6 @@ export async function registerOwnerRoute(body: OwnerRegistrationBody, deps: Regi
     email: body.email,
     password: body.password,
     businessName: body.businessName,
-    businessNumber: body.businessNumber,
     phone: body.phone,
   });
 
