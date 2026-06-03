@@ -36,11 +36,11 @@ type ShopListResponse = {
 type ViewMode = 'card' | 'list';
 
 const themeEmoji: Record<string, string> = {
-  swedish: '',
+  swedish: '🌿',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '',
+  deep: '🔥',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',

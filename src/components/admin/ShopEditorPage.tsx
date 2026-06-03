@@ -37,11 +37,11 @@ const STEPS = [
 ] as const;
 
 const THEME_EMOJI: Record<string, string> = {
-  swedish: '',
+  swedish: '🌿',
   aroma: '🌸',
   thai: '🙏',
   sport: '💪',
-  deep: '',
+  deep: '🔥',
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',

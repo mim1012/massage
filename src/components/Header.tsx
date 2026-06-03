@@ -103,7 +103,7 @@ export default function Header() {
                 className="shrink-0 pl-2.5 pr-1 py-2 text-sm bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none"
               >
                 <option value="all">전체지역</option>
-                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                {REGIONS.filter((region) => ['seoul', 'gyeonggi', 'incheon', 'busan', 'daegu', 'jeju'].includes(region.code)).map((region) => (
                   <option key={region.code} value={region.code}>
                     {region.label}
                   </option>
