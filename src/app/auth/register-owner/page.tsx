@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Briefcase, Lock, Phone, Store, UserCircle } from 'lucide-react';
+import { Lock, Phone, Store, UserCircle } from 'lucide-react';
 
 type OwnerRegisterResult = {
   error?: string;
@@ -17,7 +17,6 @@ export default function RegisterOwnerPage() {
     passwordConfirm: '',
     name: '',
     businessName: '',
-    businessNumber: '',
     phone: '',
   });
   const [loading, setLoading] = useState(false);
@@ -43,7 +42,6 @@ export default function RegisterOwnerPage() {
           email: formData.id,
           password: formData.password,
           businessName: formData.businessName,
-          businessNumber: formData.businessNumber,
           phone: formData.phone,
         }),
       });
@@ -155,22 +153,6 @@ export default function RegisterOwnerPage() {
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
                 placeholder="강남 힐링스파"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">사업자 등록번호</label>
-            <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                name="businessNumber"
-                required
-                value={formData.businessNumber}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
-                placeholder="123-45-67890"
               />
             </div>
           </div>

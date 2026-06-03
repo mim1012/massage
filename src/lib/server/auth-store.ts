@@ -156,7 +156,7 @@ export async function registerOwner(input: {
   email: string;
   password: string;
   businessName: string;
-  businessNumber: string;
+  businessNumber?: string;
   phone: string;
 }) {
   try {
@@ -175,7 +175,7 @@ export async function registerOwner(input: {
         ownerProfile: {
           create: {
             businessName: input.businessName.trim(),
-            businessNumber: input.businessNumber.trim(),
+            businessNumber: (input.businessNumber ?? '').trim(),
           },
         },
       },
