@@ -156,7 +156,7 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
               </div>
               <div className="space-y-3">
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
-                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="aspect-[16/9] w-full object-cover" />
+                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="aspect-square w-full object-cover" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {shopGalleryImages.map((imageUrl, index) => (
