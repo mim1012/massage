@@ -2,20 +2,20 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Pin, ChevronRight } from 'lucide-react';
-import { MOCK_NOTICES } from '@/lib/mockData';
+import { getNoticeById } from '@/lib/server/communityStore';
 import { formatDate } from '@/lib/utils';
 
 interface Props { params: Promise<{ id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const n = MOCK_NOTICES.find(n => n.id === id);
+  const n = await getNoticeById(id);
   return { title: n?.title ?? '공지사항' };
 }
 
 export default async function NoticeDetailPage({ params }: Props) {
   const { id } = await params;
-  const notice = MOCK_NOTICES.find(n => n.id === id);
+  const notice = await getNoticeById(id);
   if (!notice) notFound();
 
   return (

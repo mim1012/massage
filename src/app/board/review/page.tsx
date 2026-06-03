@@ -1,30 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, ChevronRight, PenLine, X, Search } from 'lucide-react';
-import { MOCK_REVIEWS, MOCK_SHOPS } from '@/lib/mockData';
-import { Review } from '@/lib/types';
+import { Review, ShopListItem } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
-const shopMap = Object.fromEntries(MOCK_SHOPS.map(s => [s.id, s]));
-
 type ReviewWithRegion = Review & { region: string; regionLabel: string };
-
-function enrichReviews(list: Review[]): ReviewWithRegion[] {
-  return list.map(r => ({
-    ...r,
-    region: shopMap[r.shopId]?.region ?? '',
-    regionLabel: shopMap[r.shopId]?.regionLabel ?? '',
-  }));
-}
-
-const regionList = [
-  { code: 'all', label: '전체' },
-  ...Array.from(new Map(
-    enrichReviews(MOCK_REVIEWS).filter(r => r.regionLabel).map(r => [r.region, r.regionLabel])
-  ).entries()).map(([code, label]) => ({ code, label })),
-];
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -56,7 +38,8 @@ function StarSelector({ value, onChange }: { value: number; onChange: (v: number
 }
 
 export default function ReviewPage() {
-  const [reviews, setReviews] = useState<ReviewWithRegion[]>(enrichReviews(MOCK_REVIEWS));
+  const [reviews, setReviews] = useState<ReviewWithRegion[]>([]);
+  const [shops, setShops] = useState<ShopListItem[]>([]);
   const [regionTab, setRegionTab] = useState('all');
   const [shopTab, setShopTab] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -67,9 +50,29 @@ export default function ReviewPage() {
   const [form, setForm] = useState({ shopId: '', authorName: '', rating: 5, content: '' });
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    fetch('/api/board/reviews')
+      .then(res => res.json())
+      .then((data: { reviews?: Review[] }) => {
+        if (data.reviews) {
+          setReviews(data.reviews.map(r => ({ ...r, region: '', regionLabel: '' })));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/shops?regularLimit=500')
+      .then(res => res.json())
+      .then((data: { allShops?: ShopListItem[] }) => {
+        if (data.allShops) setShops(data.allShops);
+      })
+      .catch(() => {});
+  }, []);
+
+  const shopMap = Object.fromEntries(shops.map(s => [s.id, s]));
+
   const shopList = [
     { id: '', label: '업체 선택' },
-    ...MOCK_SHOPS.map(s => ({ id: s.id, label: s.name })),
+    ...shops.map(s => ({ id: s.id, label: s.name })),
   ];
 
   const filtered = reviews.filter(r => {
@@ -96,35 +99,48 @@ export default function ReviewPage() {
 
   const filteredShopList = [
     { id: 'all', label: '전체 업체' },
-    ...MOCK_SHOPS
+    ...shops
       .filter(s => regionTab === 'all' || s.region === regionTab)
       .map(s => ({ id: s.id, label: s.name })),
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const regionList = [
+    { code: 'all', label: '전체' },
+    ...Array.from(new Map(
+      reviews.filter(r => r.regionLabel).map(r => [r.region, r.regionLabel])
+    ).entries()).map(([code, label]) => ({ code, label })),
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.shopId) return alert('업체를 선택해주세요.');
     if (!form.authorName.trim()) return alert('작성자 이름을 입력해주세요.');
     if (!form.content.trim()) return alert('후기 내용을 입력해주세요.');
 
     setSubmitting(true);
-    const shop = shopMap[form.shopId];
-    const newReview: ReviewWithRegion = {
-      id: `review-${Date.now()}`,
-      shopId: form.shopId,
-      shopName: shop?.name ?? '',
-      authorName: form.authorName,
-      rating: form.rating,
-      content: form.content,
-      createdAt: new Date().toISOString().slice(0, 10),
-      region: shop?.region ?? '',
-      regionLabel: shop?.regionLabel ?? '',
-    };
-
-    setReviews(prev => [newReview, ...prev]);
-    setForm({ shopId: '', authorName: '', rating: 5, content: '' });
-    setShowModal(false);
-    setSubmitting(false);
+    try {
+      const res = await fetch('/api/board/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopId: form.shopId, authorName: form.authorName, rating: form.rating, content: form.content }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { review?: Review };
+        if (data.review) {
+          const shop = shopMap[data.review.shopId];
+          setReviews(prev => [{ ...data.review!, region: shop?.region ?? '', regionLabel: shop?.regionLabel ?? '' }, ...prev]);
+        }
+        setForm({ shopId: '', authorName: '', rating: 5, content: '' });
+        setShowModal(false);
+      } else {
+        const err = (await res.json()) as { error?: string };
+        alert(err.error ?? '후기 등록에 실패했습니다.');
+      }
+    } catch {
+      alert('후기 등록 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

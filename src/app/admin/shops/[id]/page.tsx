@@ -3,7 +3,6 @@
 import { useState, use, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Eye, EyeOff, ChevronRight, ChevronLeft, MapPin, Phone, Clock, Star } from 'lucide-react';
-import { MOCK_SHOPS, MOCK_USERS } from '@/lib/mockData';
 import { REGIONS, THEMES, DISTRICTS, Shop } from '@/lib/types';
 import Link from 'next/link';
 import clsx from 'clsx';
@@ -24,47 +23,94 @@ const themeEmoji: Record<string, string> = {
 const ipt = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/20";
 const lbl = "block text-xs font-bold text-gray-700 mb-1";
 
+const EMPTY_SHOP: Shop = {
+  id: '', slug: '', name: '', description: '', tagline: '', address: '', phone: '',
+  hours: '', region: 'seoul', regionLabel: '서울', subRegion: '', subRegionLabel: '',
+  theme: 'swedish', themeLabel: '스웨디시',
+  rating: 0, reviewCount: 0, isPremium: false,
+  isVisible: false,
+  approvalStatus: 'pending',
+  courses: [], images: [], tags: [], ownerId: '',
+  thumbnailUrl: '', bannerUrl: '', createdAt: '', updatedAt: '',
+};
+
 export default function ShopEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(0);
 
+  const isNew = id === 'new';
+
   useEffect(() => {
-    const isOwner = document.body.innerText.includes('내 업소 관리 모드');
-    setCurrentUser(isOwner ? MOCK_USERS[1] : MOCK_USERS[0]);
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => setCurrentUser(data.user ?? null));
   }, []);
 
-  const isNew = id === 'new';
-  const targetShop = MOCK_SHOPS.find(s => s.id === id);
+  useEffect(() => {
+    if (isNew) {
+      setLoading(false);
+      return;
+    }
+    fetch(`/api/admin/shops/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.shop) setShop(data.shop);
+      })
+      .finally(() => setLoading(false));
+  }, [id, isNew]);
 
-  const initialData: Shop = isNew ? {
-    id: `shop-${Date.now()}`, slug: '', name: '', description: '', tagline: '', address: '', phone: '',
-    hours: '', region: 'seoul', regionLabel: '서울', subRegion: '', subRegionLabel: '', theme: 'swedish', themeLabel: '스웨디시',
-    rating: 0, reviewCount: 0, isPremium: false, 
-    isVisible: currentUser.role === 'ADMIN',
-    approvalStatus: currentUser.role === 'ADMIN' ? 'approved' : 'pending',
-    courses: [], images: [], tags: [], ownerId: currentUser.id,
-    thumbnailUrl: '', bannerUrl: '', createdAt: '', updatedAt: '',
-  } : targetShop!;
+  const initialData: Shop = isNew
+    ? {
+        ...EMPTY_SHOP,
+        id: `shop-${Date.now()}`,
+        isVisible: currentUser?.role === 'ADMIN',
+        approvalStatus: currentUser?.role === 'ADMIN' ? 'approved' : 'pending',
+        ownerId: currentUser?.id ?? '',
+      }
+    : (shop ?? EMPTY_SHOP);
 
-  const [form, setForm] = useState(initialData!);
-  const [courses, setCourses] = useState(initialData?.courses || []);
-  const [tagsStr, setTagsStr] = useState(initialData?.tags?.join(', ') || '');
+  const [form, setForm] = useState<Shop>(EMPTY_SHOP);
+  const [courses, setCourses] = useState<Shop['courses']>([]);
+  const [tagsStr, setTagsStr] = useState('');
 
   // 이미지 업로드 상태 (base64 미리보기)
-  const [thumbPreview, setThumbPreview] = useState<string>(initialData?.thumbnailUrl || '');
-  const [bannerPreview, setBannerPreview] = useState<string>(initialData?.bannerUrl || '');
-  const [galleryPreviews, setGalleryPreviews] = useState<string[]>(initialData?.images || []);
+  const [thumbPreview, setThumbPreview] = useState<string>('');
+  const [bannerPreview, setBannerPreview] = useState<string>('');
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const thumbRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
+  // Sync form state once data is loaded
+  useEffect(() => {
+    if (loading) return;
+    const data = isNew
+      ? {
+          ...EMPTY_SHOP,
+          id: `shop-${Date.now()}`,
+          isVisible: currentUser?.role === 'ADMIN',
+          approvalStatus: (currentUser?.role === 'ADMIN' ? 'approved' : 'pending') as Shop['approvalStatus'],
+          ownerId: currentUser?.id ?? '',
+        }
+      : (shop ?? EMPTY_SHOP);
+    setForm(data);
+    setCourses(data.courses || []);
+    setTagsStr(data.tags?.join(', ') || '');
+    setThumbPreview(data.thumbnailUrl || '');
+    setBannerPreview(data.bannerUrl || '');
+    setGalleryPreviews(data.images || []);
+  }, [loading, shop, currentUser, isNew]);
+
   const readFile = (file: File): Promise<string> =>
     new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.readAsDataURL(file); });
 
-  if (!form) return <div className="p-10 text-center text-gray-500">업소를 찾을 수 없습니다.</div>;
-  if (!isNew && currentUser.role === 'OWNER' && targetShop?.ownerId !== currentUser.id) {
+  if (loading) return <div className="p-10 text-center text-gray-500">로딩 중...</div>;
+  if (!isNew && !shop) return <div className="p-10 text-center text-gray-500">업소를 찾을 수 없습니다.</div>;
+  if (!isNew && currentUser?.role === 'OWNER' && shop?.ownerId !== currentUser?.id) {
     return <div className="p-10 text-center text-red-500 font-bold">권한이 없습니다. 본인 소유의 업소만 수정 가능합니다.</div>;
   }
 
@@ -75,14 +121,36 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   };
   const currentDistricts = DISTRICTS[form.region] || [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = { ...form, courses, tags: tagsStr.split(',').map(t => t.trim()).filter(Boolean) };
     if (isNew) {
-      alert('새로운 업소가 성공적으로 등록되었습니다.');
+      const res = await fetch('/api/admin/shops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: payload }),
+      });
+      if (res.ok || res.status === 201) {
+        alert('새로운 업소가 성공적으로 등록되었습니다.');
+        router.push('/admin/shops');
+      } else {
+        const data = await res.json();
+        alert(data.error ?? '등록 중 오류가 발생했습니다.');
+      }
     } else {
-      alert('수정된 업체 정보가 성공적으로 저장되었습니다.');
+      const res = await fetch(`/api/admin/shops/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: payload }),
+      });
+      if (res.ok) {
+        alert('수정된 업체 정보가 성공적으로 저장되었습니다.');
+        router.push('/admin/shops');
+      } else {
+        const data = await res.json();
+        alert(data.error ?? '저장 중 오류가 발생했습니다.');
+      }
     }
-    router.push('/admin/shops');
   };
 
   const canNext = () => {

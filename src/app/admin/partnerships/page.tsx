@@ -1,21 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  ClipboardList, Search, Filter, MoreVertical, Eye, 
-  CheckCircle, Clock, MessageCircle, Trash2, Calendar, 
+import { useState, useEffect } from 'react';
+import {
+  ClipboardList, Search, Filter, MoreVertical, Eye,
+  CheckCircle, Clock, MessageCircle, Trash2, Calendar,
   MapPin, Phone, User, Tag, Building2
 } from 'lucide-react';
-import { MOCK_PARTNERSHIPS } from '@/lib/mockData';
 import { PartnershipInquiry } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import clsx from 'clsx';
 
 export default function AdminPartnershipsPage() {
-  const [inquiries, setInquiries] = useState<PartnershipInquiry[]>(MOCK_PARTNERSHIPS);
+  const [inquiries, setInquiries] = useState<PartnershipInquiry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'contacted' | 'completed'>('all');
   const [selectedInquiry, setSelectedInquiry] = useState<PartnershipInquiry | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/partnerships')
+      .then(res => res.json())
+      .then(data => setInquiries(data.inquiries ?? []));
+  }, []);
 
   const filtered = inquiries.filter(item => {
     const matchesSearch = item.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -25,17 +30,27 @@ export default function AdminPartnershipsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const updateStatus = (id: string, newStatus: PartnershipInquiry['status']) => {
-    setInquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    if (selectedInquiry?.id === id) {
-      setSelectedInquiry(prev => prev ? { ...prev, status: newStatus } : null);
+  const updateStatus = async (id: string, newStatus: PartnershipInquiry['status']) => {
+    const res = await fetch(`/api/admin/partnerships/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) {
+      setInquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+      if (selectedInquiry?.id === id) {
+        setSelectedInquiry(prev => prev ? { ...prev, status: newStatus } : null);
+      }
     }
   };
 
-  const deleteInquiry = (id: string) => {
+  const deleteInquiry = async (id: string) => {
     if (confirm('정말 삭제하시겠습니까?')) {
-      setInquiries(prev => prev.filter(item => item.id !== id));
-      setSelectedInquiry(null);
+      const res = await fetch(`/api/admin/partnerships/${id}`, { method: 'DELETE' });
+      if (res.ok || res.status === 204) {
+        setInquiries(prev => prev.filter(item => item.id !== id));
+        setSelectedInquiry(null);
+      }
     }
   };
 

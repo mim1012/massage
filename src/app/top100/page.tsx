@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { RefreshCw, LayoutGrid, List as ListIcon, Trophy } from 'lucide-react';
-import { MOCK_SHOPS } from '@/lib/mockData';
-import { filterShops, sortShopsByPopularity } from '@/lib/utils';
-import { Shop, REGIONS, THEMES, DISTRICTS } from '@/lib/types';
+import { ShopListItem, REGIONS, THEMES, DISTRICTS } from '@/lib/types';
 import ShopCard from '@/components/ShopCard';
 import Sidebar from '@/components/Sidebar';
 
@@ -17,22 +15,28 @@ function Top100Content() {
   const selectedTheme = searchParams.get('theme') ?? 'all';
   const searchQuery = searchParams.get('q') ?? '';
 
-  const [shops, setShops] = useState<Shop[]>([]);
+  const [shops, setShops] = useState<ShopListItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'card'|'list'>('card');
 
-  const updateData = () => {
+  const updateData = useCallback(() => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      const filtered = filterShops(MOCK_SHOPS, selectedRegion, selectedSubRegion, selectedTheme, searchQuery);
-      // 인기순 정렬
-      const sorted = sortShopsByPopularity(filtered);
-      setShops(sorted.slice(0, 100)); // TOP 100
-      setIsRefreshing(false);
-    }, 200);
-  };
+    const params = new URLSearchParams();
+    if (selectedRegion !== 'all') params.set('region', selectedRegion);
+    if (selectedSubRegion !== 'all') params.set('subRegion', selectedSubRegion);
+    if (selectedTheme !== 'all') params.set('theme', selectedTheme);
+    if (searchQuery) params.set('q', searchQuery);
+    const query = params.toString();
+    fetch(`/api/shops/top${query ? `?${query}` : ''}`)
+      .then(res => res.json())
+      .then((data: ShopListItem[] | { error?: string }) => {
+        if (Array.isArray(data)) setShops(data.slice(0, 100));
+      })
+      .catch(() => {})
+      .finally(() => setIsRefreshing(false));
+  }, [selectedRegion, selectedSubRegion, selectedTheme, searchQuery]);
 
-  useEffect(() => { updateData(); }, [selectedRegion, selectedSubRegion, selectedTheme, searchQuery]);
+  useEffect(() => { updateData(); }, [updateData]);
 
   const regionLabel = REGIONS.find(r => r.code === selectedRegion)?.label ?? '전체';
   const subRegionLabel = selectedRegion !== 'all' && selectedSubRegion !== 'all'

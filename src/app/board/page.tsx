@@ -1,21 +1,23 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Pin, Calendar, ChevronRight, Star } from 'lucide-react';
-import { MOCK_NOTICES, MOCK_QNA, MOCK_REVIEWS } from '@/lib/mockData';
+import { Star } from 'lucide-react';
+import { getBoardLandingData } from '@/lib/server/communityStore';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = { title: '게시판', description: '공지사항, Q&A, 업소 후기' };
 
-export default function BoardPage() {
+export default async function BoardPage() {
+  const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({ includeReviews: true });
+
   return (
     <div className="max-w-[1000px] mx-auto px-3 py-4">
       <h1 className="text-lg font-black text-gray-800 mb-4">📋 고객센터 &amp; 게시판</h1>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {[
-          { href: '/board/notice', label: '공지사항', count: MOCK_NOTICES.length, emoji: '📢' },
-          { href: '/board/qna', label: 'Q&A', count: MOCK_QNA.length, emoji: '💬' },
-          { href: '/board/review', label: '업소 후기', count: MOCK_REVIEWS.length, emoji: '⭐' },
+          { href: '/board/notice', label: '공지사항', count: summary.notices, emoji: '📢' },
+          { href: '/board/qna', label: 'Q&A', count: summary.qna, emoji: '💬' },
+          { href: '/board/review', label: '업소 후기', count: summary.reviews, emoji: '⭐' },
         ].map(tab => (
           <Link key={tab.href} href={tab.href}
             className="bg-white border border-gray-200 rounded p-3 text-center hover:border-red-300 hover:bg-red-50/50 transition-all">
@@ -33,7 +35,7 @@ export default function BoardPage() {
           <Link href="/board/notice" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_NOTICES.map(notice => (
+          {notices.map(notice => (
             <Link key={notice.id} href={`/board/notice/${notice.id}`}
               className="flex items-center justify-between py-2 hover:bg-gray-50 px-1 -mx-1 rounded transition-all">
               <div className="flex items-center gap-2 min-w-0">
@@ -53,7 +55,7 @@ export default function BoardPage() {
           <Link href="/board/qna" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_QNA.slice(0, 3).map(qna => (
+          {qnaEntries.slice(0, 3).map(qna => (
             <div key={qna.id} className="py-2.5">
               <div className="flex items-start gap-2 mb-1">
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${qna.isAnswered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
@@ -74,7 +76,7 @@ export default function BoardPage() {
           <Link href="/board/review" className="text-xs text-red-600 hover:underline">전체 &raquo;</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {MOCK_REVIEWS.slice(0, 3).map(review => (
+          {reviews.slice(0, 3).map(review => (
             <div key={review.id} className="py-2.5">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">

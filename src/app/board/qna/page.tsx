@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronDown, ChevronUp, Plus, X, Calendar } from 'lucide-react';
-import { MOCK_QNA } from '@/lib/mockData';
+import { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 
 function QnAContent() {
@@ -14,13 +14,41 @@ function QnAContent() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ question: '', authorName: '' });
   const [submitted, setSubmitted] = useState(false);
-  const filtered = shopId ? MOCK_QNA.filter(q => q.shopId === shopId) : MOCK_QNA;
+  const [qnaList, setQnaList] = useState<QnA[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const url = shopId ? `/api/board/qna?shopId=${encodeURIComponent(shopId)}` : '/api/board/qna';
+    fetch(url)
+      .then(res => res.json())
+      .then((data: { qna?: QnA[] }) => {
+        if (data.qna) setQnaList(data.qna);
+      })
+      .catch(() => {});
+  }, [shopId]);
+
+  const filtered = qnaList;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setShowForm(false);
-    setFormData({ question: '', authorName: '' });
+    try {
+      const res = await fetch('/api/board/qna', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: formData.question, shopId: shopId ?? undefined }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { qna?: QnA };
+        if (data.qna) setQnaList(prev => [data.qna!, ...prev]);
+        setSubmitted(true);
+        setShowForm(false);
+        setFormData({ question: '', authorName: '' });
+      } else {
+        const err = (await res.json()) as { error?: string };
+        alert(err.error ?? '질문 등록에 실패했습니다. 로그인이 필요할 수 있습니다.');
+      }
+    } catch {
+      alert('질문 등록 중 오류가 발생했습니다.');
+    }
   };
 
   return (
