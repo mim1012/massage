@@ -7,6 +7,17 @@ type SessionResponse = {
   user?: User | null;
 };
 
+async function fetchSessionUser(): Promise<User | null> {
+  try {
+    const response = await fetch('/api/auth/me', { cache: 'no-store' });
+    if (!response.ok) return null;
+    const result = (await response.json()) as SessionResponse;
+    return result.user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function useAuthSession() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -14,38 +25,23 @@ export function useAuthSession() {
   useEffect(() => {
     let cancelled = false;
 
-    const loadSession = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { cache: 'no-store' });
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!response.ok) {
-          setUser(null);
-          return;
-        }
-
-        const result = (await response.json()) as SessionResponse;
-        setUser(result.user ?? null);
-      } catch {
-        if (!cancelled) {
-          setUser(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setAuthChecked(true);
-        }
-      }
-    };
-
-    void loadSession();
+    void (async () => {
+      const sessionUser = await fetchSessionUser();
+      if (cancelled) return;
+      setUser(sessionUser);
+      setAuthChecked(true);
+    })();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { user, authChecked };
+  const refetch = async () => {
+    const sessionUser = await fetchSessionUser();
+    setUser(sessionUser);
+    setAuthChecked(true);
+  };
+
+  return { user, authChecked, refetch };
 }
