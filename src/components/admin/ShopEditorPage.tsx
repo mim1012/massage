@@ -637,7 +637,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
             <div>
               <label className={labelClassName}>
-                배너 이미지 <span className="font-normal text-gray-400">(2:1 비율 권장)</span>
+                배너 이미지 <span className="font-normal text-gray-400">(1:1 비율 권장)</span>
               </label>
               <div
                 onClick={() => bannerRef.current?.click()}

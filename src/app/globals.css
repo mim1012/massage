@@ -119,9 +119,9 @@ body {
 
 ::selection { background: color-mix(in srgb, var(--portal-brand) 20%, transparent); }
 
-/* ===== 프리미엄 배너 고정 비율 (1200x600 → 2:1) ===== */
+/* ===== 프리미엄 배너 고정 비율 (1:1) ===== */
 .premium-banner-img {
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   width: 100%;
   border-radius: 6px;
@@ -194,7 +194,7 @@ body {
   .premium-shop-grid { grid-template-columns: 1fr; }
   .premium-shop-card { flex-direction: column; }
   .premium-shop-media {
-    aspect-ratio: 16 / 9 !important;
+    aspect-ratio: 1 / 1 !important;
     width: 100%;
     border-right-width: 0;
     border-bottom-width: 1px;

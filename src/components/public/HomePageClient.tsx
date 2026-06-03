@@ -246,7 +246,7 @@ export default function HomePageClient({
                     prefetch={false}
                     className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
                   >
-                    <div className="premium-shop-media relative flex aspect-[4/3] shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
+                    <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
                       {shop.bannerUrl?.trim() && (
                         <img
                           src={shop.bannerUrl}
