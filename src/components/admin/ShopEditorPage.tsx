@@ -110,12 +110,10 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const [saveError, setSaveError] = useState('');
 
   const [thumbPreview, setThumbPreview] = useState('');
-  const [bannerPreview, setBannerPreview] = useState('');
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const submitLockRef = useRef(createSubmissionLock());
 
   const thumbRef = useRef<HTMLInputElement>(null);
-  const bannerRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -138,8 +136,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           setForm(initialShop);
           setCourses(initialShop.courses);
           setTagsStr(initialShop.tags.join(', '));
-          setThumbPreview(initialShop.thumbnailUrl);
-          setBannerPreview(initialShop.bannerUrl);
+          setThumbPreview(initialShop.thumbnailUrl || initialShop.bannerUrl);
           setGalleryPreviews(initialShop.images);
           return;
         }
@@ -154,8 +151,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           setForm(shopResult.shop);
           setCourses(shopResult.shop.courses);
           setTagsStr(shopResult.shop.tags.join(', '));
-          setThumbPreview(shopResult.shop.thumbnailUrl);
-          setBannerPreview(shopResult.shop.bannerUrl);
+          setThumbPreview(shopResult.shop.thumbnailUrl || shopResult.shop.bannerUrl);
           setGalleryPreviews(shopResult.shop.images);
         } else {
           setForm(null);
@@ -173,7 +169,6 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const syncPreviewState = (nextForm: Shop) => {
     setForm(nextForm);
     setThumbPreview(nextForm.thumbnailUrl);
-    setBannerPreview(nextForm.bannerUrl);
     setGalleryPreviews(nextForm.images);
   };
 
@@ -278,7 +273,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           .filter(Boolean),
         images: galleryPreviews,
         thumbnailUrl: thumbPreview,
-        bannerUrl: bannerPreview,
+        bannerUrl: thumbPreview,
         updatedAt: new Date().toISOString(),
       };
 
@@ -594,14 +589,14 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
             <div>
               <label className={labelClassName}>
-                썸네일 이미지 <span className="font-normal text-gray-400">(1:1 비율 권장)</span>
+                대표 이미지 <span className="font-normal text-gray-400">(1:1 비율 권장 · 목록 카드 및 상세 페이지에 표시)</span>
               </label>
               <div
                 onClick={() => thumbRef.current?.click()}
-                className="relative flex h-32 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-red-400"
+                className="relative flex h-40 w-40 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-red-400"
               >
                 {thumbPreview ? (
-                  <img src={thumbPreview} alt="썸네일" className="h-full w-full object-cover" />
+                  <img src={thumbPreview} alt="대표 이미지" className="h-full w-full object-cover" />
                 ) : (
                   <div className="text-center text-gray-400">
                     <div className="mb-1 text-2xl">🖼️</div>
@@ -620,7 +615,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                     return;
                   }
                   const preview = await readFileAsDataUrl(file);
-                  const nextForm = { ...form, thumbnailUrl: preview };
+                  const nextForm = { ...form, thumbnailUrl: preview, bannerUrl: preview };
                   syncPreviewState(nextForm);
                   event.target.value = '';
                 }}
@@ -628,51 +623,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
               {thumbPreview ? (
                 <button
                   type="button"
-                  onClick={() => syncPreviewState({ ...form, thumbnailUrl: '' })}
-                  className="mt-1 text-[11px] text-red-400 hover:text-red-600"
-                >
-                  삭제
-                </button>
-              ) : null}
-            </div>
-
-            <div>
-              <label className={labelClassName}>
-                배너 이미지 <span className="font-normal text-gray-400">(1:1 비율 권장)</span>
-              </label>
-              <div
-                onClick={() => bannerRef.current?.click()}
-                className="relative flex h-32 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-red-400"
-              >
-                {bannerPreview ? (
-                  <img src={bannerPreview} alt="배너" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="text-center text-gray-400">
-                    <div className="mb-1 text-2xl">🌄</div>
-                    <div className="text-[11px]">클릭하여 배너 업로드</div>
-                  </div>
-                )}
-              </div>
-              <input
-                ref={bannerRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) {
-                    return;
-                  }
-                  const preview = await readFileAsDataUrl(file);
-                  const nextForm = { ...form, bannerUrl: preview };
-                  syncPreviewState(nextForm);
-                  event.target.value = '';
-                }}
-              />
-              {bannerPreview ? (
-                <button
-                  type="button"
-                  onClick={() => syncPreviewState({ ...form, bannerUrl: '' })}
+                  onClick={() => syncPreviewState({ ...form, thumbnailUrl: '', bannerUrl: '' })}
                   className="mt-1 text-[11px] text-red-400 hover:text-red-600"
                 >
                   삭제
