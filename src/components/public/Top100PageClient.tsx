@@ -6,13 +6,15 @@ import { LayoutGrid, List as ListIcon, RefreshCw, Trophy } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ShopCard from '@/components/ShopCard';
 
-import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { DISTRICTS, REGIONS } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 import { buildShopDetailHref, getTop100FilterTitle, getTop100RankingLabel } from '@/lib/browse-context';
 import { buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
 import type { ShopListItem } from '@/lib/types';
 
 export default function Top100PageClient({ initialShops }: { initialShops: ShopListItem[] }) {
   const searchParams = useSearchParams();
+  const themes = useThemes();
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
@@ -66,7 +68,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
     return DISTRICTS[selectedRegion]?.find((district) => district.code === selectedSubRegion)?.label ?? '';
   }, [selectedRegion, selectedSubRegion]);
   const themeLabel = useMemo(
-    () => THEMES.find((theme) => theme.code === selectedTheme)?.label,
+    () => themes.find((theme) => theme.code === selectedTheme)?.label,
     [selectedTheme],
   );
 

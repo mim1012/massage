@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { createSubmissionLock } from '@/lib/client/submission-lock';
 import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 import type { Course, Shop, User } from '@/lib/types';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
@@ -99,6 +100,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const isNew = id === 'new';
+  const themes = useThemes();
 
   const [currentUser, setCurrentUser] = useState<User>(DEFAULT_ADMIN);
   const [form, setForm] = useState<Shop | null>(null);
@@ -240,7 +242,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   };
 
   const handleThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextTheme = THEMES.find((theme) => theme.code === event.target.value);
+    const nextTheme = themes.find((theme) => theme.code === event.target.value);
     if (!nextTheme) {
       return;
     }
@@ -389,7 +391,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
               <div>
                 <label className={labelClassName}>테마 *</label>
                 <select value={form.theme} onChange={handleThemeChange} className={inputClassName}>
-                  {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                  {themes.filter((theme) => theme.code !== 'all').map((theme) => (
                     <option key={theme.code} value={theme.code}>
                       {theme.label}
                     </option>

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import SmartPrefetchLink from '@/components/SmartPrefetchLink';
 import { useSearchParams, usePathname } from 'next/navigation';
-import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
+import { REGIONS, DISTRICTS } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 import { buildBrowseHref } from '@/lib/directory-mode';
 import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
@@ -11,6 +12,7 @@ import clsx from 'clsx';
 export default function Sidebar() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const themes = useThemes();
 
   const currentRegion = searchParams.get('region') ?? '';
   const currentSubRegion = searchParams.get('subRegion') ?? '';
@@ -110,7 +112,7 @@ export default function Sidebar() {
             🏷️ 테마별 업소
           </SmartPrefetchLink>
           <div>
-            {THEMES.filter((t) => t.code !== 'all').map((t) => (
+            {themes.filter((t) => t.code !== 'all').map((t) => (
               <SmartPrefetchLink
                 key={t.code}
                 href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}

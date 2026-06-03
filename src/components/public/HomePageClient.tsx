@@ -16,7 +16,8 @@ import ShopCard from '@/components/ShopCard';
 import MobileBannerRail from '@/components/public/MobileBannerRail';
 import HomeUtilityRail from '@/components/public/HomeUtilityRail';
 import PaginationControls from '@/components/public/PaginationControls';
-import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { DISTRICTS, REGIONS } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 import { buildShopDetailHref } from '@/lib/browse-context';
 import { shouldAutoLoadDeferredHomeDirectory } from '@/lib/home-directory-fetch-strategy';
 import { buildBrowseHref, buildDirectorySearchParams, getDirectoryMode } from '@/lib/directory-mode';
@@ -71,6 +72,7 @@ export default function HomePageClient({
   const selectedRegion = searchParams.get('region') ?? 'all';
   const selectedSubRegion = searchParams.get('subRegion') ?? 'all';
   const selectedTheme = searchParams.get('theme') ?? 'all';
+  const themes = useThemes();
   const searchQuery = searchParams.get('q') ?? '';
   const sortType = getDirectorySortType(searchParams.get('sort'));
   const directoryMode = getDirectoryMode(searchParams.get('view'));
@@ -169,7 +171,7 @@ export default function HomePageClient({
     return DISTRICTS[selectedRegion]?.find((district) => district.code === selectedSubRegion)?.label ?? '';
   }, [selectedRegion, selectedSubRegion]);
   const themeLabel = useMemo(
-    () => THEMES.find((theme) => theme.code === selectedTheme)?.label,
+    () => themes.find((theme) => theme.code === selectedTheme)?.label,
     [selectedTheme],
   );
 

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Building2, CheckCircle2, ChevronRight, MapPin, Phone, Send, Tag } from 'lucide-react';
-import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
+import { DISTRICTS, REGIONS } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 
 type PartnershipInquiryDoc = {
   eyebrow: string;
@@ -20,6 +21,7 @@ type Props = {
 
 export default function PartnershipPageClient({ initialInquiryDoc }: Props) {
   const inquiryDoc = initialInquiryDoc;
+  const themes = useThemes();
   const [form, setForm] = useState({
     shopName: '',
     region: 'seoul',
@@ -186,7 +188,7 @@ export default function PartnershipPageClient({ initialInquiryDoc }: Props) {
                     onChange={(event) => setForm((current) => ({ ...current, theme: event.target.value }))}
                     className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all focus:border-red-500 focus:bg-white focus:outline-none"
                   >
-                    {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+                    {themes.filter((theme) => theme.code !== 'all').map((theme) => (
                       <option key={theme.code} value={theme.code}>{theme.label}</option>
                     ))}
                   </select>

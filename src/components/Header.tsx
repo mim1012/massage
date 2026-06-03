@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Search, Menu, X } from 'lucide-react';
 import SmartPrefetchLink from '@/components/SmartPrefetchLink';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { REGIONS, THEMES, DISTRICTS } from '@/lib/catalog';
+import { REGIONS, DISTRICTS } from '@/lib/catalog';
+import { useThemes } from '@/lib/use-themes';
 import { buildBrowseHref, getDirectoryMode } from '@/lib/directory-mode';
 import { useSiteContent } from '@/lib/use-site-content';
 import { useAuthSession } from '@/lib/use-auth-session';
@@ -26,7 +27,8 @@ export default function Header() {
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const themeEntryRegion = currentRegion ?? 'seoul';
   const { siteSettings } = useSiteContent();
-  const { user, authChecked } = useAuthSession();
+  const { user, authChecked, refetch } = useAuthSession();
+  const themes = useThemes();
   const myHref = getMyHref(user?.role);
   const myLabel = getMyLabel(user?.role);
   const isAuthed = authChecked && Boolean(user);
@@ -71,6 +73,7 @@ export default function Header() {
       if (isOwnerAreaPath(pathname) || pathname?.startsWith('/my') || isAdminAreaPath(pathname)) {
         router.replace('/auth/login');
       } else {
+        await refetch();
         router.refresh();
       }
       setLoggingOut(false);
@@ -172,7 +175,7 @@ export default function Header() {
             <span className="truncate font-semibold text-gray-500">{user?.name}</span>
             <div className="flex items-center gap-2">
               <Link href={myHref} prefetch={false} className="rounded border border-gray-300 px-2.5 py-1 text-gray-600">
-                {user?.role === 'OWNER' ? '내 업소관리' : myLabel}
+                {user?.role === 'OWNER' ? '내 업소관리' : user?.role === 'ADMIN' ? '관리 패널' : myLabel}
               </Link>
 
               <button
@@ -255,7 +258,7 @@ export default function Header() {
               </SmartPrefetchLink>
             ))}
             <div className="mx-1 h-4 w-px self-center bg-gray-300" />
-            {THEMES.filter((theme) => theme.code !== 'all')
+            {themes.filter((theme) => theme.code !== 'all')
               .slice(0, 5)
               .map((theme) => (
                 <SmartPrefetchLink
@@ -298,7 +301,7 @@ export default function Header() {
               >
                 전체
               </SmartPrefetchLink>
-              {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+              {themes.filter((theme) => theme.code !== 'all').map((theme) => (
                 <SmartPrefetchLink
                   key={theme.code}
                   href={buildBrowseHref({
@@ -381,7 +384,7 @@ export default function Header() {
           <div className="p-3">
             <p className="text-xs text-gray-400 font-bold mb-2">테마별</p>
             <div className="flex flex-wrap gap-1 mb-3">
-              {THEMES.filter((theme) => theme.code !== 'all').map((theme) => (
+              {themes.filter((theme) => theme.code !== 'all').map((theme) => (
                 <Link
                   key={theme.code}
                   href={buildBrowseHref({

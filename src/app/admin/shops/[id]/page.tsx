@@ -3,7 +3,8 @@
 import { useState, use, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Eye, EyeOff, ChevronRight, ChevronLeft, MapPin, Phone, Clock, Star } from 'lucide-react';
-import { REGIONS, THEMES, DISTRICTS, Shop } from '@/lib/types';
+import { REGIONS, DISTRICTS, Shop } from '@/lib/types';
+import { useThemes } from '@/lib/use-themes';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -37,6 +38,7 @@ const EMPTY_SHOP: Shop = {
 export default function ShopEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const themes = useThemes();
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
@@ -228,8 +230,8 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               </div>
               <div>
                 <label className={lbl}>테마 *</label>
-                <select value={form.theme} onChange={e => setForm({ ...form, theme: e.target.value, themeLabel: THEMES.find(t => t.code === e.target.value)?.label ?? '' })} className={ipt}>
-                  {THEMES.filter(t => t.code !== 'all').map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+                <select value={form.theme} onChange={e => setForm({ ...form, theme: e.target.value, themeLabel: themes.find(t => t.code === e.target.value)?.label ?? '' })} className={ipt}>
+                  {themes.filter(t => t.code !== 'all').map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
                 </select>
               </div>
             </div>

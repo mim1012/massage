@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Tag, ChevronRight } from 'lucide-react';
-import { REGIONS, THEMES, RegionCode, ThemeCode } from '@/lib/types';
+import { REGIONS, RegionCode, ThemeCode } from '@/lib/types';
+import { useThemes } from '@/lib/use-themes';
 import clsx from 'clsx';
 
 interface FilterBarProps {
@@ -13,6 +14,7 @@ interface FilterBarProps {
 export default function FilterBar({ selectedRegion, selectedTheme }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const themes = useThemes();
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -57,7 +59,7 @@ export default function FilterBar({ selectedRegion, selectedTheme }: FilterBarPr
           <span className="text-white text-sm font-bold">테마</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {THEMES.map(theme => (
+          {themes.map(theme => (
             <button
               key={theme.code}
               onClick={() => updateFilter('theme', theme.code)}
