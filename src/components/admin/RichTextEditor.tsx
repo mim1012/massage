@@ -1,7 +1,7 @@
 'use client';
 
 import { AlignCenter, AlignLeft, AlignRight, ImagePlus, Palette, Type } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Props = {
   value: string;
@@ -56,6 +56,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const normalizedValue = useMemo(() => clientNormalize(value), [value]);
+  const [currentColor, setCurrentColor] = useState('#1e40af');
 
   const getEditorValue = (editor: HTMLDivElement) => {
     const html = editor.innerHTML.trim();
@@ -95,6 +96,20 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
     focusEditor();
     document.execCommand(command, false, valueArg);
     emitChange();
+  };
+
+  const applyColor = (color: string) => {
+    setCurrentColor(color);
+    focusEditor();
+    document.execCommand('foreColor', false, color);
+    emitChange();
+  };
+
+  const handleKeyDown = (_event: React.KeyboardEvent) => {
+    if (currentColor !== '#000000') {
+      ensureEditorDocument();
+      document.execCommand('foreColor', false, currentColor);
+    }
   };
 
   const applyFontSize = (fontSize: string) => {
@@ -151,8 +166,8 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
               type="color"
               aria-label="글자 색상"
               className="h-8 w-10 cursor-pointer rounded border border-gray-200 bg-transparent"
-              defaultValue="#1e40af"
-              onChange={(event) => applyExecCommand('foreColor', event.target.value)}
+              value={currentColor}
+              onChange={(event) => applyColor(event.target.value)}
             />
           </div>
 
@@ -168,6 +183,15 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
                 <option key={family.value} value={family.value}>{family.label}</option>
               ))}
             </select>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--portal-brand)]/15 bg-white p-1">
+            <button type="button" aria-label="굵게" onClick={() => applyExecCommand('bold')} className="rounded p-2 font-bold text-gray-600 hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]">
+              B
+            </button>
+            <button type="button" aria-label="기울임" onClick={() => applyExecCommand('italic')} className="rounded p-2 italic text-gray-600 hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]">
+              I
+            </button>
           </div>
 
           <div className="flex items-center gap-1 rounded-lg border border-[var(--portal-brand)]/15 bg-white p-1">
@@ -198,6 +222,7 @@ export default function RichTextEditor({ value, onChange, label, helperText }: P
           suppressContentEditableWarning
           onInput={emitChange}
           onBlur={emitChange}
+          onKeyDown={handleKeyDown}
           className="min-h-[900px] w-full px-4 py-4 text-sm leading-7 text-gray-700 focus:outline-none"
           style={{ whiteSpace: 'pre-wrap' }}
           data-placeholder="업소 소개, 서비스 특징, 이용 안내, 주의사항 등을 자유롭게 작성하세요. 색상/글꼴/정렬/이미지도 적용됩니다."
