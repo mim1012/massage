@@ -480,9 +480,18 @@ export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
     return cached;
   }
 
-  const pending = getPersistentDirectoryShopList(cacheKey).catch((error) => {
+  const pending = getPersistentDirectoryShopList(cacheKey).catch(() => {
     publicDirectoryShopListCache.delete(cacheKey);
-    throw error;
+    return listDirectoryShopsUncached({
+      region: filters.region,
+      subRegion: filters.subRegion,
+      theme: filters.theme,
+      query: filters.query,
+      sort: filters.sort,
+      regularOffset: filters.regularOffset,
+      regularLimit: filters.regularLimit,
+      includePremium: filters.includePremium,
+    });
   });
 
   publicDirectoryShopListCache.set(cacheKey, pending);
