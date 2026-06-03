@@ -113,7 +113,7 @@ export interface QnA {
   commentCount?: number;
   latestCommentAt?: string;
   latestCommentPreview?: string;
-  comments?: QnAComment[];
+  comments: QnAComment[];
   createdAt: string;
 }
 

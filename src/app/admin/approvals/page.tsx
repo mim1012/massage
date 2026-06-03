@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserCheck, Check, X, Phone, Mail, User, Clock } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
 import clsx from 'clsx';
@@ -12,6 +12,8 @@ type ApprovalData = {
 
 export default function ApprovalsPage() {
   const [data, setData] = useState<ApprovalData>({ pendingUsers: [], processedUsers: [] });
+  const pendingRef = useRef<Set<string>>(new Set());
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/admin/approvals')
@@ -20,32 +22,46 @@ export default function ApprovalsPage() {
   }, []);
 
   const handleApprove = async (userId: string) => {
-    if (!confirm('업주 등록을 승인하시겠습니까?')) return;
-    const res = await fetch(`/api/admin/approvals/${userId}/approve`, { method: 'PATCH' });
-    if (res.ok) {
-      setData(prev => {
-        const target = prev.pendingUsers.find(u => u.id === userId);
-        if (!target) return prev;
-        return {
-          pendingUsers: prev.pendingUsers.filter(u => u.id !== userId),
-          processedUsers: [{ ...target, status: 'approved' as const }, ...prev.processedUsers],
-        };
-      });
+    if (pendingRef.current.has(userId)) return;
+    pendingRef.current.add(userId);
+    setPendingIds(new Set(pendingRef.current));
+    try {
+      const res = await fetch(`/api/admin/approvals/${userId}/approve`, { method: 'PATCH' });
+      if (res.ok) {
+        setData(prev => {
+          const target = prev.pendingUsers.find(u => u.id === userId);
+          if (!target) return prev;
+          return {
+            pendingUsers: prev.pendingUsers.filter(u => u.id !== userId),
+            processedUsers: [{ ...target, status: 'approved' as const }, ...prev.processedUsers],
+          };
+        });
+      }
+    } finally {
+      pendingRef.current.delete(userId);
+      setPendingIds(new Set(pendingRef.current));
     }
   };
 
   const handleReject = async (userId: string) => {
-    if (!confirm('업주 등록을 반려하시겠습니까?')) return;
-    const res = await fetch(`/api/admin/approvals/${userId}/reject`, { method: 'PATCH' });
-    if (res.ok) {
-      setData(prev => {
-        const target = prev.pendingUsers.find(u => u.id === userId);
-        if (!target) return prev;
-        return {
-          pendingUsers: prev.pendingUsers.filter(u => u.id !== userId),
-          processedUsers: [{ ...target, status: 'rejected' as const }, ...prev.processedUsers],
-        };
-      });
+    if (pendingRef.current.has(userId)) return;
+    pendingRef.current.add(userId);
+    setPendingIds(new Set(pendingRef.current));
+    try {
+      const res = await fetch(`/api/admin/approvals/${userId}/reject`, { method: 'PATCH' });
+      if (res.ok) {
+        setData(prev => {
+          const target = prev.pendingUsers.find(u => u.id === userId);
+          if (!target) return prev;
+          return {
+            pendingUsers: prev.pendingUsers.filter(u => u.id !== userId),
+            processedUsers: [{ ...target, status: 'rejected' as const }, ...prev.processedUsers],
+          };
+        });
+      }
+    } finally {
+      pendingRef.current.delete(userId);
+      setPendingIds(new Set(pendingRef.current));
     }
   };
 
@@ -85,10 +101,10 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleApprove(user.id)} className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors">
+                  <button disabled={pendingIds.has(user.id)} onClick={() => handleApprove(user.id)} className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-colors disabled:opacity-50">
                     <Check className="w-4 h-4"/> 등록승인
                   </button>
-                  <button onClick={() => handleReject(user.id)} className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-bold text-sm transition-colors">
+                  <button disabled={pendingIds.has(user.id)} onClick={() => handleReject(user.id)} className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-bold text-sm transition-colors disabled:opacity-50">
                     <X className="w-4 h-4"/> 반려
                   </button>
                 </div>

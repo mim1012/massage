@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ClipboardList, Search, Filter, MoreVertical, Eye,
   CheckCircle, Clock, MessageCircle, Trash2, Calendar,
@@ -15,6 +15,8 @@ export default function AdminPartnershipsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'contacted' | 'completed'>('all');
   const [selectedInquiry, setSelectedInquiry] = useState<PartnershipInquiry | null>(null);
+  const pendingRef = useRef<Set<string>>(new Set());
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/admin/partnerships')
@@ -31,26 +33,42 @@ export default function AdminPartnershipsPage() {
   });
 
   const updateStatus = async (id: string, newStatus: PartnershipInquiry['status']) => {
-    const res = await fetch(`/api/admin/partnerships/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) {
-      setInquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-      if (selectedInquiry?.id === id) {
-        setSelectedInquiry(prev => prev ? { ...prev, status: newStatus } : null);
+    const key = `patch:${id}`;
+    if (pendingRef.current.has(key)) return;
+    pendingRef.current.add(key);
+    setPendingIds(new Set(pendingRef.current));
+    try {
+      const res = await fetch(`/api/admin/partnerships/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setInquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+        if (selectedInquiry?.id === id) {
+          setSelectedInquiry(prev => prev ? { ...prev, status: newStatus } : null);
+        }
       }
+    } finally {
+      pendingRef.current.delete(key);
+      setPendingIds(new Set(pendingRef.current));
     }
   };
 
   const deleteInquiry = async (id: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
+    const key = `delete:${id}`;
+    if (pendingRef.current.has(key)) return;
+    pendingRef.current.add(key);
+    setPendingIds(new Set(pendingRef.current));
+    try {
       const res = await fetch(`/api/admin/partnerships/${id}`, { method: 'DELETE' });
       if (res.ok || res.status === 204) {
         setInquiries(prev => prev.filter(item => item.id !== id));
         setSelectedInquiry(null);
       }
+    } finally {
+      pendingRef.current.delete(key);
+      setPendingIds(new Set(pendingRef.current));
     }
   };
 
@@ -201,11 +219,12 @@ export default function AdminPartnershipsPage() {
                   {(['pending', 'contacted', 'completed'] as const).map(s => (
                     <button
                       key={s}
+                      disabled={pendingIds.has(`patch:${selectedInquiry.id}`)}
                       onClick={() => updateStatus(selectedInquiry.id, s)}
                       className={clsx(
-                        "flex-1 py-2 text-xs font-bold rounded-lg border transition-all",
-                        selectedInquiry.status === s 
-                          ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-100" 
+                        "flex-1 py-2 text-xs font-bold rounded-lg border transition-all disabled:opacity-50",
+                        selectedInquiry.status === s
+                          ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-100"
                           : "bg-white border-gray-200 text-gray-500 hover:border-red-200"
                       )}
                     >
@@ -216,9 +235,10 @@ export default function AdminPartnershipsPage() {
               </div>
 
               <div className="flex justify-between items-center pt-2">
-                <button 
+                <button
+                  disabled={pendingIds.has(`delete:${selectedInquiry.id}`)}
                   onClick={() => deleteInquiry(selectedInquiry.id)}
-                  className="flex items-center gap-1.5 text-xs text-red-500 font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-red-500 font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" /> 내역 삭제
                 </button>

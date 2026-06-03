@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit2, Crown, Store } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
@@ -14,11 +14,14 @@ export default function AdminShopsPage() {
   const [regionFilter, setRegionFilter] = useState('all');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const pendingRef = useRef<Set<string>>(new Set());
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then(({ user }: { user: User | null }) => setCurrentUser(user));
+      .then(({ user }: { user: User | null }) => setCurrentUser(user))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -39,27 +42,41 @@ export default function AdminShopsPage() {
   });
 
   const toggleVisibility = async (id: string) => {
-    if (currentUser?.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
+    if (pendingRef.current.has(id)) return;
     const shop = shops.find(s => s.id === id);
     if (!shop) return;
-    const res = await fetch(`/api/admin/shops/${id}/visibility`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isVisible: !shop.isVisible }),
-    });
-    if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
+    pendingRef.current.add(id);
+    setPendingIds(new Set(pendingRef.current));
+    try {
+      const res = await fetch(`/api/admin/shops/${id}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVisible: !shop.isVisible }),
+      });
+      if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
+    } finally {
+      pendingRef.current.delete(id);
+      setPendingIds(new Set(pendingRef.current));
+    }
   };
 
   const togglePremium = async (id: string) => {
-    if (currentUser?.role !== 'ADMIN') return alert('최고 관리자만 접근 가능합니다.');
+    if (pendingRef.current.has(id)) return;
     const shop = shops.find(s => s.id === id);
     if (!shop) return;
-    const res = await fetch(`/api/admin/shops/${id}/premium`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isPremium: !shop.isPremium }),
-    });
-    if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isPremium: !s.isPremium } : s));
+    pendingRef.current.add(id);
+    setPendingIds(new Set(pendingRef.current));
+    try {
+      const res = await fetch(`/api/admin/shops/${id}/premium`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPremium: !shop.isPremium }),
+      });
+      if (res.ok) setShops(prev => prev.map(s => s.id === id ? { ...s, isPremium: !s.isPremium } : s));
+    } finally {
+      pendingRef.current.delete(id);
+      setPendingIds(new Set(pendingRef.current));
+    }
   };
 
   return (
@@ -110,11 +127,11 @@ export default function AdminShopsPage() {
                 <td data-label="노출" className="px-4 py-2 text-center">
                   <button
                     onClick={() => toggleVisibility(shop.id)}
-                    disabled={currentUser?.role !== 'ADMIN'}
+                    disabled={pendingIds.has(shop.id)}
                     className={clsx(
                       'toggle-switch inline-block',
                       shop.isVisible ? 'on' : 'off',
-                      currentUser?.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
+                      pendingIds.has(shop.id) && 'opacity-50 cursor-not-allowed'
                     )}
                     title={shop.isVisible ? '노출 중 (클릭하여 숨김)' : '숨김 (클릭하여 노출)'}
                   >
@@ -127,11 +144,11 @@ export default function AdminShopsPage() {
                 <td data-label="AD" className="px-4 py-2 text-center">
                   <button
                     onClick={() => togglePremium(shop.id)}
-                    disabled={currentUser?.role !== 'ADMIN'}
+                    disabled={pendingIds.has(shop.id)}
                     className={clsx('p-1 rounded text-white transition-colors',
                       shop.isPremium ? 'bg-amber-500' : 'bg-gray-300',
-                      currentUser?.role === 'ADMIN' && !shop.isPremium && 'hover:bg-gray-400',
-                      currentUser?.role !== 'ADMIN' && 'opacity-50 cursor-not-allowed'
+                      !pendingIds.has(shop.id) && !shop.isPremium && 'hover:bg-gray-400',
+                      pendingIds.has(shop.id) && 'opacity-50 cursor-not-allowed'
                     )}
                     title={shop.isPremium ? 'AD 해제' : 'AD 등록'}
                   >

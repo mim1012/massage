@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Crown, Save, Info, GripVertical, X, Plus } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
 import type { PremiumBoardData } from '@/lib/communityTypes';
@@ -16,6 +16,8 @@ export default function AdminPremiumPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/premium')
@@ -23,7 +25,8 @@ export default function AdminPremiumPage() {
       .then((data: PremiumBoardData) => {
         setPremiumShops((data.premiumShops ?? []).sort((a, b) => (a.premiumOrder ?? 0) - (b.premiumOrder ?? 0)));
         setAllShops(data.availableShops ?? []);
-      });
+      })
+      .catch(() => {});
   }, []);
 
   // 지역별 카운트
@@ -64,14 +67,22 @@ export default function AdminPremiumPage() {
   const handleDragEnd = () => { setDragIndex(null); setDragOverIndex(null); };
 
   const handleSave = async () => {
-    const res = await fetch('/api/admin/premium', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderedIds: premiumShops.map(s => s.id) }),
-    });
-    if (res.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/premium', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds: premiumShops.map(s => s.id) }),
+      }).catch(() => null);
+      if (res?.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -92,12 +103,13 @@ export default function AdminPremiumPage() {
         </h1>
         <button
           onClick={handleSave}
+          disabled={saving}
           className={clsx(
-            "flex items-center gap-1 px-4 py-2 rounded text-sm font-bold transition-colors",
+            "flex items-center gap-1 px-4 py-2 rounded text-sm font-bold transition-colors disabled:opacity-50",
             saved ? "bg-green-600 text-white" : "bg-red-600 text-white hover:bg-red-700"
           )}
         >
-          <Save className="w-4 h-4" /> {saved ? '저장 완료!' : '저장'}
+          <Save className="w-4 h-4" /> {saved ? '저장 완료!' : '배너 설정 저장'}
         </button>
       </div>
 

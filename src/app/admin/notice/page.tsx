@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Plus, Pin, Edit2, Trash2, Save, X } from 'lucide-react';
 import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -11,6 +11,8 @@ export default function AdminNoticePage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Notice | null>(null);
   const [form, setForm] = useState({ title: '', content: '', isPinned: false });
+  const deletingRef = useRef<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/admin/notices')
@@ -49,8 +51,16 @@ export default function AdminNoticePage() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
-    if (res.ok) setNotices(prev => prev.filter(n => n.id !== id));
+    if (deletingRef.current.has(id)) return;
+    deletingRef.current.add(id);
+    setDeletingIds(new Set(deletingRef.current));
+    try {
+      const res = await fetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
+      if (res.ok) setNotices(prev => prev.filter(n => n.id !== id));
+    } finally {
+      deletingRef.current.delete(id);
+      setDeletingIds(new Set(deletingRef.current));
+    }
   };
 
   return (
@@ -97,7 +107,7 @@ export default function AdminNoticePage() {
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => openEdit(notice)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded border border-gray-200"><Edit2 className="w-3.5 h-3.5"/></button>
-                <button onClick={() => handleDelete(notice.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-100"><Trash2 className="w-3.5 h-3.5"/></button>
+                <button disabled={deletingIds.has(notice.id)} onClick={() => handleDelete(notice.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-100 disabled:opacity-50"><Trash2 className="w-3.5 h-3.5"/></button>
               </div>
             </div>
           ))}

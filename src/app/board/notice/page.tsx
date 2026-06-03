@@ -3,11 +3,31 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { listNotices } from '@/lib/server/communityStore';
 import { formatDate } from '@/lib/utils';
+import { normalizePageParam, paginateItems, getTotalPages } from '@/lib/pagination';
+import PaginationControls from '@/components/public/PaginationControls';
 
 export const metadata: Metadata = { title: '공지사항' };
 
-export default async function NoticePage() {
-  const notices = await listNotices();
+type SearchParamValue = string | string[] | undefined;
+
+type PageProps = {
+  searchParams?: Promise<{
+    page?: SearchParamValue;
+  }>;
+};
+
+function pickFirst(value: SearchParamValue) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+const PAGE_SIZE = 20;
+
+export default async function NoticePage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
+  const allNotices = await listNotices();
+  const totalPages = getTotalPages(allNotices.length, PAGE_SIZE);
+  const notices = paginateItems(allNotices, page, PAGE_SIZE);
 
   return (
     <div className="max-w-[800px] mx-auto px-3 py-4">
@@ -31,6 +51,11 @@ export default async function NoticePage() {
           </Link>
         ))}
       </div>
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/board/notice${p > 1 ? `?page=${p}` : ''}`}
+      />
     </div>
   );
 }

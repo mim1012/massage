@@ -355,6 +355,7 @@ export const MOCK_QNA: QnA[] = [
     authorName: '방문자',
     isAnswered: true,
     createdAt: '2024-06-03',
+    comments: [],
   },
   {
     id: 'qna-002',
@@ -363,6 +364,7 @@ export const MOCK_QNA: QnA[] = [
     authorName: '홍길동',
     isAnswered: true,
     createdAt: '2024-06-04',
+    comments: [],
   },
   {
     id: 'qna-003',
@@ -371,6 +373,7 @@ export const MOCK_QNA: QnA[] = [
     authorName: '방문예정',
     isAnswered: false,
     createdAt: '2024-06-05',
+    comments: [],
   },
 ];
 
