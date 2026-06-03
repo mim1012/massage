@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Settings,
   Store,
+  Tag,
   UserCheck,
   Users,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const ADMIN_NAV_ITEMS = [
   { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle },
   { href: '/admin/stats', label: '통계', icon: BarChart2 },
   { href: '/admin/users', label: '회원 관리', icon: Users },
+  { href: '/admin/themes', label: '테마 관리', icon: Tag },
   { href: '/admin/settings', label: '사이트 설정', icon: Settings },
 ] as const;
 

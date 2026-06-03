@@ -266,6 +266,7 @@ export const THEMES = [
   { code: 'hot_stone', label: '핫스톤' },
   { code: 'foot', label: '발마사지' },
   { code: 'couple', label: '커플' },
+  { code: 'geonma', label: '건마' },
 ] as const;
 
 export type RegionCode = typeof REGIONS[number]['code'];

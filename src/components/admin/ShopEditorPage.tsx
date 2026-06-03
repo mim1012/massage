@@ -45,6 +45,7 @@ const THEME_EMOJI: Record<string, string> = {
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
+  geonma: '💆',
 };
 
 const DEFAULT_ADMIN: User = {

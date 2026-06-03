@@ -44,6 +44,7 @@ const themeEmoji: Record<string, string> = {
   hot_stone: '💎',
   foot: '🦶',
   couple: '👫',
+  geonma: '💆',
 };
 
 const REGULAR_PAGE_SIZE = 30;
