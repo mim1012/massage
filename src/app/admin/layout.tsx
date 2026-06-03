@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Store, Bell, MessageCircle, Settings,
-  LogOut, Crown, BarChart2, Users, Eye, Menu, UserCheck, MessageSquare, ClipboardList
+  LogOut, Crown, BarChart2, Users, Eye, Menu, UserCheck, MessageSquare, ClipboardList, Tag
 } from 'lucide-react';
 import type { User } from '@/lib/types';
 
@@ -45,6 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/qna', label: 'Q&A 관리', icon: MessageCircle, roles: ['ADMIN', 'OWNER'] },
     { href: '/admin/stats', label: '통계', icon: BarChart2, roles: ['ADMIN'] },
     { href: '/admin/users', label: '회원 관리', icon: Users, roles: ['ADMIN'] },
+    { href: '/admin/themes', label: '테마 관리', icon: Tag, roles: ['ADMIN'] },
     { href: '/admin/settings', label: '사이트 설정', icon: Settings, roles: ['ADMIN'] },
   ];
 

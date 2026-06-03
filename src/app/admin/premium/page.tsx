@@ -39,6 +39,10 @@ export default function AdminPremiumPage() {
     setPremiumShops(prev => prev.filter(s => s.id !== id).map((s, i) => ({ ...s, premiumOrder: i + 1 })));
   };
 
+  const toggleVisible = (id: string) => {
+    setPremiumShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
+  };
+
   const addPremium = (id: string) => {
     const shop = allShops.find(s => s.id === id);
     if (!shop) return;
@@ -179,7 +183,11 @@ export default function AdminPremiumPage() {
                   <p className="text-[11px] text-gray-500">{shop.regionLabel} · {shop.themeLabel}</p>
                 </div>
                 {/* ON/OFF 토글 */}
-                <button className={clsx('toggle-switch', shop.isVisible ? 'on' : 'off')}>
+                <button
+                  onClick={() => toggleVisible(shop.id)}
+                  className={clsx('toggle-switch', shop.isVisible ? 'on' : 'off')}
+                  title={shop.isVisible ? '노출 중 (클릭하여 숨김)' : '숨김 (클릭하여 노출)'}
+                >
                   <div className="toggle-knob" />
                 </button>
                 <button
