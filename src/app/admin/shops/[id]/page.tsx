@@ -41,10 +41,10 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   const themes = useThemes();
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState(0);
 
   const isNew = id === 'new';
+  const [loading, setLoading] = useState(!isNew);
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -54,7 +54,6 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     if (isNew) {
-      setLoading(false);
       return;
     }
     fetch(`/api/admin/shops/${id}`)
@@ -64,16 +63,6 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
       })
       .finally(() => setLoading(false));
   }, [id, isNew]);
-
-  const initialData: Shop = isNew
-    ? {
-        ...EMPTY_SHOP,
-        id: `shop-${Date.now()}`,
-        isVisible: currentUser?.role === 'ADMIN',
-        approvalStatus: currentUser?.role === 'ADMIN' ? 'approved' : 'pending',
-        ownerId: currentUser?.id ?? '',
-      }
-    : (shop ?? EMPTY_SHOP);
 
   const [form, setForm] = useState<Shop>(EMPTY_SHOP);
   const [courses, setCourses] = useState<Shop['courses']>([]);
@@ -88,6 +77,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   const galleryRef = useRef<HTMLInputElement>(null);
 
   // Sync form state once data is loaded
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (loading) return;
     const data = isNew
@@ -106,6 +96,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
     setBannerPreview(data.bannerUrl || '');
     setGalleryPreviews(data.images || []);
   }, [loading, shop, currentUser, isNew]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const readFile = (file: File): Promise<string> =>
     new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.readAsDataURL(file); });

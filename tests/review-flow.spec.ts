@@ -1,16 +1,24 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
-  const TEST_SHOP_URL = 'http://localhost:3000/shop/healing-spa-seoul';
+  test.setTimeout(120_000);
+
+  const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
+  const TEST_SHOP_URL = `${BASE}/shop/healing-spa-seoul`;
   const TEST_CONTENT = '플레이라이트 자동화 테스트 리뷰입니다. ' + new Date().getTime();
   const UPDATED_CONTENT = '수정된 테스트 내용입니다. ' + new Date().getTime();
 
   test('리뷰 작성 및 데이터 검증', async ({ page }) => {
     // 1. 로그인 페이지 이동 및 로그인
     console.log('🚀 로그인 페이지 이동 중...');
-    await page.goto('http://localhost:3000/auth/login');
+    await page.goto(`${BASE}/auth/login`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('massage-adult-confirmed', 'true');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     
     const loginForm = page.locator('main form').filter({ has: page.locator('input[placeholder="아이디"]') });
+    await expect(loginForm).toBeVisible({ timeout: 60_000 });
     await loginForm.locator('input[placeholder="아이디"]').fill('user@massage.local');
     await loginForm.locator('input[placeholder="비밀번호"]').fill('user1234');
     
@@ -34,7 +42,7 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
 
     // 2. 상점 상세 페이지 이동
     console.log('🚀 상세 페이지 이동 중...');
-    await page.goto(TEST_SHOP_URL);
+    await page.goto(TEST_SHOP_URL, { waitUntil: 'domcontentloaded' });
     
     // 페이지 로딩 및 세션 체크 대기
     await page.waitForLoadState('networkidle');

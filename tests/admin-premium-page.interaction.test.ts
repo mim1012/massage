@@ -43,22 +43,30 @@ async function renderHarness(options?: {
     const url = String(input);
     const method = init?.method ?? 'GET';
 
-    if (url.includes('/api/admin/shops?region=seoul') && method === 'GET') {
+    if (url === '/api/admin/premium' && method === 'GET') {
       return Response.json({
-        shops: [
+        premiumShops: [
           {
             id: 'shop-1',
             name: '프리미엄 업소 1',
+            region: 'seoul',
             regionLabel: '서울',
             subRegionLabel: '강남',
+            themeLabel: '스웨디시',
+            isVisible: true,
             isPremium: true,
             premiumOrder: 1,
           },
+        ],
+        availableShops: [
           {
             id: 'shop-2',
             name: '일반 업소 2',
+            region: 'seoul',
             regionLabel: '서울',
             subRegionLabel: '서초',
+            themeLabel: '아로마',
+            isVisible: true,
             isPremium: false,
             premiumOrder: undefined,
           },
@@ -66,7 +74,7 @@ async function renderHarness(options?: {
       }, { status: 200 });
     }
 
-    if (url.endsWith('/shop-1/premium') && method === 'PATCH') {
+    if (url === '/api/admin/premium' && method === 'PATCH') {
       return Response.json({ ok: true }, { status: 200 });
     }
 
@@ -134,7 +142,7 @@ test('region fetch failures do not surface as unhandled rejections', async () =>
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (url.includes('/api/admin/shops?region=seoul') && method === 'GET') {
+      if (url === '/api/admin/premium' && method === 'GET') {
         throw new TypeError('Failed to fetch');
       }
 
@@ -171,11 +179,12 @@ test('rapid duplicate save clicks trigger only one premium save sequence', async
       await Promise.resolve();
     });
 
-    const saveLoadCalls = harness.fetchCalls.filter((call) => call.method === 'GET' && call.url.includes('/api/admin/shops?region=seoul'));
-    const premiumPatchCalls = harness.fetchCalls.filter((call) => call.method === 'PATCH' && call.url.endsWith('/shop-1/premium'));
+    const saveLoadCalls = harness.fetchCalls.filter((call) => call.method === 'GET' && call.url === '/api/admin/premium');
+    const premiumPatchCalls = harness.fetchCalls.filter((call) => call.method === 'PATCH' && call.url === '/api/admin/premium');
 
-    assert.equal(saveLoadCalls.length, 1);
-    assert.equal(premiumPatchCalls.length, 2);
+    assert.equal(saveLoadCalls.length, 0);
+    assert.equal(premiumPatchCalls.length, 1);
+    assert.deepEqual(JSON.parse(premiumPatchCalls[0].body ?? '{}'), { orderedIds: ['shop-1'] });
   } finally {
     await harness.cleanup();
   }

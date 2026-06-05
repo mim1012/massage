@@ -1,0 +1,11 @@
+.omx
+.omc
+.gstack
+.claude
+.next
+test-results
+playwright-report
+node_modules
+scratch
+runtime-logs
+*.log

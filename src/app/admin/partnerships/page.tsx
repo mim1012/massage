@@ -10,10 +10,12 @@ import { PartnershipInquiry } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import clsx from 'clsx';
 
+type PartnershipStatusFilter = 'all' | PartnershipInquiry['status'];
+
 export default function AdminPartnershipsPage() {
   const [inquiries, setInquiries] = useState<PartnershipInquiry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'contacted' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<PartnershipStatusFilter>('all');
   const [selectedInquiry, setSelectedInquiry] = useState<PartnershipInquiry | null>(null);
   const pendingRef = useRef<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
@@ -109,7 +111,7 @@ export default function AdminPartnershipsPage() {
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value as any)}
+            onChange={e => setStatusFilter(e.target.value as PartnershipStatusFilter)}
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-500"
           >
             <option value="all">전체 상태</option>

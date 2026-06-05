@@ -1,7 +1,7 @@
 import { Shop, Review, Notice, QnA, User, PartnershipInquiry, SiteSettings, HomeSeoContent } from './types';
 
 // ===== 모의 사용자 데이터 =====
-export let MOCK_USERS: User[] = [
+export const MOCK_USERS: User[] = [
   {
     id: 'admin',
     email: 'admin@healing.com',
@@ -423,4 +423,3 @@ export const MOCK_HOME_SEO: HomeSeoContent = {
   section3Title: '프리미엄 추천업소',
   section3Content: '매일 업데이트되는 프리미엄 추천업소를 통해 최고 수준의 서비스를 경험하세요. 업소 상세 페이지에서 코스 정보, 요금표, 실제 방문 후기를 확인할 수 있습니다.',
 };
-
