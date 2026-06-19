@@ -103,6 +103,14 @@ test('home directory navigation uses client-side data fetch for smooth theme tra
   assert.equal(homeClientSource.includes('shopResponseCache'), true);
   assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
   assert.equal(homeClientSource.includes("fetch(`/api/shops?${cacheKey}`, { cache: 'no-store' })"), true);
+  assert.equal(homeClientSource.includes("window.addEventListener('public-directory:navigate'"), true);
+});
+test('smart prefetch links hand home directory clicks to the smooth client transition path', async () => {
+  const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
+
+  assert.equal(smartLinkSource.includes("new CustomEvent('public-directory:navigate'"), true);
+  assert.equal(smartLinkSource.includes("window.location.pathname !== '/'"), true);
+  assert.equal(smartLinkSource.includes('event.preventDefault();'), true);
 });
 test('footer RSS link has a real cached feed route', async () => {
   const footerSource = await readProjectFile('src/components/Footer.tsx');

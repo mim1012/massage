@@ -10,6 +10,7 @@ type SmartPrefetchLinkProps = React.ComponentProps<typeof Link> & {
 
 export default function SmartPrefetchLink({
   href,
+  onClick,
   onMouseEnter,
   onFocus,
   onTouchStart,
@@ -28,6 +29,26 @@ export default function SmartPrefetchLink({
     router.prefetch(hrefString);
   }, [hrefString, prefetchOnHover, router]);
 
+  const handleClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
+    onClick?.(event);
+
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    const targetUrl = new URL(hrefString, window.location.origin);
+    if (window.location.pathname !== '/' || targetUrl.origin !== window.location.origin || targetUrl.pathname !== '/') {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('public-directory:navigate', {
+        detail: { href: `${targetUrl.pathname}${targetUrl.search}` },
+      }),
+    );
+    event.preventDefault();
+  };
+
   const handleMouseEnter: MouseEventHandler<HTMLAnchorElement> = (event) => {
     triggerPrefetch();
     onMouseEnter?.(event);
@@ -43,5 +64,5 @@ export default function SmartPrefetchLink({
     onTouchStart?.(event);
   };
 
-  return <Link href={href} prefetch={prefetch} onMouseEnter={handleMouseEnter} onFocus={handleFocus} onTouchStart={handleTouchStart} {...props} />;
+  return <Link href={href} prefetch={prefetch} onClick={handleClick} onMouseEnter={handleMouseEnter} onFocus={handleFocus} onTouchStart={handleTouchStart} {...props} />;
 }

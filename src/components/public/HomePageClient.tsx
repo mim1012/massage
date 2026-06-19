@@ -175,6 +175,25 @@ export default function HomePageClient({
     },
     [loadShops, pathname],
   );
+  useEffect(() => {
+    const handleGlobalDirectoryNavigate = (event: Event) => {
+      const href = (event as CustomEvent<{ href?: string }>).detail?.href;
+      if (!href) {
+        return;
+      }
+
+      const targetUrl = new URL(href, window.location.origin);
+      window.history.pushState(null, '', `${targetUrl.pathname}${targetUrl.search}`);
+      const nextParams = new URLSearchParams(targetUrl.search);
+      const nextPage = normalizePageParam(nextParams.get('page'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      void loadShops(nextPage, nextParams);
+    };
+
+    window.addEventListener('public-directory:navigate', handleGlobalDirectoryNavigate);
+    return () => window.removeEventListener('public-directory:navigate', handleGlobalDirectoryNavigate);
+  }, [loadShops]);
+
 
 
   useEffect(() => {
@@ -264,6 +283,7 @@ export default function HomePageClient({
             <Link
               href="/"
               prefetch={false}
+              onClick={handleDirectoryNavigate}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 isAllCategorySelected
                   ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
@@ -280,6 +300,7 @@ export default function HomePageClient({
                 key={region.code}
                 href={buildBrowseHref({ mode: 'region', region: region.code })}
                 prefetch={false}
+                onClick={handleDirectoryNavigate}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   selectedRegion === region.code
                     ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
