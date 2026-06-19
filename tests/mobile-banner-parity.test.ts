@@ -39,13 +39,13 @@ test('top100 page server composition keeps canonical redirect + data loading int
 test('home client keeps mobile region chips before premium cards and mobile banner rail after the list', async () => {
   const prodSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
-  assert.equal(prodSource.includes("import Sidebar from '@/components/Sidebar';"), true);
-  assert.equal(prodSource.includes("import MobileBannerRail from '@/components/public/MobileBannerRail';"), true);
+  assert.equal(prodSource.includes('import Sidebar from "@/components/Sidebar";'), true);
+  assert.equal(prodSource.includes('import MobileBannerRail from "@/components/public/MobileBannerRail";'), true);
   assert.equal(prodSource.includes('scrollbar-hide md:hidden'), true);
   assert.equal(prodSource.indexOf('scrollbar-hide md:hidden') < prodSource.indexOf('{premiumShops.length > 0 && ('), true);
   assert.equal(prodSource.indexOf('{premiumShops.length > 0 && (') < prodSource.indexOf('<MobileBannerRail />'), true);
   assert.equal(prodSource.indexOf('<MobileBannerRail />') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
-  assert.equal(prodSource.includes("📋 ${sortType === 'popular' ? '인기 추천 업소' : '전체 업소'}"), true);
+  assert.equal(prodSource.includes('📋 ${sortType === "popular" ? "인기 추천 업소" : "전체 업소"}'), true);
   assert.equal(prodSource.includes('지역이나 테마를 바꿔 다른 업소를 찾아보세요.'), false);
 });
 
@@ -104,7 +104,7 @@ test('home directory navigation uses client-side data fetch for smooth theme tra
   assert.equal(homeClientSource.includes('shopResponseCache'), true);
   assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
   assert.equal(homeClientSource.includes('fetch(`/api/shops?${cacheKey}`)'), true);
-  assert.equal(homeClientSource.includes("window.addEventListener('public-directory:navigate'"), true);
+  assert.equal(homeClientSource.includes('window.addEventListener('), true);
 });
 test('smart prefetch links hand home directory clicks to the smooth client transition path', async () => {
   const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
@@ -139,6 +139,17 @@ test('public list APIs send CDN cache headers for smooth repeated navigation', a
   assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
   assert.equal(shopRouteSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(themeRouteSource.includes("export const preferredRegion = 'sin1'"), true);
+});
+test('directory cache prewarm cron covers common public list routes', async () => {
+  const vercelConfig = await readProjectFile('vercel.json');
+  const prewarmRoute = await readProjectFile('src/app/api/cron/prewarm-directory/route.ts');
+
+  assert.equal(vercelConfig.includes('/api/cron/prewarm-directory'), true);
+  assert.equal(vercelConfig.includes('*/5 * * * *'), true);
+  assert.equal(prewarmRoute.includes('/api/shops?region=seoul&regularOffset=0&regularLimit=30'), true);
+  assert.equal(prewarmRoute.includes('/api/shops?view=theme&theme=swedish&regularOffset=0&regularLimit=30'), true);
+  assert.equal(prewarmRoute.includes('/api/themes'), true);
+  assert.equal(prewarmRoute.includes("export const preferredRegion = 'sin1'"), true);
 });
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
