@@ -5,6 +5,7 @@ import { Settings, Save, Globe, Info, Layout, Phone, Building, Type, FileText } 
 import { MOCK_SITE_SETTINGS, MOCK_HOME_SEO } from '@/lib/mockData';
 import { SiteSettings, HomeSeoContent } from '@/lib/types';
 import clsx from 'clsx';
+import { SettingsPreview } from './_components/SettingsPreview';
 
 export default function AdminSettingsPage() {
   // 두 가지 종류의 설정을 각각 관리
@@ -25,7 +26,7 @@ export default function AdminSettingsPage() {
   const lbl = "flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5";
 
   return (
-    <div className="max-w-[1200px] space-y-10 pb-10">
+    <div className="max-w-[1400px] pb-10 mx-auto">
       {/* 헤더 섹션 */}
       <div className="flex items-center justify-between sticky top-0 bg-gray-50/80 backdrop-blur-md py-4 z-20 border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0">
         <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
@@ -44,153 +45,162 @@ export default function AdminSettingsPage() {
         </button>
       </div>
 
-      {/* ===== 섹션 1: 사이드 기본 모듈 설정 ===== */}
-      <section className="space-y-6">
-        <div className="flex items-center gap-2 border-l-4 border-sky-600 pl-3">
-          <Globe className="w-5 h-5 text-gray-800" />
-          <h2 className="text-lg font-black text-gray-800">1. 사이트 기본 모듈 설정</h2>
-        </div>
+      <div className="flex flex-col lg:flex-row gap-8 mt-8">
+        <div className="flex-1 min-w-0 space-y-10">
+          {/* ===== 섹션 1: 사이드 기본 모듈 설정 ===== */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 border-l-4 border-sky-600 pl-3">
+              <Globe className="w-5 h-5 text-gray-800" />
+              <h2 className="text-lg font-black text-gray-800">1. 사이트 기본 모듈 설정</h2>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">기본 브랜드 설정</div>
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className={lbl}>사이트 이름</label>
-                  <input
-                    type="text"
-                    value={siteForm.siteName}
-                    onChange={e => setSiteForm({ ...siteForm, siteName: e.target.value })}
-                    className={ipt}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={lbl}>사이트 제목 (SEO)</label>
-                    <input
-                      type="text"
-                      value={siteForm.siteTitle}
-                      onChange={e => setSiteForm({ ...siteForm, siteTitle: e.target.value })}
-                      className={ipt}
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">기본 브랜드 설정</div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className={lbl}>사이트 이름</label>
+                      <input
+                        type="text"
+                        value={siteForm.siteName}
+                        onChange={e => setSiteForm({ ...siteForm, siteName: e.target.value })}
+                        className={ipt}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={lbl}>사이트 제목 (SEO)</label>
+                        <input
+                          type="text"
+                          value={siteForm.siteTitle}
+                          onChange={e => setSiteForm({ ...siteForm, siteTitle: e.target.value })}
+                          className={ipt}
+                        />
+                      </div>
+                      <div>
+                        <label className={lbl}>사이트 영문명/설명</label>
+                        <input
+                          type="text"
+                          value={siteForm.siteDescription}
+                          onChange={e => setSiteForm({ ...siteForm, siteDescription: e.target.value })}
+                          className={ipt}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className={lbl}>사이트 영문명/설명</label>
-                    <input
-                      type="text"
-                      value={siteForm.siteDescription}
-                      onChange={e => setSiteForm({ ...siteForm, siteDescription: e.target.value })}
-                      className={ipt}
-                    />
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">홈 화면 상단 배너 문구</div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className={lbl}>배너 메인 강조 텍스트</label>
+                      <input
+                        type="text"
+                        value={siteForm.heroMainText}
+                        onChange={e => setSiteForm({ ...siteForm, heroMainText: e.target.value })}
+                        className={ipt}
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>배너 하단 안내 텍스트</label>
+                      <input
+                        type="text"
+                        value={siteForm.heroSubText}
+                        onChange={e => setSiteForm({ ...siteForm, heroSubText: e.target.value })}
+                        className={ipt}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">연락처 및 푸터 정보</div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className={lbl}>대표 연락처</label>
+                      <input
+                        type="text"
+                        value={siteForm.contactPhone}
+                        onChange={e => setSiteForm({ ...siteForm, contactPhone: e.target.value })}
+                        className={ipt}
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>푸터 사업자 정보</label>
+                      <textarea
+                        rows={4}
+                        value={siteForm.footerInfo}
+                        onChange={e => setSiteForm({ ...siteForm, footerInfo: e.target.value })}
+                        className={ipt}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          </section>
 
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">홈 화면 상단 배너 문구</div>
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className={lbl}>배너 메인 강조 텍스트</label>
-                  <input
-                    type="text"
-                    value={siteForm.heroMainText}
-                    onChange={e => setSiteForm({ ...siteForm, heroMainText: e.target.value })}
-                    className={ipt}
-                  />
+          <hr className="border-gray-200" />
+
+          {/* ===== 섹션 2: 홈페이지 하단 SEO 문구 관리 ===== */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 border-l-4 border-[#D4A373] pl-3">
+              <Layout className="w-5 h-5 text-gray-800" />
+              <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm lg:col-span-1">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#D4A373]">첫 번째 블록</span>
+                  <Type className="w-3.5 h-3.5 text-gray-400" />
                 </div>
-                <div>
-                  <label className={lbl}>배너 하단 안내 텍스트</label>
-                  <input
-                    type="text"
-                    value={siteForm.heroSubText}
-                    onChange={e => setSiteForm({ ...siteForm, heroSubText: e.target.value })}
-                    className={ipt}
-                  />
+                <div className="p-4 space-y-3">
+                  <input value={seoForm.section1Title} onChange={e => setSeoForm({...seoForm, section1Title: e.target.value})} className={ipt} placeholder="제목 입력" />
+                  <textarea value={seoForm.section1Content} onChange={e => setSeoForm({...seoForm, section1Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm lg:col-span-1">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#D4A373]">두 번째 블록</span>
+                  <Type className="w-3.5 h-3.5 text-gray-400" />
+                </div>
+                <div className="p-4 space-y-3">
+                  <input value={seoForm.section2Title} onChange={e => setSeoForm({...seoForm, section2Title: e.target.value})} className={ipt} placeholder="제목 입력" />
+                  <textarea value={seoForm.section2Content} onChange={e => setSeoForm({...seoForm, section2Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm lg:col-span-1">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <span className="font-bold text-xs text-blue-600">세 번째 블록</span>
+                  <Type className="w-3.5 h-3.5 text-gray-400" />
+                </div>
+                <div className="p-4 space-y-3">
+                  <input value={seoForm.section3Title} onChange={e => setSeoForm({...seoForm, section3Title: e.target.value})} className={ipt} placeholder="제목 입력" />
+                  <textarea value={seoForm.section3Content} onChange={e => setSeoForm({...seoForm, section3Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="space-y-6">
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-bold text-sm text-gray-700">연락처 및 푸터 정보</div>
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className={lbl}>대표 연락처</label>
-                  <input
-                    type="text"
-                    value={siteForm.contactPhone}
-                    onChange={e => setSiteForm({ ...siteForm, contactPhone: e.target.value })}
-                    className={ipt}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>푸터 사업자 정보</label>
-                  <textarea
-                    rows={4}
-                    value={siteForm.footerInfo}
-                    onChange={e => setSiteForm({ ...siteForm, footerInfo: e.target.value })}
-                    className={ipt}
-                  />
-                </div>
-              </div>
+          <div className="bg-[#FEFAE0] border border-[#D4A373] border-opacity-20 rounded-xl p-4 flex gap-3">
+            <Info className="w-5 h-5 text-[#D4A373] shrink-0 mt-0.5" />
+            <div className="text-xs text-[#5F4B32] leading-relaxed">
+              <p className="font-bold mb-1">관리 지침</p>
+              <p>1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의 마케팅용 SEO 텍스트를 구성합니다. 모든 항목은 입력 즉시 시스템에 반영됩니다.</p>
             </div>
           </div>
         </div>
-      </section>
 
-      <hr className="border-gray-200" />
-
-      {/* ===== 섹션 2: 홈페이지 하단 SEO 문구 관리 ===== */}
-      <section className="space-y-6">
-        <div className="flex items-center gap-2 border-l-4 border-[#D4A373] pl-3">
-          <Layout className="w-5 h-5 text-gray-800" />
-          <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <span className="font-bold text-xs text-[#D4A373]">첫 번째 블록</span>
-              <Type className="w-3.5 h-3.5 text-gray-400" />
-            </div>
-            <div className="p-4 space-y-3">
-              <input value={seoForm.section1Title} onChange={e => setSeoForm({...seoForm, section1Title: e.target.value})} className={ipt} placeholder="제목 입력" />
-              <textarea value={seoForm.section1Content} onChange={e => setSeoForm({...seoForm, section1Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <span className="font-bold text-xs text-[#D4A373]">두 번째 블록</span>
-              <Type className="w-3.5 h-3.5 text-gray-400" />
-            </div>
-            <div className="p-4 space-y-3">
-              <input value={seoForm.section2Title} onChange={e => setSeoForm({...seoForm, section2Title: e.target.value})} className={ipt} placeholder="제목 입력" />
-              <textarea value={seoForm.section2Content} onChange={e => setSeoForm({...seoForm, section2Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <span className="font-bold text-xs text-blue-600">세 번째 블록</span>
-              <Type className="w-3.5 h-3.5 text-gray-400" />
-            </div>
-            <div className="p-4 space-y-3">
-              <input value={seoForm.section3Title} onChange={e => setSeoForm({...seoForm, section3Title: e.target.value})} className={ipt} placeholder="제목 입력" />
-              <textarea value={seoForm.section3Content} onChange={e => setSeoForm({...seoForm, section3Content: e.target.value})} rows={5} className={ipt} placeholder="내용 입력" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="bg-[#FEFAE0] border border-[#D4A373] border-opacity-20 rounded-xl p-4 flex gap-3">
-        <Info className="w-5 h-5 text-[#D4A373] shrink-0 mt-0.5" />
-        <div className="text-xs text-[#5F4B32] leading-relaxed">
-          <p className="font-bold mb-1">관리 지침</p>
-          <p>1번 섹션은 사이트 전체의 기본 레이아웃과 배너 문구에 영향을 주며, 2번 섹션은 홈 화면 최하단의 마케팅용 SEO 텍스트를 구성합니다. 모든 항목은 입력 즉시 시스템에 반영됩니다.</p>
+        {/* 우측 라이브 미리보기 영역 */}
+        <div className="w-full lg:w-[420px] shrink-0">
+          <SettingsPreview siteForm={siteForm} seoForm={seoForm} />
         </div>
       </div>
     </div>
