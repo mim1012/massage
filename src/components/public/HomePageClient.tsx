@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEventHandler } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
@@ -86,25 +86,42 @@ export default function HomePageClient({
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(viewParam);
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const shopResponseCache = useRef(new Map<string, ShopListResponse>());
 
-  const loadShops = useCallback(async (page: number = 1) => {
+  const loadShops = useCallback(async (page: number = 1, params: URLSearchParams = new URLSearchParams(searchParams.toString())) => {
     setIsLoading(true);
     setError(null);
 
-    const params = buildDirectorySearchParams({
-      region: selectedRegion,
-      subRegion: selectedSubRegion,
-      theme: selectedTheme,
-      q: searchQuery,
-      sort: sortType,
+    const nextRegion = params.get('region') ?? 'all';
+    const nextSubRegion = params.get('subRegion') ?? 'all';
+    const nextTheme = params.get('theme') ?? 'all';
+    const nextQuery = params.get('q') ?? '';
+    const nextSort = getDirectorySortType(params.get('sort'));
+    const apiParams = buildDirectorySearchParams({
+      region: nextRegion,
+      subRegion: nextSubRegion,
+      theme: nextTheme,
+      q: nextQuery,
+      sort: nextSort,
       extraParams: {
         regularOffset: (page - 1) * REGULAR_PAGE_SIZE,
         regularLimit: REGULAR_PAGE_SIZE,
       },
     });
+    const cacheKey = apiParams.toString();
+
+    const cached = shopResponseCache.current.get(cacheKey);
+    if (cached) {
+      setPremiumShops((cached.premiumShops ?? []).slice(0, 4));
+      setRegularShops(cached.regularShops ?? []);
+      setRegularTotal(cached.regularTotal ?? cached.regularShops?.length ?? 0);
+      setCurrentPage(page);
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/shops?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/shops?${cacheKey}`, { cache: 'no-store' });
       const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
 
       if (!response.ok) {
@@ -112,16 +129,24 @@ export default function HomePageClient({
         return;
       }
 
-      setPremiumShops((result.premiumShops ?? []).slice(0, 4));
-      setRegularShops(result.regularShops ?? []);
-      setRegularTotal(result.regularTotal ?? result.regularShops?.length ?? 0);
+      const nextResponse: ShopListResponse = {
+        allShops: result.allShops ?? [],
+        premiumShops: result.premiumShops ?? [],
+        regularShops: result.regularShops ?? [],
+        regularTotal: result.regularTotal ?? result.regularShops?.length ?? 0,
+        total: result.total ?? result.regularTotal ?? result.regularShops?.length ?? 0,
+      };
+      shopResponseCache.current.set(cacheKey, nextResponse);
+      setPremiumShops(nextResponse.premiumShops.slice(0, 4));
+      setRegularShops(nextResponse.regularShops);
+      setRegularTotal(nextResponse.regularTotal ?? nextResponse.regularShops.length);
       setCurrentPage(page);
     } catch {
       setError('업소 목록을 불러오지 못했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedRegion, selectedSubRegion, selectedTheme, sortType]);
+  }, [searchParams]);
 
   const handlePageChange = (page: number) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -133,6 +158,24 @@ export default function HomePageClient({
     router.replace(`${pathname}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: true });
     void loadShops(page);
   };
+  const handleDirectoryNavigate = useCallback<MouseEventHandler<HTMLAnchorElement>>(
+    (event) => {
+      const targetUrl = new URL(event.currentTarget.href);
+
+      if (targetUrl.origin !== window.location.origin || targetUrl.pathname !== pathname || pathname !== '/') {
+        return;
+      }
+
+      event.preventDefault();
+      window.history.pushState(null, '', `${targetUrl.pathname}${targetUrl.search}`);
+      const nextParams = new URLSearchParams(targetUrl.search);
+      const nextPage = normalizePageParam(nextParams.get('page'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      void loadShops(nextPage, nextParams);
+    },
+    [loadShops, pathname],
+  );
+
 
   useEffect(() => {
     setViewMode(viewParam);
@@ -158,6 +201,27 @@ export default function HomePageClient({
 
     void loadShops(initialPage);
   }, [deferInitialDirectoryFetch, initialPremiumShops.length, initialRegularShops.length, loadShops, initialPage]);
+  useEffect(() => {
+    const params = buildDirectorySearchParams({
+      region: selectedRegion,
+      subRegion: selectedSubRegion,
+      theme: selectedTheme,
+      q: searchQuery,
+      sort: sortType,
+      extraParams: {
+        regularOffset: (currentPage - 1) * REGULAR_PAGE_SIZE,
+        regularLimit: REGULAR_PAGE_SIZE,
+      },
+    });
+    shopResponseCache.current.set(params.toString(), {
+      allShops: [...premiumShops, ...regularShops],
+      premiumShops,
+      regularShops,
+      regularTotal,
+      total: premiumShops.length + regularTotal,
+    });
+  }, [currentPage, premiumShops, regularShops, regularTotal, searchQuery, selectedRegion, selectedSubRegion, selectedTheme, sortType]);
+
 
   const regionLabel = useMemo(
     () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',
@@ -172,13 +236,13 @@ export default function HomePageClient({
   }, [selectedRegion, selectedSubRegion]);
   const themeLabel = useMemo(
     () => themes.find((theme) => theme.code === selectedTheme)?.label,
-    [selectedTheme],
+    [selectedTheme, themes],
   );
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-3">
       <div className="flex gap-3">
-        <Sidebar />
+        <Sidebar onDirectoryNavigate={handleDirectoryNavigate} />
 
         <div className="min-w-0 flex-1">
           <div className="mb-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-[var(--portal-brand-dark)] via-[var(--portal-brand-hover)] to-[var(--portal-brand)] p-4 text-white shadow-md">

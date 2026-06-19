@@ -65,6 +65,8 @@ test('sidebar theme links clear region scope so expanded district menus collapse
   assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code })}"), true);
   assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, region: currentRegion"), false);
   assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion"), false);
+  assert.equal(sidebarSource.includes('onDirectoryNavigate?: MouseEventHandler<HTMLAnchorElement>'), true);
+  assert.equal(sidebarSource.includes('onClick={onDirectoryNavigate}'), true);
 });
 
 test('seeded shop image assets exist for every generated public sample', async () => {
@@ -93,6 +95,14 @@ test('public directory performance indexes and theme cache are kept in sync', as
   assert.equal(themeStoreSource.includes('unstable_cache'), true);
   assert.equal(themeStoreSource.includes('revalidate: 300'), true);
   assert.equal(themeStoreSource.includes('invalidateThemeCache();'), true);
+});
+test('home directory navigation uses client-side data fetch for smooth theme transitions', async () => {
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
+
+  assert.equal(homeClientSource.includes('window.history.pushState'), true);
+  assert.equal(homeClientSource.includes('shopResponseCache'), true);
+  assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
+  assert.equal(homeClientSource.includes("fetch(`/api/shops?${cacheKey}`, { cache: 'no-store' })"), true);
 });
 test('footer RSS link has a real cached feed route', async () => {
   const footerSource = await readProjectFile('src/components/Footer.tsx');

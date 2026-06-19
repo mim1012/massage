@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { MouseEventHandler } from 'react';
 import SmartPrefetchLink from '@/components/SmartPrefetchLink';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { REGIONS, DISTRICTS } from '@/lib/catalog';
@@ -9,7 +10,7 @@ import { buildBrowseHref } from '@/lib/directory-mode';
 import SidebarPromoBanners from '@/components/public/SidebarPromoBanners';
 import clsx from 'clsx';
 
-export default function Sidebar() {
+export default function Sidebar({ onDirectoryNavigate }: { onDirectoryNavigate?: MouseEventHandler<HTMLAnchorElement> }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const themes = useThemes();
@@ -28,12 +29,18 @@ export default function Sidebar() {
           <SmartPrefetchLink
             href={buildBrowseHref({ mode: 'region', basePath: baseUrl })}
             prefetch={false}
+            onClick={onDirectoryNavigate}
             className="block bg-[var(--portal-brand)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--portal-brand-hover)]"
           >
             📍 지역별 업소
           </SmartPrefetchLink>
           <div>
-            <SmartPrefetchLink href={buildBrowseHref({ mode: 'region', basePath: baseUrl })} prefetch={false} className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}>
+            <SmartPrefetchLink
+              href={buildBrowseHref({ mode: 'region', basePath: baseUrl })}
+              prefetch={false}
+              onClick={onDirectoryNavigate}
+              className={clsx('lnb-menu-item', !currentRegion && !currentTheme && 'active')}
+            >
               전체보기
             </SmartPrefetchLink>
             {REGIONS.filter((r) => r.code !== 'all').map((r) => (
@@ -41,6 +48,7 @@ export default function Sidebar() {
                 <SmartPrefetchLink
                   href={buildBrowseHref({ mode: 'region', basePath: baseUrl, region: r.code, theme: currentTheme })}
                   prefetch={false}
+                  onClick={onDirectoryNavigate}
                   className={clsx('lnb-menu-item', currentRegion === r.code && !currentSubRegion && 'active')}
                 >
                   &rsaquo; {r.label}
@@ -61,6 +69,7 @@ export default function Sidebar() {
                             theme: currentTheme,
                           })}
                           prefetch={false}
+                          onClick={onDirectoryNavigate}
                           className={clsx(
                             'block border-b border-white/50 px-3 py-1.5 pl-6 text-xs text-gray-500 last:border-0 hover:text-[var(--portal-brand)]',
                             currentSubRegion === d.code && 'font-bold text-[var(--portal-brand)]',
@@ -107,6 +116,7 @@ export default function Sidebar() {
           <SmartPrefetchLink
             href={buildBrowseHref({ mode: 'theme', basePath: baseUrl })}
             prefetch={false}
+            onClick={onDirectoryNavigate}
             className="block bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
           >
             🏷️ 테마별 업소
@@ -117,6 +127,7 @@ export default function Sidebar() {
                 key={t.code}
                 href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code })}
                 prefetch={false}
+                onClick={onDirectoryNavigate}
                 className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
               >
                 &rsaquo; {t.label}
