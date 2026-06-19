@@ -60,6 +60,8 @@ const themeEmoji: Record<string, string> = {
 };
 
 const REGULAR_PAGE_SIZE = 30;
+const PREWARM_REGION_CODES = ["seoul", "gyeonggi", "busan"] as const;
+const PREWARM_THEME_CODES = ["swedish", "aroma", "thai"] as const;
 
 export default function HomePageClient({
   initialPremiumShops,
@@ -315,6 +317,69 @@ export default function HomePageClient({
     selectedTheme,
     sortType,
   ]);
+  useEffect(() => {
+    if (pathname !== "/" || searchQuery) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const prewarmKeys = new Set<string>();
+      const addPrewarmKey = (params: {
+        region?: string;
+        theme?: string;
+        subRegion?: string;
+      }) => {
+        const apiParams = buildDirectorySearchParams({
+          region: params.region ?? "all",
+          subRegion: params.subRegion ?? "all",
+          theme: params.theme ?? "all",
+          extraParams: {
+            regularOffset: 0,
+            regularLimit: REGULAR_PAGE_SIZE,
+          },
+        });
+        const cacheKey = apiParams.toString();
+
+        if (!shopResponseCache.current.has(cacheKey)) {
+          prewarmKeys.add(cacheKey);
+        }
+      };
+
+      if (selectedRegion !== "all") {
+        addPrewarmKey({
+          region: selectedRegion,
+          subRegion: selectedSubRegion !== "all" ? selectedSubRegion : undefined,
+          theme: selectedTheme !== "all" ? selectedTheme : undefined,
+        });
+      }
+
+      PREWARM_REGION_CODES.forEach((region) => addPrewarmKey({ region }));
+      PREWARM_THEME_CODES.forEach((theme) => addPrewarmKey({ theme }));
+
+      prewarmKeys.forEach((cacheKey) => {
+        void fetch(`/api/shops?${cacheKey}`)
+          .then(async (response) => {
+            if (!response.ok) {
+              return;
+            }
+
+            const result = (await response.json()) as Partial<ShopListResponse>;
+            shopResponseCache.current.set(cacheKey, {
+              allShops: result.allShops ?? [],
+              premiumShops: result.premiumShops ?? [],
+              regularShops: result.regularShops ?? [],
+              regularTotal: result.regularTotal ?? result.regularShops?.length ?? 0,
+              total: result.total ?? result.regularTotal ?? result.regularShops?.length ?? 0,
+            });
+          })
+          .catch(() => {
+            // Opportunistic prewarm only; visible navigation still loads on demand.
+          });
+      });
+    }, 800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, searchQuery, selectedRegion, selectedSubRegion, selectedTheme]);
 
   const regionLabel = useMemo(
     () =>

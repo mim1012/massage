@@ -105,6 +105,9 @@ test('home directory navigation uses client-side data fetch for smooth theme tra
   assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
   assert.equal(homeClientSource.includes('fetch(`/api/shops?${cacheKey}`)'), true);
   assert.equal(homeClientSource.includes('window.addEventListener('), true);
+  assert.equal(homeClientSource.includes('PREWARM_REGION_CODES'), true);
+  assert.equal(homeClientSource.includes('PREWARM_THEME_CODES'), true);
+  assert.equal(homeClientSource.includes('Opportunistic prewarm only'), true);
 });
 test('smart prefetch links hand home directory clicks to the smooth client transition path', async () => {
   const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
