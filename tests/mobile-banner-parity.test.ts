@@ -145,7 +145,7 @@ test('directory cache prewarm cron covers common public list routes', async () =
   const prewarmRoute = await readProjectFile('src/app/api/cron/prewarm-directory/route.ts');
 
   assert.equal(vercelConfig.includes('/api/cron/prewarm-directory'), true);
-  assert.equal(vercelConfig.includes('*/5 * * * *'), true);
+  assert.equal(vercelConfig.includes('0 0 * * *'), true);
   assert.equal(prewarmRoute.includes('/api/shops?region=seoul&regularOffset=0&regularLimit=30'), true);
   assert.equal(prewarmRoute.includes('/api/shops?view=theme&theme=swedish&regularOffset=0&regularLimit=30'), true);
   assert.equal(prewarmRoute.includes('/api/themes'), true);
