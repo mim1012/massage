@@ -3,6 +3,7 @@ import { test, type TestContext } from 'node:test';
 import { prisma } from '@/lib/db/prisma';
 import {
   answerQna,
+  createQnaComment,
   createAdminShop,
   createNotice,
   createQna,
@@ -198,7 +199,12 @@ dbTest('getBoardLandingData keeps board cards intact without loading full Q&A th
   });
 
   await answerQna(created.id, 'First landing answer', admin.id, admin.name);
-  await answerQna(created.id, 'Latest landing answer', admin.id, admin.name);
+  await createQnaComment(created.id, {
+    content: 'Latest landing answer',
+    userId: admin.id,
+    authorName: admin.name,
+    role: 'ADMIN',
+  });
 
   const landing = await getBoardLandingData({ includeReviews: true });
   const landingQna = landing.qnaEntries.find((entry) => entry.id === created.id);
@@ -308,7 +314,12 @@ dbTest('Q&A creation and operator comments trim input and support multi-comment 
   assert.equal((await listQna(shop.id))[0]?.id, created.id);
 
   const answered = await answerQna(created.id, '  Yes, weekends are available.  ', admin.id, admin.name);
-  const answeredAgain = await answerQna(created.id, '  We also accept same-day bookings.  ', admin.id, admin.name);
+  const answeredAgain = await createQnaComment(created.id, {
+    content: '  We also accept same-day bookings.  ',
+    userId: admin.id,
+    authorName: admin.name,
+    role: 'ADMIN',
+  });
 
   assert.equal(answered?.answer, 'Yes, weekends are available.');
   assert.equal(answered?.commentCount, 1);

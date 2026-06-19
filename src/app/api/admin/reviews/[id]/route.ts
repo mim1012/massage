@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
-import { deleteManagedReview, updateReview } from '@/lib/server/communityStore';
+import { deleteManagedReview, setReviewHiddenState, updateReview } from '@/lib/server/communityStore';
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -25,14 +25,17 @@ export async function PATCH(request: Request, context: Context) {
     }
 
     const body = (await request.json()) as { rating?: number; content?: string; authorName?: string; isHidden?: boolean };
+    if (user.role !== 'ADMIN' && (body.rating !== undefined || body.content !== undefined || body.authorName !== undefined)) {
+      return Response.json({ error: '점주는 리뷰 숨김 상태만 변경할 수 있습니다.' }, { status: 403 });
+    }
+
 
     if (body.isHidden !== undefined && body.rating === undefined && body.content === undefined && body.authorName === undefined) {
-      const toggled = await prisma.review.update({
-        where: { id },
-        data: { isHidden: body.isHidden },
-        include: { shop: { select: { name: true } } },
-      });
-      return Response.json({ review: { id: toggled.id, shopId: toggled.shopId, shopName: toggled.shop.name, authorName: toggled.authorName, rating: toggled.rating, content: toggled.content, isHidden: toggled.isHidden, createdAt: toggled.createdAt.toISOString() } });
+      const toggled = await setReviewHiddenState(user, id, body.isHidden);
+      if (!toggled) {
+        return Response.json({ error: '리뷰를 찾을 수 없거나 권한이 없습니다.' }, { status: 404 });
+      }
+      return Response.json({ review: toggled });
     }
 
     if (body.rating !== undefined && (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5)) {
@@ -43,6 +46,10 @@ export async function PATCH(request: Request, context: Context) {
     }
     if (body.authorName !== undefined && !body.authorName.trim()) {
       return Response.json({ error: '작성자 이름을 입력해주세요.' }, { status: 400 });
+    }
+
+    if (user.role !== 'ADMIN') {
+      return Response.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
     const updated = await updateReview(id, body);

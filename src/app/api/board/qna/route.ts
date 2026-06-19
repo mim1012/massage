@@ -1,5 +1,6 @@
 import { getSessionUser, requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
+import { prisma } from '@/lib/db/prisma';
 import { createQna, listQna } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
         shopId,
         search: search?.trim() || undefined,
         viewer: viewer ? { id: viewer.id, role: viewer.role } : undefined,
+        publicVisibleOnly: true,
       }),
     });
   } catch (error) {
@@ -32,6 +34,17 @@ export async function POST(request: Request) {
     if (!body.question?.trim()) {
       return Response.json({ error: '질문 내용은 필수입니다.' }, { status: 400 });
     }
+    const shopId = body.shopId?.trim();
+    if (shopId) {
+      const shop = await prisma.shop.findFirst({
+        where: { id: shopId, isVisible: true },
+        select: { id: true },
+      });
+      if (!shop) {
+        return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
+      }
+    }
+
 
     return Response.json(
       {
@@ -40,7 +53,7 @@ export async function POST(request: Request) {
             question: body.question,
             authorName: user.name,
             userId: user.id,
-            shopId: body.shopId?.trim() || undefined,
+            shopId: shopId || undefined,
           },
           { id: user.id, role: user.role },
         ),

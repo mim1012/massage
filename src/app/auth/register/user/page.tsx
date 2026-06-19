@@ -20,12 +20,31 @@ export default function RegisterUserPage() {
   });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreements.terms || !agreements.privacy) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); setDone(true); }, 1500);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/register/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, email: form.id, password: form.password }),
+      });
+      const result = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setError(result.error ?? '회원가입에 실패했습니다.');
+        return;
+      }
+
+      setDone(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openModal = (type: 'terms' | 'privacy') => {
@@ -73,6 +92,7 @@ export default function RegisterUserPage() {
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-3">
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <input type="text" required value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
               placeholder="닉네임"

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { type OwnerProfile, type User as DbUser, UserRole, UserStatus } from '@prisma/client';
+import { Prisma, type OwnerProfile, type User as DbUser, UserRole, UserStatus } from '@prisma/client';
 import { getSessionSecret } from '@/lib/auth/session-secret';
 import type { User } from '@/lib/types';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
@@ -122,7 +122,7 @@ export async function findUserByEmail(email: string) {
     });
   } catch (error) {
     console.error(`Failed to find user by email ${email}:`, error);
-    return null;
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -146,6 +146,7 @@ export async function registerUser(input: { name: string; email: string; passwor
     return sanitizeUser(createdUser);
   } catch (error) {
     if (error instanceof Error && error.message === 'EMAIL_IN_USE') throw error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new Error('EMAIL_IN_USE');
     console.error('Failed to register user:', error);
     throw new Error('DATABASE_ERROR');
   }
@@ -160,8 +161,41 @@ export async function registerOwner(input: {
   phone: string;
 }) {
   try {
-    if (await findUserByEmail(input.email)) {
+    const existingUser = await findUserByEmail(input.email);
+    if (existingUser && (existingUser.role !== UserRole.OWNER || existingUser.status !== UserStatus.REJECTED)) {
       throw new Error('EMAIL_IN_USE');
+    }
+
+    if (existingUser?.role === UserRole.OWNER && existingUser.status === UserStatus.REJECTED) {
+      const reopenedUser = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          name: input.name.trim(),
+          status: UserStatus.PENDING,
+          phone: input.phone.trim(),
+          passwordHash: hashPassword(input.password),
+          sessionVersion: {
+            increment: 1,
+          },
+          ownerProfile: {
+            upsert: {
+              create: {
+                businessName: input.businessName.trim(),
+                businessNumber: (input.businessNumber ?? '').trim(),
+              },
+              update: {
+                businessName: input.businessName.trim(),
+                businessNumber: (input.businessNumber ?? '').trim(),
+                approvedAt: null,
+                approvedBy: null,
+              },
+            },
+          },
+        },
+        include: { ownerProfile: true },
+      });
+
+      return sanitizeUser(reopenedUser);
     }
 
     const createdUser = await prisma.user.create({
@@ -185,6 +219,7 @@ export async function registerOwner(input: {
     return sanitizeUser(createdUser);
   } catch (error) {
     if (error instanceof Error && error.message === 'EMAIL_IN_USE') throw error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new Error('EMAIL_IN_USE');
     console.error('Failed to register owner:', error);
     throw new Error('DATABASE_ERROR');
   }
@@ -215,6 +250,7 @@ export async function deleteSession(token: string | undefined) {
     });
   } catch (error) {
     console.error('Failed to revoke session:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -223,12 +259,12 @@ export async function getUserBySessionToken(token: string | undefined) {
     return null;
   }
 
-  try {
-    const payload = readSessionPayload(token);
-    if (!payload || !payload.userId) {
-      return null;
-    }
+  const payload = readSessionPayload(token);
+  if (!payload || !payload.userId) {
+    return null;
+  }
 
+  try {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: { ownerProfile: true },
@@ -242,10 +278,14 @@ export async function getUserBySessionToken(token: string | undefined) {
       return null;
     }
 
+    if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
+      return null;
+    }
+
     return sanitizeUser(user);
   } catch (error) {
     console.error('Error in getUserBySessionToken:', error);
-    return null;
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -255,7 +295,7 @@ export async function login(input: { email: string; password: string }) {
     if (!user || !verifyPassword(input.password, user.passwordHash)) {
       throw new Error('INVALID_CREDENTIALS');
     }
-    if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED && user.email !== 'owner@massage.local') {
+    if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
       throw new Error('OWNER_NOT_APPROVED');
     }
 
@@ -286,10 +326,7 @@ export async function listOwnerApprovals() {
     };
   } catch (error) {
     console.error('Failed to list owner approvals:', error);
-    return {
-      pendingUsers: [],
-      processedUsers: [],
-    };
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -303,36 +340,49 @@ export async function listUsers() {
     return users.map(sanitizeUser);
   } catch (error) {
     console.error('Failed to list users:', error);
-    return [];
+    throw new Error('DATABASE_ERROR');
   }
 }
 
 export async function updateOwnerStatus(userId: string, status: 'approved' | 'rejected') {
-  const existingUser = await prisma.user.findFirst({
-    where: { id: userId, role: UserRole.OWNER },
-    include: { ownerProfile: true },
-  });
-
-  if (!existingUser) {
-    return null;
-  }
-
   const nextStatus = status === 'approved' ? UserStatus.APPROVED : UserStatus.REJECTED;
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      status: nextStatus,
-      ownerProfile:
-        status === 'approved'
-          ? {
-              update: {
-                approvedAt: new Date(),
-              },
-            }
-          : undefined,
-    },
-    include: { ownerProfile: true },
-  });
 
-  return sanitizeUser(updatedUser);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const transition = await tx.user.updateMany({
+        where: {
+          id: userId,
+          role: UserRole.OWNER,
+          status: UserStatus.PENDING,
+        },
+        data: {
+          status: nextStatus,
+          sessionVersion: {
+            increment: 1,
+          },
+        },
+      });
+
+      if (transition.count === 0) {
+        return null;
+      }
+
+      if (status === 'approved') {
+        await tx.ownerProfile.updateMany({
+          where: { userId },
+          data: { approvedAt: new Date() },
+        });
+      }
+
+      const updatedUser = await tx.user.findFirst({
+        where: { id: userId, role: UserRole.OWNER },
+        include: { ownerProfile: true },
+      });
+
+      return updatedUser ? sanitizeUser(updatedUser) : null;
+    });
+  } catch (error) {
+    console.error('Failed to update owner approval status:', error);
+    throw new Error('DATABASE_ERROR');
+  }
 }

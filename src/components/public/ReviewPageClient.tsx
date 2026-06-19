@@ -524,7 +524,7 @@ function ReviewContent({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="shrink-0 text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
-                    {user && (user.id === review.userId || user.role === 'ADMIN') && (
+                    {user && review.canManage && (
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"

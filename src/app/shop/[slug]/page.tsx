@@ -8,6 +8,7 @@ import type { Review } from '@/lib/types';
 import { formatDate, formatRating } from '@/lib/utils';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
 import { getShopBySlug } from '@/lib/server/shop-store';
+import { getSessionUser } from '@/lib/auth/guards';
 import ShopReviewForm from '@/components/public/ShopReviewForm';
 
 interface Props {
@@ -60,12 +61,14 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const currentSearchParams = searchParams ? await searchParams : undefined;
   const data = await getShopBySlug(slug);
+  const user = await getSessionUser();
 
   if (!data) {
     notFound();
   }
 
-  const { shop, reviews } = data;
+  const { shop } = data;
+  const reviews = user ? data.reviews : [];
   const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
   const primaryImage = (shop.thumbnailUrl || shop.bannerUrl).trim();
   const shopGalleryImages = Array.from(new Set(shop.images.map((value) => value.trim()).filter(Boolean)));
@@ -228,7 +231,9 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             {/* 후기 입력 폼 추가 */}
             <ShopReviewForm shopId={shop.id} shopName={shop.name} />
 
-            {reviews.length === 0 ? (
+            {!user ? (
+              <p className="py-6 text-center text-sm text-gray-400">로그인 후 후기를 확인할 수 있습니다.</p>
+            ) : reviews.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
             ) : (
               <div className="divide-y divide-gray-100">

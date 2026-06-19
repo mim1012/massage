@@ -30,7 +30,7 @@ export async function PATCH(request: Request, context: Context) {
       return Response.json({ error: '리뷰를 수정하지 못했습니다.' }, { status: 404 });
     }
 
-    return Response.json({ review: updated });
+    return Response.json({ review: { ...updated, userId: undefined, canManage: true } });
   } catch (error) {
     return errorResponse(error);
   }

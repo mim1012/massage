@@ -14,12 +14,12 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     await requireRole('ADMIN');
-    const body = (await request.json()) as { orderedIds?: string[] };
+    const body = (await request.json()) as { orderedIds?: string[]; visibilityById?: Record<string, boolean> };
     if (!Array.isArray(body.orderedIds)) {
       return Response.json({ error: 'orderedIds must be an array.' }, { status: 400 });
     }
 
-    return Response.json(await updatePremiumOrder(body.orderedIds));
+    return Response.json(await updatePremiumOrder(body.orderedIds, body.visibilityById));
   } catch (error) {
     return errorResponse(error);
   }

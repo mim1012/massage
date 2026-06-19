@@ -9,7 +9,7 @@ type Context = {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN');
     const { id } = await context.params;
 
     const existing = await prisma.qnA.findUnique({
@@ -43,7 +43,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_: Request, context: Context) {
   try {
-    const user = await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN');
     const { id } = await context.params;
     const deleted = await deleteManagedQna(user, id);
 

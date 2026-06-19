@@ -24,6 +24,8 @@ test('board review route reads search params and delegates pagination to the ser
   assert.equal(source.includes('searchParams'), true);
   assert.equal(source.includes('page'), true);
   assert.equal(source.includes('listPublicReviewPage'), true);
+  assert.equal(source.includes('getSessionUser'), true);
+  assert.equal(source.includes("redirect('/auth/login')"), true);
 });
 
 test('board review client still renders pagination controls', async () => {

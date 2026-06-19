@@ -73,6 +73,7 @@ export interface Review {
   content: string;
   isHidden?: boolean;
   userId?: string;
+  canManage?: boolean;
   createdAt: string;
 }
 

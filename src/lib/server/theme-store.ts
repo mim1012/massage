@@ -31,11 +31,17 @@ export async function addTheme(
   return { ok: true, theme };
 }
 
-export async function deleteTheme(code: string): Promise<boolean> {
+export async function deleteTheme(code: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const normalizedCode = code.trim();
+  const referencedShops = await prisma.shop.count({ where: { theme: normalizedCode } });
+  if (referencedShops > 0) {
+    return { ok: false, status: 409, error: '사용 중인 테마는 삭제할 수 없습니다.' };
+  }
+
   try {
-    await prisma.theme.delete({ where: { code: code.trim() } });
-    return true;
+    await prisma.theme.delete({ where: { code: normalizedCode } });
+    return { ok: true };
   } catch {
-    return false;
+    return { ok: false, status: 404, error: '존재하지 않는 테마입니다.' };
   }
 }

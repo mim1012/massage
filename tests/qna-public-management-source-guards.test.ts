@@ -25,6 +25,18 @@ test('public qna route keeps scoped edit/delete guards instead of generic admin 
   assert.match(source, /질문 상태가 변경되어 수정할 수 없습니다/);
   assert.match(source, /질문 상태가 변경되어 삭제할 수 없습니다/);
 });
+test('owner managed qna can answer/comment but cannot edit or delete customer questions', async () => {
+  const itemRoute = await readProjectFile('src/app/api/admin/qna/[id]/route.ts');
+  const answerRoute = await readProjectFile('src/app/api/admin/qna/[id]/answer/route.ts');
+  const commentsRoute = await readProjectFile('src/app/api/admin/qna/[id]/comments/route.ts');
+
+  assert.match(itemRoute, /export async function PATCH[\s\S]*const user = await requireRole\('ADMIN'\)/);
+  assert.match(itemRoute, /export async function DELETE[\s\S]*const user = await requireRole\('ADMIN'\)/);
+  assert.match(answerRoute, /requireRole\('ADMIN', 'OWNER'\)/);
+  assert.match(answerRoute, /assertOwnershipOrAdmin\(user, qnaAccess\.ownerId\)/);
+  assert.match(commentsRoute, /requireRole\('ADMIN', 'OWNER'\)/);
+  assert.match(commentsRoute, /assertOwnershipOrAdmin\(user, qnaAccess\.ownerId\)/);
+});
 
 test('communityStore keeps canManage derived field for public qna instead of exposing raw userId', async () => {
   const source = await readProjectFile('src/lib/server/communityStore.ts');
@@ -36,8 +48,17 @@ test('communityStore keeps canManage derived field for public qna instead of exp
   assert.match(source, /canManage: canManagePublicQna\(entry, viewer, comments\.length\)/);
   assert.match(source, /canManage: canManagePublicQna\(entry, viewer, commentCount\)/);
   assert.doesNotMatch(source, /userId: entry\.userId \?\? undefined/);
+  assert.doesNotMatch(source, /userId: comment\.userId \?\? undefined/);
   assert.match(typeSource, /export interface QnA \{[\s\S]*canManage\?: boolean;[\s\S]*comments: QnAComment\[];[\s\S]*\}/);
   assert.doesNotMatch(typeSource, /export interface QnA \{[\s\S]*userId\?: string;/);
+});
+test('public qna update and delete use atomic answered-lock predicates', async () => {
+  const source = await readProjectFile('src/lib/server/communityStore.ts');
+
+  assert.match(source, /prisma\.qnA\.updateMany\(\{[\s\S]*id,[\s\S]*userId,[\s\S]*status: QnaStatus\.OPEN,[\s\S]*comments: \{ none: \{\} \}/);
+  assert.match(source, /prisma\.qnA\.deleteMany\(\{[\s\S]*id,[\s\S]*userId,[\s\S]*status: QnaStatus\.OPEN,[\s\S]*comments: \{ none: \{\} \}/);
+  assert.doesNotMatch(source, /return await updateQna\(id, \{ question \}, viewer\)/);
+  assert.doesNotMatch(source, /return await deleteQna\(id\)/);
 });
 
 test('public qna page and client keep server-derived pagination and canManage wiring', async () => {

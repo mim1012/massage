@@ -42,9 +42,9 @@ export async function DELETE(request: Request) {
     if (!code?.trim()) {
       return Response.json({ error: 'code가 필요합니다.' }, { status: 400 });
     }
-    const deleted = await deleteTheme(code);
-    if (!deleted) {
-      return Response.json({ error: '존재하지 않는 테마입니다.' }, { status: 404 });
+    const result = await deleteTheme(code);
+    if (!result.ok) {
+      return Response.json({ error: result.error }, { status: result.status });
     }
     return Response.json({ ok: true });
   } catch (error) {

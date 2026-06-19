@@ -18,7 +18,7 @@ export default async function OwnerQnaPage() {
 
   const [initialShops, initialQnaList] = await Promise.all([
     listManagedShops(user),
-    listQna({ viewer: user }),
+    listQna({ shopOwnerId: user.role === 'OWNER' ? user.id : undefined, viewer: user }),
   ]);
 
   const ownedShopIds = new Set(initialShops.map((shop) => shop.id));

@@ -1,9 +1,11 @@
 import { requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
+import { prisma } from '@/lib/db/prisma';
 import { createReview, listReviews } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireUser();
     const url = new URL(request.url);
     const limitParam = url.searchParams.get('limit');
     const shopId = url.searchParams.get('shopId') ?? undefined;
@@ -15,6 +17,7 @@ export async function GET(request: Request) {
         limit: Number.isFinite(limit) ? limit : undefined,
         shopId: shopId?.trim() || undefined,
         search: search?.trim() || undefined,
+        viewer: { id: user.id, role: user.role },
       }),
     });
   } catch (error) {
@@ -39,19 +42,24 @@ export async function POST(request: Request) {
     if (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
       return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
     }
+    const shop = await prisma.shop.findFirst({
+      where: { id: body.shopId.trim(), isVisible: true },
+      select: { id: true },
+    });
+    if (!shop) {
+      return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
+    }
 
-    return Response.json(
-      {
-        review: await createReview({
-          shopId: body.shopId.trim(),
-          userId: user.id,
-          authorName: user.name,
-          rating: body.rating,
-          content: body.content,
-        }),
-      },
-      { status: 201 },
-    );
+    const createdReview = await createReview({
+      shopId: body.shopId.trim(),
+      userId: user.id,
+      authorName: user.name,
+      rating: body.rating,
+      content: body.content,
+    });
+    const review = { ...createdReview, canManage: true };
+    delete review.userId;
+    return Response.json({ review }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

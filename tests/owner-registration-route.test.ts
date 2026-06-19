@@ -26,12 +26,12 @@ test('registerOwnerRoute returns 400 when a required field is missing', async ()
 });
 
 test('registerOwnerRoute creates a pending owner without auto-login side effects', async () => {
-  const calls: string[] = [];
+  let forwardedInput: unknown = null;
   const user = { id: 'owner-1', email: validBody.email, role: 'OWNER', status: 'pending' };
 
   const response = await registerOwnerRoute(validBody, {
     registerOwner: async (input) => {
-      calls.push(`register:${input.email}`);
+      forwardedInput = input;
       return user;
     },
   });
@@ -43,5 +43,19 @@ test('registerOwnerRoute creates a pending owner without auto-login side effects
     nextUrl: '/auth/login?notice=pending-approval',
     message: '관리자 승인 후 로그인할 수 있습니다.',
   });
-  assert.deepEqual(calls, ['register:owner@example.com']);
+  assert.deepEqual(forwardedInput, validBody);
+});
+
+test('registerOwnerRoute rejects whitespace-only required fields', async () => {
+  const response = await registerOwnerRoute(
+    { ...validBody, businessNumber: '   ' },
+    {
+      registerOwner: async () => {
+        throw new Error('should not be called');
+      },
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: '필수 입력값이 누락되었습니다.' });
 });

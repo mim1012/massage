@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getAdminStatsData } from '@/lib/server/admin-stats';
@@ -70,4 +71,21 @@ test('getAdminStatsData uses DB-side distinct session counts and preserves the a
     prisma.pageViewEvent.groupBy = originalPageViewGroupBy;
     prisma.shop.findMany = originalShopFindMany;
   }
+});
+
+test('admin stats backend exposes a cached admin route and matching page-view index', () => {
+  const routeSource = readFileSync('src/app/api/admin/stats/route.ts', 'utf8');
+  assert.match(routeSource, /requireRole\('ADMIN'\)/);
+  assert.match(routeSource, /getCachedAdminStatsData/);
+
+  const providerSource = readFileSync('src/lib/server/admin-stats.ts', 'utf8');
+  assert.match(providerSource, /unstable_cache/);
+  assert.match(providerSource, /revalidate:\s*60/);
+
+  const schemaSource = readFileSync('prisma/schema.prisma', 'utf8');
+  assert.match(schemaSource, /@@index\(\[createdAt\(sort: Desc\), sessionId\]\)/);
+
+  const migrationSource = readFileSync('prisma/migrations/0009_page_view_stats_indexes/migration.sql', 'utf8');
+  assert.match(migrationSource, /page_view_events_created_at_session_id_idx/);
+  assert.match(migrationSource, /\"created_at\" DESC, \"session_id\"/);
 });

@@ -80,22 +80,8 @@ export type ShopListRecord = Prisma.ShopGetPayload<{
   select: typeof shopListSelect;
 }>;
 
-const publicShopListCache = new Map<string, Promise<ShopListResponse>>();
-const publicDirectoryShopListCache = new Map<string, Promise<ShopListResponse>>();
-const publicTopShopListCache = new Map<string, Promise<ShopListItem[]>>();
 const PUBLIC_DIRECTORY_SHOPS_CACHE_TAG = 'public-directory-shops';
 
-function normalizeShopListCacheKey(filters: ShopFilters) {
-  return JSON.stringify({
-    region: filters.region ?? '',
-    subRegion: filters.subRegion ?? '',
-    theme: filters.theme ?? '',
-    query: filters.query?.trim() ?? '',
-    sort: filters.sort ?? '',
-    regularOffset: Math.max(0, filters.regularOffset ?? 0),
-    regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : null,
-  });
-}
 
 function normalizeDirectoryShopListFilters(filters: DirectoryShopFilters) {
   return {
@@ -136,9 +122,6 @@ function isMissingNextCacheContextError(error: unknown) {
 }
 
 export function invalidatePublicShopListCache() {
-  publicShopListCache.clear();
-  publicDirectoryShopListCache.clear();
-  publicTopShopListCache.clear();
 
   try {
     revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
@@ -380,28 +363,15 @@ const getPersistentTopShopList = unstable_cache(
 
 export async function listTopShops(filters: ShopFilters = {}, limit = 100) {
   const cacheKey = normalizeTopShopListCacheKey(filters, limit);
-  const cached = publicTopShopListCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const pending = (async () => {
-    try {
-      return await getPersistentTopShopList(cacheKey);
-    } catch (error) {
-      if (isMissingNextCacheContextError(error)) {
-        return listTopShopsUncached(filters, limit);
-      }
-
-      throw error;
+  try {
+    return await getPersistentTopShopList(cacheKey);
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return listTopShopsUncached(filters, limit);
     }
-  })().catch((error) => {
-    publicTopShopListCache.delete(cacheKey);
-    throw error;
-  });
 
-  publicTopShopListCache.set(cacheKey, pending);
-  return pending;
+    throw error;
+  }
 }
 
 async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): Promise<ShopListResponse> {
@@ -475,14 +445,8 @@ const getPersistentDirectoryShopList = unstable_cache(
 
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
   const cacheKey = normalizeDirectoryShopListCacheKey(filters);
-  const cached = publicDirectoryShopListCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const pending = getPersistentDirectoryShopList(cacheKey).catch(() => {
-    publicDirectoryShopListCache.delete(cacheKey);
-    return listDirectoryShopsUncached({
+  return getPersistentDirectoryShopList(cacheKey).catch(() =>
+    listDirectoryShopsUncached({
       region: filters.region,
       subRegion: filters.subRegion,
       theme: filters.theme,
@@ -491,11 +455,8 @@ export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
       regularOffset: filters.regularOffset,
       regularLimit: filters.regularLimit,
       includePremium: filters.includePremium,
-    });
-  });
-
-  publicDirectoryShopListCache.set(cacheKey, pending);
-  return pending;
+    }),
+  );
 }
 
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
@@ -533,19 +494,7 @@ async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListRes
 }
 
 export async function listShops(filters: ShopFilters = {}) {
-  const cacheKey = normalizeShopListCacheKey(filters);
-  const cached = publicShopListCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const pending = listShopsUncached(filters).catch((error) => {
-    publicShopListCache.delete(cacheKey);
-    throw error;
-  });
-
-  publicShopListCache.set(cacheKey, pending);
-  return pending;
+  return listShopsUncached(filters);
 }
 
 const getShopBySlugUncached = async (slug: string) => {

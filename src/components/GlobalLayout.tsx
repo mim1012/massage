@@ -11,7 +11,7 @@ import { SiteContentProvider } from '@/lib/use-site-content';
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
-  const bypassAgeGate = pathname ? ['/youth', '/privacy', '/terms', '/mobile'].some((route) => pathname.startsWith(route)) : false;
+  const bypassAgeGate = pathname ? ['/auth', '/youth', '/privacy', '/terms', '/mobile'].some((route) => pathname.startsWith(route)) : false;
 
   if (isAdmin) {
     return <main className="flex-1">{children}</main>;

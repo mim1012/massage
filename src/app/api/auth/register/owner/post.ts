@@ -8,6 +8,7 @@ type RegisterOwnerBody = {
   email?: string;
   password?: string;
   businessName?: string;
+  businessNumber?: string;
   phone?: string;
 };
 

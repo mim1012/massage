@@ -83,6 +83,18 @@ test('deleteSession revokes the active token server-side', async () => {
     prisma.user.update = originalUpdate;
   }
 });
+test('deleteSession surfaces revocation database failures', async () => {
+  const originalUpdate = prisma.user.update;
+  prisma.user.update = async () => {
+    throw new Error('simulated revoke outage');
+  };
+
+  try {
+    await assert.rejects(() => deleteSession(createSession(baseUser.id)), /DATABASE_ERROR/);
+  } finally {
+    prisma.user.update = originalUpdate;
+  }
+});
 
 test('malformed or stale session version tokens reject safely', async () => {
   const originalFindUnique = prisma.user.findUnique;
@@ -112,6 +124,18 @@ test('malformed or stale session version tokens reject safely', async () => {
 
     assert.equal(await getUserBySessionToken(malformedVersionToken), null);
     assert.equal(await getUserBySessionToken(staleVersionToken), null);
+  } finally {
+    prisma.user.findUnique = originalFindUnique;
+  }
+});
+test('session store database failures surface instead of anonymous fallback', async () => {
+  const originalFindUnique = prisma.user.findUnique;
+  prisma.user.findUnique = async () => {
+    throw new Error('simulated session store outage');
+  };
+
+  try {
+    await assert.rejects(() => getUserBySessionToken(createSession(baseUser.id)), /DATABASE_ERROR/);
   } finally {
     prisma.user.findUnique = originalFindUnique;
   }

@@ -12,7 +12,7 @@ const errorMessageMap: Record<string, string> = {
 
 export function errorResponse(error: unknown, fallbackMessage = '예상하지 못한 서버 오류가 발생했습니다.') {
   if (error instanceof AuthError) {
-    return Response.json({ error: error.message }, { status: error.status });
+    return Response.json({ error: errorMessageMap[error.message] ?? error.message }, { status: error.status });
   }
 
   if (error instanceof Error) {
@@ -28,7 +28,9 @@ export function errorResponse(error: unknown, fallbackMessage = '예상하지 �
           ? 401
           : normalizedMessage === 'OWNER_NOT_APPROVED'
             ? 403
-            : 400;
+            : normalizedMessage === 'DATABASE_ERROR'
+              ? 503
+              : 400;
 
     return Response.json({ error: errorMessageMap[normalizedMessage] ?? normalizedMessage }, { status });
   }

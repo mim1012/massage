@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 import { getPostLoginRedirect } from '@/lib/auth/redirects';
@@ -17,27 +17,28 @@ type LoginResult = {
 };
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = useMemo(() => {
-    const target = searchParams.get('redirect');
+    const target = searchParams.get('redirect') ?? searchParams.get('next');
     return target && target.startsWith('/') ? target : null;
   }, [searchParams]);
   const [activeTab, setActiveTab] = useState<'user' | 'owner'>('user');
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
   const { user, authChecked } = useAuthSession();
 
   useEffect(() => {
-    if (!authChecked || !user || loading) {
+    if (!authChecked || !user || loading || redirecting) {
       return;
     }
 
-    router.replace(getPostLoginRedirect(user.role, redirectTo));
-  }, [authChecked, loading, redirectTo, router, user]);
+    setRedirecting(true);
+    window.location.replace(getPostLoginRedirect(user.role, redirectTo));
+  }, [authChecked, loading, redirectTo, redirecting, user]);
 
   const resetFormState = (tab: 'user' | 'owner') => {
     setActiveTab(tab);
@@ -67,7 +68,8 @@ function LoginContent() {
         return;
       }
 
-      router.push(getPostLoginRedirect(result.user.role, redirectTo));
+      setRedirecting(true);
+      window.location.assign(getPostLoginRedirect(result.user.role, redirectTo));
     } finally {
       setLoading(false);
     }
@@ -152,11 +154,12 @@ function LoginContent() {
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || redirecting}
                 className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
-                {loading ? '로그인 중...' : '로그인'}
+                {redirecting ? '로그인 완료, 이동 중...' : loading ? '로그인 중...' : '로그인'}
               </button>
+              {redirecting ? <p className="text-xs text-red-600" role="status">로그인되었습니다. 관리자 화면으로 이동 중입니다.</p> : null}
               {error && !loginNotice ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 

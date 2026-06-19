@@ -2,12 +2,14 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getBoardLandingData } from '@/lib/server/communityStore';
+import { getSessionUser } from '@/lib/auth/guards';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = { title: '게시판', description: '공지사항, Q&A, 업소 후기' };
 
 export default async function BoardPage() {
-  const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({ includeReviews: true });
+  const user = await getSessionUser();
+  const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({ includeReviews: Boolean(user) });
 
   return (
     <div className="max-w-[1000px] mx-auto px-3 py-4">
@@ -17,7 +19,7 @@ export default async function BoardPage() {
         {[
           { href: '/board/notice', label: '공지사항', count: summary.notices, emoji: '📢' },
           { href: '/board/qna', label: 'Q&A', count: summary.qna, emoji: '💬' },
-          { href: '/board/review', label: '업소 후기', count: summary.reviews, emoji: '⭐' },
+          { href: '/board/review', label: '업소 후기', count: user ? summary.reviews : 0, emoji: '⭐' },
         ].map(tab => (
           <Link key={tab.href} href={tab.href}
             className="bg-white border border-gray-200 rounded p-3 text-center hover:border-red-300 hover:bg-red-50/50 transition-all">

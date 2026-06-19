@@ -49,6 +49,35 @@ test('handleLoginPost forwards auth rate-limit headers on successful responses',
     user: { id: 'user-1', email: 'user@example.com' },
   });
 });
+test('handleLoginPost rejects owners that are not approved without setting a session cookie', async () => {
+  const response = await handleLoginPost(
+    new Request('https://example.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'pending-owner@example.com', password: 'secret' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+        }),
+      }),
+      login: async () => {
+        throw new Error('OWNER_NOT_APPROVED');
+      },
+      setSessionCookie: async () => {
+        throw new Error('setSessionCookie should not be called');
+      },
+    },
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(await response.json(), { error: '업주 계정은 관리자 승인 후 로그인할 수 있습니다.' });
+});
 
 test('handleUserRegisterPost forwards auth rate-limit headers on successful responses', async () => {
   const response = await handleUserRegisterPost(
@@ -84,6 +113,59 @@ test('handleUserRegisterPost forwards auth rate-limit headers on successful resp
       password: 'secret123',
     },
   });
+});
+test('handleUserRegisterPost rejects whitespace-only required fields', async () => {
+  const response = await handleUserRegisterPost(
+    new Request('https://example.com/api/auth/register/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: '   ', email: 'user@example.com', password: 'secret123' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+        }),
+      }),
+      registerUser: async () => {
+        throw new Error('registerUser should not be called');
+      },
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: '필수 입력값이 누락되었습니다.' });
+});
+
+test('handleUserRegisterPost trims display name and email before storing', async () => {
+  const response = await handleUserRegisterPost(
+    new Request('https://example.com/api/auth/register/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: '  홍길동  ', email: ' User@Example.com ', password: ' secret123 ' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers(),
+      }),
+      registerUser: async (input) => {
+        assert.deepEqual(input, {
+          name: '홍길동',
+          email: 'User@Example.com',
+          password: ' secret123 ',
+        });
+        return { id: 'user-1', ...input };
+      },
+    },
+  );
+
+  assert.equal(response.status, 201);
 });
 
 test('handleOwnerRegisterPost forwards auth rate-limit headers on successful responses', async () => {

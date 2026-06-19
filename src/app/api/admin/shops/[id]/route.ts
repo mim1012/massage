@@ -45,7 +45,7 @@ export async function PATCH(
 
     const shopInput = normalizeShopInputForSave(user, body.shop, existingShop);
 
-    const shop = await updateAdminShop(id, shopInput);
+    const shop = await updateAdminShop(id, shopInput, user.role === 'OWNER' ? { ownerId: user.id } : undefined);
     if (!shop) {
       return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
     }

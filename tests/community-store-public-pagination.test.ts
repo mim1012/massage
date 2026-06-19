@@ -43,6 +43,7 @@ test('listPublicReviewPage applies server-side pagination and returns paging met
   assert.deepEqual(capturedCountArgs, {
     where: {
       isHidden: false,
+      shop: { isVisible: true },
       shopId: 'shop-1',
       OR: [
         { content: { contains: 'token', mode: Prisma.QueryMode.insensitive } },
@@ -122,6 +123,7 @@ test('listPublicQnaPage applies server-side pagination and returns paging metada
   assert.deepEqual(capturedCountArgs, {
     where: {
       shopId: 'shop-9',
+      AND: [{ OR: [{ shopId: null }, { shop: { isVisible: true } }] }],
       OR: [
         { question: { contains: 'token', mode: Prisma.QueryMode.insensitive } },
         { authorName: { contains: 'token', mode: Prisma.QueryMode.insensitive } },

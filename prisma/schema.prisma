@@ -107,6 +107,7 @@ model Shop {
   pageViewEvents PageViewEvent[]
 
   @@index([isVisible, isPremium, premiumOrder, createdAt(sort: Desc)])
+  @@index([ownerId, isPremium, premiumOrder, name])
   @@index([ownerId])
   @@index([region, subRegion, theme])
   @@map("shops")
@@ -150,6 +151,7 @@ model Review {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([shopId, createdAt(sort: Desc)])
+  @@index([shopId, isHidden, createdAt(sort: Desc)])
   @@map("reviews")
 }
 
@@ -278,6 +280,7 @@ model PageViewEvent {
   shop      Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
 
   @@index([sessionId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc), sessionId])
   @@index([path, createdAt(sort: Desc)])
   @@index([shopId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])

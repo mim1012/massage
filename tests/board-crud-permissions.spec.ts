@@ -224,7 +224,7 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
   });
 
   test('리뷰: USER 본인/ADMIN은 public 수정삭제 가능하고 타 USER/OWNER는 차단된다', async () => {
-    await expectStatus('anonymous', 'get', '/api/board/reviews', 200);
+    await expectStatus('anonymous', 'get', '/api/board/reviews', 401);
     await expectStatus('anonymous', 'post', '/api/board/reviews', 401, {
       shopId: seed.ownerShopId,
       rating: 5,
@@ -249,7 +249,7 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
     cleanupIds.reviews.delete(userReviewId);
   });
 
-  test('관리 리뷰: OWNER는 자기 업소만 create/update/delete 가능하고 USER/타 OWNER는 차단된다', async () => {
+  test('관리 리뷰: OWNER는 자기 업소 리뷰 조회/삭제만 가능하고 생성/수정은 차단된다', async () => {
     await expectStatus('anonymous', 'get', '/api/admin/reviews', 401);
     await expectStatus('user', 'get', '/api/admin/reviews', 403);
     await expectStatus('owner', 'get', '/api/admin/reviews', 200);
@@ -261,32 +261,24 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
       rating: 5,
       content: 'USER는 관리 리뷰 생성 불가',
     });
-    await expectStatus('otherOwner', 'post', '/api/admin/reviews', 403, {
-      shopId: seed.ownerShopId,
-      authorName: '타 점주',
-      rating: 5,
-      content: '타 업소 리뷰 생성 불가',
-    });
-
-    const ownerManagedReviewResponse = await expectStatus('owner', 'post', '/api/admin/reviews', 201, {
+    await expectStatus('owner', 'post', '/api/admin/reviews', 403, {
       shopId: seed.ownerShopId,
       authorName: '점주 생성 리뷰',
       rating: 5,
-      content: `점주 관리 리뷰 ${RUN_ID}`,
+      content: '점주 관리 리뷰 생성 차단',
     });
-    const ownerManagedReview = await json<{ review: { id: string } }>(ownerManagedReviewResponse);
-    cleanupIds.reviews.add(ownerManagedReview.review.id);
 
-    await expectStatus('otherOwner', 'patch', `/api/admin/reviews/${ownerManagedReview.review.id}`, 403, {
+    const ownerReviewId = await createReviewAs('user', seed.ownerShopId);
+    await expectStatus('otherOwner', 'patch', `/api/admin/reviews/${ownerReviewId}`, 403, {
       rating: 4,
       content: '타 점주 수정 차단',
     });
-    await expectStatus('owner', 'patch', `/api/admin/reviews/${ownerManagedReview.review.id}`, 200, {
+    await expectStatus('owner', 'patch', `/api/admin/reviews/${ownerReviewId}`, 403, {
       rating: 4,
-      content: `점주 수정 성공 ${RUN_ID}`,
+      content: `점주 수정 차단 ${RUN_ID}`,
     });
-    await expectStatus('admin', 'delete', `/api/admin/reviews/${ownerManagedReview.review.id}`, 204);
-    cleanupIds.reviews.delete(ownerManagedReview.review.id);
+    await expectStatus('owner', 'delete', `/api/admin/reviews/${ownerReviewId}`, 204);
+    cleanupIds.reviews.delete(ownerReviewId);
   });
 
   test('Q&A: USER 본인만 public 수정삭제 가능하고 답변/타인/미로그인은 차단된다', async () => {
@@ -305,8 +297,8 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
     cleanupIds.qna.delete(qnaId);
 
     const lockedQnaId = await createQnaAs('user');
-    await expectStatus('owner', 'patch', `/api/admin/qna/${lockedQnaId}`, 200, {
-      question: `점주 관리 수정으로 답변 전환 ${RUN_ID}`,
+    await expectStatus('owner', 'patch', `/api/admin/qna/${lockedQnaId}`, 403, {
+      question: `점주 관리 수정 차단 ${RUN_ID}`,
     });
     await prisma.qnA.update({ where: { id: lockedQnaId }, data: { status: 'ANSWERED' } });
     await expectStatus('user', 'patch', `/api/board/qna/${lockedQnaId}`, 409, {

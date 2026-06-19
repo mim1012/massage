@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import { assertOwnershipOrAdmin, AuthError } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 
-test('errorResponse preserves AuthError status and message', async () => {
+test('errorResponse preserves AuthError status and localizes known messages', async () => {
   const response = errorResponse(new AuthError('Forbidden.', 403));
 
   assert.equal(response.status, 403);
-  assert.deepEqual(await response.json(), { error: 'Forbidden.' });
+  assert.deepEqual(await response.json(), { error: '접근 권한이 없습니다.' });
 });
 
 test('errorResponse maps known auth and registration error codes', async () => {

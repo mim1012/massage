@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".omx/**",
     ".claude/**",
+    ".gjc/**",
+    ".vercel/**",
+    "scratch/**",
   ]),
 ]);
 

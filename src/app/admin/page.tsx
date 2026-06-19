@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Store, Star, MessageCircle, Bell, AlertCircle, TrendingUp } from 'lucide-react';
 import { getAdminDashboardData } from '@/lib/server/communityStore';
+import { requireRole } from '@/lib/auth/guards';
 
 export const metadata: Metadata = { title: '대시보드 | 관리자' };
 
@@ -13,6 +14,7 @@ const SUMMARY_VISUAL = [
 ];
 
 export default async function AdminDashboard() {
+  await requireRole('ADMIN');
   const data = await getAdminDashboardData();
 
   return (

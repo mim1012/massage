@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireRole('ADMIN', 'OWNER');
+    const user = await requireRole('ADMIN');
     const body = (await request.json()) as {
       shopId?: string;
       authorName?: string;

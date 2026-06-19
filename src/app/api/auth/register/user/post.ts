@@ -27,13 +27,13 @@ export async function handleUserRegisterPost(request: Request, deps: UserRegiste
   try {
     const body = (await request.json()) as RegisterUserBody;
 
-    if (!body.name || !body.email || !body.password) {
+    if (!body.name?.trim() || !body.email?.trim() || !body.password?.trim()) {
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitResult.headers);
     }
 
     const user = await registerUserWithStore({
-      name: body.name,
-      email: body.email,
+      name: body.name.trim(),
+      email: body.email.trim(),
       password: body.password,
     });
     return applyRateLimitHeaders(Response.json({ user }, { status: 201 }), rateLimitResult.headers);

@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ReviewPageClient from '@/components/public/ReviewPageClient';
+import { getSessionUser } from '@/lib/auth/guards';
 import { listPublicReviewPage } from '@/lib/server/communityStore';
 import { listShops } from '@/lib/server/shop-store';
 import { mapReviewsWithRegion } from '@/lib/public-page-data';
@@ -22,13 +24,17 @@ function pickFirst(value: SearchParamValue) {
 }
 
 export default async function ReviewPage({ searchParams }: PageProps) {
+  const user = await getSessionUser();
+  if (!user) {
+    redirect('/auth/login');
+  }
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const shopId = pickFirst(resolvedSearchParams?.shopId);
   const search = pickFirst(resolvedSearchParams?.q);
 
   const [reviewPage, shopsData] = await Promise.all([
-    listPublicReviewPage({ page, shopId, search }),
+    listPublicReviewPage({ page, shopId, search, viewer: { id: user.id, role: user.role } }),
     listShops({}),
   ]);
 
