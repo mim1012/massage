@@ -17,8 +17,8 @@ export default function OwnerShopsPageClient({ initialShops }: { initialShops: A
       }
 
       return (
-        shop.name.toLowerCase().includes(normalizedSearch) ||
-        shop.phone.toLowerCase().includes(normalizedSearch) ||
+        shop.name?.toLowerCase().includes(normalizedSearch) ||
+        shop.phone?.toLowerCase().includes(normalizedSearch) ||
         `${shop.regionLabel} ${shop.subRegionLabel ?? ''} ${shop.themeLabel}`.toLowerCase().includes(normalizedSearch)
       );
     });

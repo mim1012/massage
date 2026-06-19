@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Store, UserCircle, Briefcase, Phone, Mail, Lock } from 'lucide-react';
+import { Store, UserCircle, Briefcase, Phone, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterOwnerPage() {
   const router = useRouter();
+  const [showPw, setShowPw] = useState(false);
+  const [showPwConfirm, setShowPwConfirm] = useState(false);
   const [formData, setFormData] = useState({
     id: '',
     password: '',
@@ -29,13 +31,25 @@ export default function RegisterOwnerPage() {
     console.log('가입 신청 데이터:', formData);
 
     // 자동 로그인 처리 (localStorage 세션 저장)
-    localStorage.setItem('auth_user', JSON.stringify({
+    const newUser = {
       id: formData.id,
+      email: formData.id,
       name: formData.name,
       role: 'OWNER',
       businessName: formData.businessName,
+      businessNumber: formData.businessNumber,
+      phone: formData.phone,
       status: 'pending',
-    }));
+    };
+    
+    localStorage.setItem('auth_user', JSON.stringify(newUser));
+
+    // 관리자 승인을 위해 custom_users에도 추가
+    try {
+      const customUsers = JSON.parse(localStorage.getItem('custom_users') || '[]');
+      customUsers.push(newUser);
+      localStorage.setItem('custom_users', JSON.stringify(customUsers));
+    } catch (err) {}
 
     setIsSubmitted(true);
 
@@ -101,19 +115,34 @@ export default function RegisterOwnerPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input type="password" name="password" required value={formData.password} onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
+                <input type={showPw ? 'text' : 'password'} name="password" required value={formData.password} onChange={handleChange}
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
                   placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input type="password" name="passwordConfirm" required value={formData.passwordConfirm} onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none"
+                <input type={showPwConfirm ? 'text' : 'password'} name="passwordConfirm" required value={formData.passwordConfirm} onChange={handleChange}
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg outline-none ${
+                    formData.passwordConfirm && formData.password !== formData.passwordConfirm 
+                      ? 'border-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:border-red-500'
+                  }`}
                   placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPwConfirm(!showPwConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPwConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
+              {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
+                <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
+              )}
             </div>
           </div>
 

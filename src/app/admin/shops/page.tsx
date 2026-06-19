@@ -15,12 +15,34 @@ export default function AdminShopsPage() {
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
+    // 1) 권한 체크 및 currentUser 셋업
     const checkRole = () => {
-      const isOwner = document.body.innerText.includes('내 업소 관리 모드');
-      setCurrentUser(isOwner ? MOCK_USERS[1] : MOCK_USERS[0]);
+      try {
+        const stored = localStorage.getItem('auth_user');
+        if (stored) {
+          setCurrentUser(JSON.parse(stored));
+        }
+      } catch {}
     };
     checkRole();
     const interval = setInterval(checkRole, 1000);
+
+    // 2) 로컬스토리지의 커스텀 업소 데이터 병합
+    try {
+      const customShops = JSON.parse(localStorage.getItem('custom_shops') || '[]');
+      if (customShops.length > 0) {
+        setShops(prev => {
+          const base = [...prev];
+          customShops.forEach((cs: any) => {
+            const idx = base.findIndex(s => s.id === cs.id);
+            if (idx >= 0) base[idx] = { ...base[idx], ...cs };
+            else base.push(cs);
+          });
+          return base;
+        });
+      }
+    } catch {}
+
     return () => clearInterval(interval);
   }, []);
 
@@ -31,7 +53,7 @@ export default function AdminShopsPage() {
       const mapped = REGION_MAP[regionFilter];
       mRegion = mapped ? shop.region === mapped : shop.region === regionFilter;
     }
-    const mSearch = !search || shop.name.includes(search) || shop.address.includes(search);
+    const mSearch = !search || shop.name?.includes(search) || shop.address?.includes(search);
     return isMyShop && mRegion && mSearch;
   });
 
