@@ -11,6 +11,8 @@ async function readProjectFile(relativePath: string) {
   return fs.readFile(path.join(projectRoot, relativePath), 'utf8');
 }
 
+const REQUIRED_SEED_IMAGE_NUMBERS = Array.from({ length: 50 }, (_, index) => index + 2);
+
 test('home page server composition keeps canonical directory + deferred data flow intact', async () => {
   const homePageSource = await readProjectFile('src/app/page.tsx');
 
@@ -65,6 +67,18 @@ test('sidebar theme links clear region scope so expanded district menus collapse
   assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion"), false);
 });
 
+test('seeded shop image assets exist for every generated public sample', async () => {
+  const requiredFiles = REQUIRED_SEED_IMAGE_NUMBERS.flatMap((number) => [
+    `sample-${number}-thumb.jpg`,
+    `sample-${number}-banner.jpg`,
+    `sample-${number}-1.jpg`,
+    `sample-${number}-2.jpg`,
+  ]);
+
+  await Promise.all(
+    requiredFiles.map((fileName) => fs.access(path.join(projectRoot, 'public/images', fileName))),
+  );
+});
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
 });
