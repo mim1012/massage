@@ -94,6 +94,15 @@ test('public directory performance indexes and theme cache are kept in sync', as
   assert.equal(themeStoreSource.includes('revalidate: 300'), true);
   assert.equal(themeStoreSource.includes('invalidateThemeCache();'), true);
 });
+test('footer RSS link has a real cached feed route', async () => {
+  const footerSource = await readProjectFile('src/components/Footer.tsx');
+  const rssRouteSource = await readProjectFile('src/app/rss/route.ts');
+
+  assert.equal(footerSource.includes('href="/rss"'), true);
+  assert.equal(rssRouteSource.includes('application/rss+xml; charset=utf-8'), true);
+  assert.equal(rssRouteSource.includes('Cache-Control'), true);
+  assert.equal(rssRouteSource.includes('listDirectoryShops({ regularOffset: 0, regularLimit: 30 })'), true);
+});
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
 });
