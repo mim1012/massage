@@ -169,6 +169,65 @@ test('rejected owners can submit a fresh pending application with the same email
   }
 });
 
+test('only rejected owners can reapply with an existing owner email', async () => {
+  const pendingId = 'test-owner-reapply-pending';
+  const approvedId = 'test-owner-reapply-approved';
+  await cleanup({ userIds: [pendingId, approvedId] });
+
+  try {
+    await prisma.user.createMany({
+      data: [
+        {
+          id: pendingId,
+          email: `${pendingId}@example.com`,
+          passwordHash: 'hash',
+          name: '대기 업주',
+          role: UserRole.OWNER,
+          status: UserStatus.PENDING,
+          phone: '010-1111-1111',
+        },
+        {
+          id: approvedId,
+          email: `${approvedId}@example.com`,
+          passwordHash: 'hash',
+          name: '승인 업주',
+          role: UserRole.OWNER,
+          status: UserStatus.APPROVED,
+          phone: '010-2222-2222',
+        },
+      ],
+    });
+
+    await assert.rejects(
+      () =>
+        registerOwner({
+          name: '대기 재신청',
+          email: `${pendingId}@example.com`,
+          password: 'password',
+          businessName: '대기 샵',
+          businessNumber: '111-11-11111',
+          phone: '010-3333-3333',
+        }),
+      /EMAIL_IN_USE/,
+    );
+
+    await assert.rejects(
+      () =>
+        registerOwner({
+          name: '승인 재신청',
+          email: `${approvedId}@example.com`,
+          password: 'password',
+          businessName: '승인 샵',
+          businessNumber: '222-22-22222',
+          phone: '010-4444-4444',
+        }),
+      /EMAIL_IN_USE/,
+    );
+  } finally {
+    await cleanup({ userIds: [pendingId, approvedId] });
+  }
+});
+
 function buildShopInput(overrides: Partial<Shop> = {}): Shop {
   const now = new Date(0).toISOString();
   return {

@@ -33,6 +33,17 @@ type OwnerRegistrationSuccessStateInput = {
   requiresApproval?: boolean;
 };
 
+function normalizeBusinessNumber(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replaceAll('-', '');
+
+  if (/^\d{10}$/.test(digits)) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+  }
+
+  return trimmed;
+}
+
 export function getOwnerRegistrationSuccessState(input: OwnerRegistrationSuccessStateInput) {
   return {
     message: input.message ?? '관리자 승인 후 로그인할 수 있습니다.',
@@ -52,7 +63,7 @@ export async function registerOwnerRoute(body: OwnerRegistrationBody, deps: Regi
     email: body.email!.trim(),
     password: body.password!,
     businessName: body.businessName!.trim(),
-    businessNumber: body.businessNumber!.trim(),
+    businessNumber: normalizeBusinessNumber(body.businessNumber!),
     phone: body.phone!.trim(),
   });
 

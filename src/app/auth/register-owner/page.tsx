@@ -183,7 +183,7 @@ export default function RegisterOwnerPage() {
                 value={formData.businessNumber}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
-                placeholder="123-45-67890"
+                placeholder="1234567890 또는 123-45-67890"
               />
             </div>
           </div>

@@ -121,7 +121,7 @@ export default function HomePageClient({
     }
 
     try {
-      const response = await fetch(`/api/shops?${cacheKey}`, { cache: 'no-store' });
+      const response = await fetch(`/api/shops?${cacheKey}`);
       const result = (await response.json()) as Partial<ShopListResponse> & { error?: string };
 
       if (!response.ok) {

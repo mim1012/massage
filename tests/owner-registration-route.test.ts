@@ -46,6 +46,22 @@ test('registerOwnerRoute creates a pending owner without auto-login side effects
   assert.deepEqual(forwardedInput, validBody);
 });
 
+test('registerOwnerRoute accepts business numbers without hyphens', async () => {
+  let forwardedInput: { businessNumber?: string } | null = null;
+  const response = await registerOwnerRoute(
+    { ...validBody, businessNumber: '1234567890' },
+    {
+      registerOwner: async (input) => {
+        forwardedInput = input;
+        return { id: 'owner-1' };
+      },
+    },
+  );
+
+  assert.equal(response.status, 201);
+  assert.equal(forwardedInput?.businessNumber, '123-45-67890');
+});
+
 test('registerOwnerRoute rejects whitespace-only required fields', async () => {
   const response = await registerOwnerRoute(
     { ...validBody, businessNumber: '   ' },

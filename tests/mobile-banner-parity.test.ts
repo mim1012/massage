@@ -102,7 +102,7 @@ test('home directory navigation uses client-side data fetch for smooth theme tra
   assert.equal(homeClientSource.includes('window.history.pushState'), true);
   assert.equal(homeClientSource.includes('shopResponseCache'), true);
   assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
-  assert.equal(homeClientSource.includes("fetch(`/api/shops?${cacheKey}`, { cache: 'no-store' })"), true);
+  assert.equal(homeClientSource.includes('fetch(`/api/shops?${cacheKey}`)'), true);
   assert.equal(homeClientSource.includes("window.addEventListener('public-directory:navigate'"), true);
 });
 test('smart prefetch links hand home directory clicks to the smooth client transition path', async () => {
@@ -120,6 +120,22 @@ test('footer RSS link has a real cached feed route', async () => {
   assert.equal(rssRouteSource.includes('application/rss+xml; charset=utf-8'), true);
   assert.equal(rssRouteSource.includes('Cache-Control'), true);
   assert.equal(rssRouteSource.includes('listDirectoryShops({ regularOffset: 0, regularLimit: 30 })'), true);
+});
+test('header logo always links to the main home route', async () => {
+  const headerSource = await readProjectFile('src/components/Header.tsx');
+
+  assert.equal(headerSource.includes('aria-label="메인 홈으로 이동"'), true);
+  assert.equal(headerSource.includes('<SmartPrefetchLink'), true);
+  assert.equal(headerSource.includes('href="/"'), true);
+});
+test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
+  const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
+  const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');
+
+  assert.equal(shopRouteSource.includes('public, s-maxage=30, stale-while-revalidate=120'), true);
+  assert.equal(themeRouteSource.includes('public, s-maxage=300, stale-while-revalidate=600'), true);
+  assert.equal(shopRouteSource.includes("'Cache-Control': PUBLIC_DIRECTORY_CACHE_CONTROL"), true);
+  assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
 });
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);

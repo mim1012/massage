@@ -89,7 +89,12 @@ export default function Header() {
 
       <div className="max-w-[1400px] mx-auto px-3">
         <div className="flex h-14 items-center gap-2 sm:gap-3">
-          <Link href="/" prefetch={false} className="flex items-center gap-1.5 shrink-0">
+          <SmartPrefetchLink
+            href="/"
+            prefetch={false}
+            aria-label="메인 홈으로 이동"
+            className="flex items-center gap-1.5 shrink-0"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--portal-brand)] shadow-sm">
               <span className="text-white font-black text-sm">{siteSettings.siteName[0]}</span>
             </div>
@@ -97,7 +102,7 @@ export default function Header() {
               <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">{siteSettings.siteName}</span>
               <span className="block -mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">HEALING DIRECTORY</span>
             </div>
-          </Link>
+          </SmartPrefetchLink>
 
           <form onSubmit={handleSearch} className="mx-auto min-w-0 flex-1 max-w-xl">
             <div className="flex gap-0 overflow-hidden rounded-lg border border-gray-300 shadow-sm transition-all focus-within:border-[var(--portal-brand)] focus-within:ring-1 focus-within:ring-[color-mix(in_srgb,var(--portal-brand)_30%,transparent)]">
