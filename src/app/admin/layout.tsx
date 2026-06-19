@@ -2,32 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Bell, MessageCircle, Settings,
   LogOut, Crown, BarChart2, Users, Eye, Menu, X, ChevronRight, UserCheck, MessageSquare, ClipboardList
 } from 'lucide-react';
-import { UserRole } from '@/lib/types';
+import { UserRole, User } from '@/lib/types';
 import { MOCK_USERS } from '@/lib/mockData';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
-  // localStorage auth_user 기반으로 초기 role 설정
-  const [testRole, setTestRole] = useState<UserRole>('ADMIN');
+  // localStorage auth_user 기반으로 초기 user 설정
+  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     try {
       const stored = localStorage.getItem('auth_user');
       if (stored) {
-        const user = JSON.parse(stored);
-        if (user.role === 'OWNER') setTestRole('OWNER');
+        setCurrentUser(JSON.parse(stored));
+      } else {
+        const defaultUser = MOCK_USERS[0];
+        localStorage.setItem('auth_user', JSON.stringify(defaultUser));
+        setCurrentUser(defaultUser);
       }
     } catch {}
   }, []);
 
-  const currentUser = testRole === 'ADMIN' ? MOCK_USERS[0] : MOCK_USERS[1]; 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+    } finally {
+      localStorage.removeItem('auth_user');
+      router.replace('/auth/login');
+      router.refresh();
+    }
+  };
 
   const ALL_NAV_ITEMS = [
     { href: '/admin', label: '대시보드', icon: LayoutDashboard, roles: ['ADMIN'] },
@@ -44,6 +61,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => item.roles.includes(currentUser.role));
+
+  if (!isClient) return null;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -89,14 +108,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="p-3 border-t border-gray-200 space-y-1">
           <button 
-            onClick={() => setTestRole(prev => prev === 'ADMIN' ? 'OWNER' : 'ADMIN')}
+            onClick={() => {
+              const nextRole = currentUser.role === 'ADMIN' ? 'OWNER' : 'ADMIN';
+              const nextUser = nextRole === 'ADMIN' ? MOCK_USERS[0] : MOCK_USERS[1];
+              localStorage.setItem('auth_user', JSON.stringify(nextUser));
+              setCurrentUser(nextUser);
+            }}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-white bg-[#8B9A67] hover:bg-[#7A8956] rounded mb-2 transition-colors">
-            <UserCheck className="w-4 h-4" /> [테스트용] {testRole === 'ADMIN' ? 'OWNER 접속' : 'ADMIN 접속'}
+            <UserCheck className="w-4 h-4" /> [테스트용] {currentUser.role === 'ADMIN' ? 'OWNER 접속' : 'ADMIN 접속'}
           </button>
-          <Link href="/" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
+          <a href="/" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
             <Eye className="w-4 h-4" /> 사이트 보기
-          </Link>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-[#FEFAE0] hover:text-[#D4A373] rounded">
+          </a>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-[#FEFAE0] hover:text-[#D4A373] rounded"
+          >
             <LogOut className="w-4 h-4" /> 로그아웃
           </button>
         </div>
@@ -109,10 +136,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu className="w-5 h-5" />
           </button>
           <div className="text-sm font-bold text-gray-800">{currentUser.role === 'ADMIN' ? '어드민 모드' : '내 업소 관리 모드'}</div>
-          <div className="ml-auto text-xs text-gray-500">{currentUser.name} ({currentUser.email})</div>
+          <div className="ml-auto text-xs text-gray-500">{currentUser.name} ({currentUser.email || currentUser.id})</div>
         </header>
-        <main className="flex-1 p-4">
-          {children}
+        <main className="flex-1 p-4 flex flex-col">
+          {currentUser.role === 'OWNER' && currentUser.status === 'pending' ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white border border-gray-200 rounded-lg shadow-sm text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <Store className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">입점 승인 대기 중입니다</h2>
+              <p className="text-gray-500 max-w-md mx-auto">
+                관리자가 업체 등록 정보를 확인한 후 가입을 승인합니다.<br/>
+                승인 완료 후 정상적으로 업소 관리 기능을 이용하실 수 있습니다.
+              </p>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

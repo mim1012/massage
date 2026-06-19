@@ -26,7 +26,7 @@ export default function Header() {
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const themeEntryRegion = currentRegion ?? 'seoul';
   const { siteSettings } = useSiteContent();
-  const { user, authChecked } = useAuthSession();
+  const { user, authChecked, clearSession } = useAuthSession();
   const myHref = getMyHref(user?.role);
   const myLabel = getMyLabel(user?.role);
   const isAuthed = authChecked && Boolean(user);
@@ -67,6 +67,8 @@ export default function Header() {
         cache: 'no-store',
       });
     } finally {
+      localStorage.removeItem('auth_user');
+      clearSession();
       setMobileMenuOpen(false);
       if (isOwnerAreaPath(pathname) || pathname?.startsWith('/my') || isAdminAreaPath(pathname)) {
         router.replace('/auth/login');
@@ -321,7 +323,7 @@ export default function Header() {
             </div>
           )}
 
-          {currentRegion && DISTRICTS[currentRegion] && (
+          {currentRegion && DISTRICTS[currentRegion] && (!currentSubRegion || currentSubRegion === 'all') && (
             <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded grid grid-cols-8 gap-y-2 gap-x-2">
               {DISTRICTS[currentRegion].map((district) => (
                 <SmartPrefetchLink

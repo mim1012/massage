@@ -67,6 +67,7 @@ function LoginContent() {
         return;
       }
 
+      localStorage.setItem('auth_user', JSON.stringify(result.user));
       router.push(getPostLoginRedirect(result.user.role, redirectTo));
     } finally {
       setLoading(false);
