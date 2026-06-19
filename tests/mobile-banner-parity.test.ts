@@ -56,6 +56,14 @@ test('desktop promo placement stays delegated to Sidebar instead of inline home-
   assert.equal(sidebarSource.includes('<SidebarPromoBanners mode="sidebar" />'), true);
   assert.equal(sidebarSource.includes('hidden md:block w-[180px] shrink-0'), true);
 });
+test('sidebar theme links clear region scope so expanded district menus collapse after click', async () => {
+  const sidebarSource = await readProjectFile('src/components/Sidebar.tsx');
+
+  assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl })}"), true);
+  assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code })}"), true);
+  assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, region: currentRegion"), false);
+  assert.equal(sidebarSource.includes("href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion"), false);
+});
 
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);

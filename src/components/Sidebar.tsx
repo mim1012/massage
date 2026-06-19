@@ -105,7 +105,7 @@ export default function Sidebar() {
         {/* 테마별 메뉴 */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
           <SmartPrefetchLink
-            href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, region: currentRegion, subRegion: currentSubRegion })}
+            href={buildBrowseHref({ mode: 'theme', basePath: baseUrl })}
             prefetch={false}
             className="block bg-[var(--portal-theme)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
           >
@@ -115,7 +115,7 @@ export default function Sidebar() {
             {themes.filter((t) => t.code !== 'all').map((t) => (
               <SmartPrefetchLink
                 key={t.code}
-                href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code, region: currentRegion, subRegion: currentSubRegion })}
+                href={buildBrowseHref({ mode: 'theme', basePath: baseUrl, theme: t.code })}
                 prefetch={false}
                 className={clsx('lnb-menu-item', currentTheme === t.code && 'active')}
               >

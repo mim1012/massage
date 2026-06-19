@@ -27,9 +27,14 @@ function LoginContent() {
   const [form, setForm] = useState({ id: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [formReady, setFormReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
   const { user, authChecked } = useAuthSession();
+
+  useEffect(() => {
+    setFormReady(true);
+  }, []);
 
   useEffect(() => {
     if (!authChecked || !user || loading || redirecting) {
@@ -47,8 +52,11 @@ function LoginContent() {
     setError(null);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const submitLogin = async () => {
+    if (loading || redirecting) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -56,6 +64,7 @@ function LoginContent() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email: form.id,
           password: form.password,
@@ -73,6 +82,11 @@ function LoginContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void submitLogin();
   };
 
   return (
@@ -133,6 +147,7 @@ function LoginContent() {
                 value={form.id}
                 onChange={(event) => setForm((current) => ({ ...current, id: event.target.value }))}
                 placeholder={activeTab === 'user' ? '아이디' : '가입하신 대표 아이디'}
+                disabled={!formReady || loading || redirecting}
                 className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none"
               />
               <div className="relative">
@@ -142,6 +157,7 @@ function LoginContent() {
                   value={form.password}
                   onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="비밀번호"
+                  disabled={!formReady || loading || redirecting}
                   className="w-full rounded border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-red-500 focus:outline-none"
                 />
                 <button
@@ -153,8 +169,9 @@ function LoginContent() {
                 </button>
               </div>
               <button
-                type="submit"
-                disabled={loading || redirecting}
+                type="button"
+                onClick={() => void submitLogin()}
+                disabled={!formReady || loading || redirecting}
                 className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 {redirecting ? '로그인 완료, 이동 중...' : loading ? '로그인 중...' : '로그인'}

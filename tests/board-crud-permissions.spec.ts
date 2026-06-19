@@ -307,7 +307,7 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
     await expectStatus('user', 'delete', `/api/board/qna/${lockedQnaId}`, 409);
   });
 
-  test('관리 Q&A: ADMIN/해당 OWNER만 수정삭제 가능하고 USER/타 OWNER는 차단된다', async () => {
+  test('관리 Q&A: ADMIN만 원문 수정삭제 가능하고 OWNER는 조회/답변만 가능하다', async () => {
     await expectStatus('anonymous', 'get', '/api/admin/qna', 401);
     await expectStatus('user', 'get', '/api/admin/qna', 403);
     await expectStatus('owner', 'get', '/api/admin/qna', 200);
@@ -318,15 +318,15 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
       question: '타 점주 관리 수정 차단',
     });
     await expectStatus('user', 'delete', `/api/admin/qna/${ownerShopQnaId}`, 403);
-    await expectStatus('owner', 'patch', `/api/admin/qna/${ownerShopQnaId}`, 200, {
-      question: `해당 점주 관리 수정 성공 ${RUN_ID}`,
+    await expectStatus('owner', 'patch', `/api/admin/qna/${ownerShopQnaId}`, 403, {
+      question: `해당 점주 관리 수정 차단 ${RUN_ID}`,
     });
     await expectStatus('admin', 'delete', `/api/admin/qna/${ownerShopQnaId}`, 204);
     cleanupIds.qna.delete(ownerShopQnaId);
 
     const otherShopQnaId = await createQnaAs('user', seed.otherShopId);
-    await expectStatus('owner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 404);
-    await expectStatus('otherOwner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 204);
+    await expectStatus('owner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 403);
+    await expectStatus('otherOwner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 403);
     cleanupIds.qna.delete(otherShopQnaId);
   });
 

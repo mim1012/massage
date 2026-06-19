@@ -9,24 +9,23 @@ async function login(page: import('@playwright/test').Page, email: string, passw
   await form.locator('input[placeholder="아이디"]').fill(email);
   await form.locator('input[placeholder="비밀번호"]').fill(password);
 
-  const loginResponsePromise = page.waitForResponse(
-    (response) => response.url().includes('/api/auth/login') && response.request().method() === 'POST',
-    { timeout: 30_000 },
-  );
   await form.getByRole('button', { name: '로그인' }).click();
-  const loginResponse = await loginResponsePromise;
-  expect(loginResponse.ok(), `${email} login response should be successful`).toBe(true);
+  await waitForSession(page, email);
 }
 
 async function waitForSession(page: import('@playwright/test').Page, expectedEmail: string | null, timeout = 30000) {
   await expect.poll(
     async () => {
-      const res = await page.evaluate(async () => {
-        const r = await fetch('/api/auth/me', { cache: 'no-store' });
-        const d = await r.json() as { user?: { email?: string | null } | null };
-        return d.user?.email ?? null;
-      });
-      return res;
+      try {
+        const res = await page.evaluate(async () => {
+          const r = await fetch('/api/auth/me', { cache: 'no-store' });
+          const d = (await r.json()) as { user?: { email?: string | null } | null };
+          return d.user?.email ?? null;
+        });
+        return res;
+      } catch {
+        return null;
+      }
     },
     { timeout },
   ).toBe(expectedEmail);
