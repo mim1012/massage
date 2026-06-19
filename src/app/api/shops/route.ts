@@ -3,6 +3,7 @@ import { buildDirectorySearchParams, getDirectoryCanonicalRedirect, parseDirecto
 import { listDirectoryShops } from '@/lib/server/shop-store';
 
 const PUBLIC_DIRECTORY_CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=120';
+export const preferredRegion = 'sin1';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

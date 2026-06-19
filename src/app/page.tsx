@@ -10,6 +10,7 @@ import { getPublicSiteContent } from '@/lib/server/communityStore';
 import { listDirectoryShops } from '@/lib/server/shop-store';
 
 const HOME_REGULAR_PAGE_SIZE = 30;
+export const preferredRegion = 'sin1';
 
 type SearchParamValue = string | string[] | undefined;
 

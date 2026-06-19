@@ -22,6 +22,7 @@ test('home page server composition keeps canonical directory + deferred data flo
   assert.equal(homePageSource.includes('createDeferredHomeShopResponse'), true);
   assert.equal(homePageSource.includes('shouldDeferInitialHomeDirectoryFetch'), true);
   assert.equal(homePageSource.includes('getDirectoryCanonicalRedirect'), true);
+  assert.equal(homePageSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(homePageSource.includes('<HomePageClient'), true);
 });
 
@@ -136,6 +137,8 @@ test('public list APIs send CDN cache headers for smooth repeated navigation', a
   assert.equal(themeRouteSource.includes('public, s-maxage=300, stale-while-revalidate=600'), true);
   assert.equal(shopRouteSource.includes("'Cache-Control': PUBLIC_DIRECTORY_CACHE_CONTROL"), true);
   assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
+  assert.equal(shopRouteSource.includes("export const preferredRegion = 'sin1'"), true);
+  assert.equal(themeRouteSource.includes("export const preferredRegion = 'sin1'"), true);
 });
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
