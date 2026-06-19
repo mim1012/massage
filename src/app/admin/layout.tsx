@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Bell, MessageCircle, Settings,
   LogOut, Crown, BarChart2, Users, Eye, Menu, UserCheck, MessageSquare, ClipboardList, Tag
@@ -17,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' })
       .then((res) => res.json())
       .then((data: { user: User | null }) => {
         if (!data.user || (data.user.role !== 'ADMIN' && data.user.role !== 'OWNER')) {
@@ -30,8 +29,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.replace('/auth/login');
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' });
+    } finally {
+      router.replace('/auth/login');
+      router.refresh();
+    }
   };
 
   const ALL_NAV_ITEMS = [

@@ -43,7 +43,7 @@ function mapStatus(status: UserStatus): NonNullable<User['status']> {
 
 function isBrokenDisplayName(name: string) {
   const trimmed = name.trim();
-  return trimmed.length === 0 || /^[?？�\s]+$/.test(trimmed);
+  return trimmed.length === 0 || /^[?？\s]+$/.test(trimmed);
 }
 
 function getFallbackDisplayName(user: UserWithProfile) {
@@ -72,9 +72,9 @@ function sanitizeUser(user: UserWithProfile): User {
   };
 }
 
-function signSessionPayload(userId: string, expiresAt: number, sessionVersion: number) {
+function signSessionPayload(userId: string, sessionVersion: number, expiresAt: number) {
   const sessionSecret = getSigningSecret();
-  const payload = Buffer.from(JSON.stringify({ userId, expiresAt, sessionVersion })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ userId, sessionVersion, expiresAt })).toString('base64url');
   const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
@@ -98,11 +98,11 @@ function readSessionPayload(token: string) {
     const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
 
     if (
+      !parsed ||
       !parsed.userId ||
       typeof parsed.userId !== 'string' ||
+      typeof parsed.sessionVersion !== 'number' ||
       typeof parsed.expiresAt !== 'number' ||
-      !Number.isInteger(parsed.sessionVersion) ||
-      parsed.sessionVersion < 0 ||
       parsed.expiresAt <= Date.now()
     ) {
       return null;
@@ -225,8 +225,8 @@ export async function registerOwner(input: {
   }
 }
 
-export function createSession(userId: string, sessionVersion = 0) {
-  return signSessionPayload(userId, Date.now() + SESSION_TTL_MS, sessionVersion);
+export function createSession(userId: string, sessionVersion: number) {
+  return signSessionPayload(userId, sessionVersion, Date.now() + SESSION_TTL_MS);
 }
 
 export async function deleteSession(token: string | undefined) {

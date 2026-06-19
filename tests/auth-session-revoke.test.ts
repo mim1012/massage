@@ -36,7 +36,7 @@ test('current valid token authenticates before revoke', async () => {
   };
 
   try {
-    const authenticatedUser = await getUserBySessionToken(createSession(baseUser.id));
+    const authenticatedUser = await getUserBySessionToken(createSession(baseUser.id, 0));
 
     assert.equal(authenticatedUser?.id, baseUser.id);
     assert.equal(findUniqueCalls, 1);
@@ -50,7 +50,7 @@ test('deleteSession revokes the active token server-side', async () => {
   const originalUpdate = prisma.user.update;
   let sessionVersion = 0;
   let updateCalls = 0;
-  const token = createSession(baseUser.id);
+  const token = createSession(baseUser.id, 0);
 
   prisma.user.findUnique = async ({ where }: { where: { id?: string } }) => {
     if (where.id !== baseUser.id) {
@@ -90,7 +90,7 @@ test('deleteSession surfaces revocation database failures', async () => {
   };
 
   try {
-    await assert.rejects(() => deleteSession(createSession(baseUser.id)), /DATABASE_ERROR/);
+    await assert.rejects(() => deleteSession(createSession(baseUser.id, 0)), /DATABASE_ERROR/);
   } finally {
     prisma.user.update = originalUpdate;
   }
@@ -135,7 +135,7 @@ test('session store database failures surface instead of anonymous fallback', as
   };
 
   try {
-    await assert.rejects(() => getUserBySessionToken(createSession(baseUser.id)), /DATABASE_ERROR/);
+    await assert.rejects(() => getUserBySessionToken(createSession(baseUser.id, 0)), /DATABASE_ERROR/);
   } finally {
     prisma.user.findUnique = originalFindUnique;
   }

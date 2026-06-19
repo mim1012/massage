@@ -6,5 +6,10 @@ export function getPostLoginRedirect(role: UserRole, redirectTo?: string | null)
     return redirectTo;
   }
 
-  return role === 'USER' ? '/' : getRoleHomeHref(role);
+  if (role === 'OWNER') {
+    return getRoleHomeHref(role);
+  }
+
+  // ADMIN and USER default to home page
+  return '/';
 }

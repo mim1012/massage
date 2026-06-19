@@ -7,6 +7,7 @@ import { REGIONS, DISTRICTS, Shop } from '@/lib/types';
 import { useThemes } from '@/lib/use-themes';
 import Link from 'next/link';
 import clsx from 'clsx';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 
 const STEPS = [
   { label: '기본 정보', desc: '업체명·지역·테마' },
@@ -238,8 +239,12 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
           <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
             <h2 className="text-base font-black text-gray-800 pb-2 border-b border-gray-100">② 상세 정보</h2>
             <div>
-              <label className={lbl}>상세 설명</label>
-              <textarea rows={5} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={`${ipt} resize-none`} placeholder="업소 소개, 특장점, 서비스 안내 등" />
+              <RichTextEditor
+                label="상세 설명"
+                value={form.description}
+                onChange={(html) => setForm({ ...form, description: html })}
+                helperText="업소 소개, 특장점, 서비스 안내 등을 글꼴, 색상, 정렬 기능과 함께 자유롭게 작성해주세요."
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

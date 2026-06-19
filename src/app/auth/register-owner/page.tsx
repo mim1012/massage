@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Lock, Phone, Store, UserCircle } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, Lock, Mail, Phone, Store, UserCircle } from 'lucide-react';
 
 type OwnerRegisterResult = {
   error?: string;
 };
 
 export default function RegisterOwnerPage() {
-  const router = useRouter();
+  const [showPw, setShowPw] = useState(false);
+  const [showPwConfirm, setShowPwConfirm] = useState(false);
   const [formData, setFormData] = useState({
     id: '',
     password: '',
@@ -81,7 +81,7 @@ export default function RegisterOwnerPage() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">아이디</label>
             <div className="relative">
-              <UserCircle className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 name="id"
@@ -100,14 +100,17 @@ export default function RegisterOwnerPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPw ? 'text' : 'password'}
                   name="password"
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
+                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 outline-none focus:border-red-500"
                   placeholder="••••••••"
                 />
+                <button type="button" onClick={() => setShowPw((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
             <div>
@@ -115,15 +118,25 @@ export default function RegisterOwnerPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPwConfirm ? 'text' : 'password'}
                   name="passwordConfirm"
                   required
                   value={formData.passwordConfirm}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 outline-none focus:border-red-500"
+                  className={`w-full rounded-lg border py-2 pl-10 pr-10 outline-none ${
+                    formData.passwordConfirm && formData.password !== formData.passwordConfirm
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:border-red-500'
+                  }`}
                   placeholder="••••••••"
                 />
+                <button type="button" onClick={() => setShowPwConfirm((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPwConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
+              {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
+                <p className="mt-1 text-xs text-red-500">비밀번호가 일치하지 않습니다.</p>
+              )}
             </div>
           </div>
 
@@ -162,7 +175,7 @@ export default function RegisterOwnerPage() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">사업자등록번호</label>
             <div className="relative">
-              <Store className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Briefcase className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 name="businessNumber"
@@ -192,7 +205,7 @@ export default function RegisterOwnerPage() {
           </div>
 
           <button type="submit" disabled={loading} className="mt-6 w-full rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60">
-            {loading ? '가입 신청 중...' : '회원가입 후 업체등록 진행'}
+            {loading ? '가입 신청 중...' : '입점 신청하기'}
           </button>
         </form>
 
