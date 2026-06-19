@@ -79,6 +79,21 @@ test('seeded shop image assets exist for every generated public sample', async (
     requiredFiles.map((fileName) => fs.access(path.join(projectRoot, 'public/images', fileName))),
   );
 });
+test('public directory performance indexes and theme cache are kept in sync', async () => {
+  const schemaSource = await readProjectFile('prisma/schema.prisma');
+  const migrationSource = await readProjectFile('prisma/migrations/0011_public_directory_filter_indexes/migration.sql');
+  const themeStoreSource = await readProjectFile('src/lib/server/theme-store.ts');
+
+  assert.equal(schemaSource.includes('@@index([isVisible, region, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
+  assert.equal(schemaSource.includes('@@index([isVisible, region, subRegion, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
+  assert.equal(schemaSource.includes('@@index([isVisible, theme, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
+  assert.equal(migrationSource.includes('shops_visible_region_premium_order_idx'), true);
+  assert.equal(migrationSource.includes('shops_visible_region_sub_region_premium_order_idx'), true);
+  assert.equal(migrationSource.includes('shops_visible_theme_premium_order_idx'), true);
+  assert.equal(themeStoreSource.includes('unstable_cache'), true);
+  assert.equal(themeStoreSource.includes('revalidate: 300'), true);
+  assert.equal(themeStoreSource.includes('invalidateThemeCache();'), true);
+});
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
 });

@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 
 export interface ThemeItem {
@@ -8,8 +9,44 @@ export interface ThemeItem {
 
 const SELECT = { code: true, label: true, emoji: true } as const;
 
-export async function listThemes(): Promise<ThemeItem[]> {
+const PUBLIC_THEMES_CACHE_TAG = 'public-themes';
+
+function isMissingNextCacheContextError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.message.includes('static generation store missing') || error.message.includes('incrementalCache missing'))
+  );
+}
+
+function invalidateThemeCache() {
+  try {
+    revalidateTag(PUBLIC_THEMES_CACHE_TAG, 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
+}
+
+async function listThemesUncached(): Promise<ThemeItem[]> {
   return prisma.theme.findMany({ orderBy: { sortOrder: 'asc' }, select: SELECT });
+}
+
+const getPersistentThemeList = unstable_cache(listThemesUncached, [PUBLIC_THEMES_CACHE_TAG], {
+  revalidate: 300,
+  tags: [PUBLIC_THEMES_CACHE_TAG],
+});
+
+export async function listThemes(): Promise<ThemeItem[]> {
+  try {
+    return await getPersistentThemeList();
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return listThemesUncached();
+    }
+
+    throw error;
+  }
 }
 
 export async function addTheme(
@@ -28,6 +65,7 @@ export async function addTheme(
     data: { code, label: item.label.trim(), emoji: item.emoji.trim(), sortOrder },
     select: SELECT,
   });
+  invalidateThemeCache();
   return { ok: true, theme };
 }
 
@@ -40,6 +78,7 @@ export async function deleteTheme(code: string): Promise<{ ok: true } | { ok: fa
 
   try {
     await prisma.theme.delete({ where: { code: normalizedCode } });
+    invalidateThemeCache();
     return { ok: true };
   } catch {
     return { ok: false, status: 404, error: '존재하지 않는 테마입니다.' };
