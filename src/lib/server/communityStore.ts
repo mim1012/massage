@@ -479,6 +479,38 @@ function parseInteger(value: string) {
   const parsed = Number.parseInt(value.replace(/\D/g, ''), 10);
   return Number.isFinite(parsed) ? parsed : 0;
 }
+function createSlugBase(input: Pick<Shop, 'name' | 'region' | 'theme'>) {
+  const fromName = input.name
+    .trim()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return fromName || `${input.region}-${input.theme}-shop`;
+}
+
+async function createUniqueShopSlug(input: Pick<Shop, 'name' | 'region' | 'theme'>) {
+  const base = createSlugBase(input);
+  let candidate = base;
+
+  for (let suffix = 2; suffix < 1000; suffix += 1) {
+    const existing = await prisma.shop.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+
+    candidate = `${base}-${suffix}`;
+  }
+
+  throw new Error('DATABASE_ERROR');
+}
+
 
 function buildShopImages(images: string[]) {
   return images.map((imageUrl, index) => ({
@@ -497,10 +529,10 @@ function buildShopCourses(courses: Shop['courses']) {
   }));
 }
 
-function buildShopPayload(input: Shop) {
+function buildShopPayload(input: Shop, slug = input.slug) {
   return {
     name: input.name.trim(),
-    slug: input.slug.trim(),
+    slug: slug.trim(),
     region: input.region,
     regionLabel: input.regionLabel,
     subRegion: input.subRegion?.trim() ? input.subRegion.trim() : null,
@@ -1672,9 +1704,10 @@ export async function getQnaShopOwnerId(id: string) {
 }
 
 export async function createAdminShop(input: Shop) {
+  const slug = await createUniqueShopSlug(input);
   const shop = await prisma.shop.create({
     data: {
-      ...buildShopPayload(input),
+      ...buildShopPayload(input, slug),
       images: {
         create: buildShopImages(input.images),
       },

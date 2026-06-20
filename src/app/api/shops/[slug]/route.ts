@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { sessionJsonResponse } from '@/lib/security/http';
 
+export const preferredRegion = 'sin1';
 export async function GET(
   _request: Request,
   context: { params: Promise<{ slug: string }> },

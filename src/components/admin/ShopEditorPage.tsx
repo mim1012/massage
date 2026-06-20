@@ -195,7 +195,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
       return false;
     }
     if (step === 0) {
-      return form.name.trim() !== '' && form.slug.trim() !== '' && form.region.trim() !== '' && form.theme.trim() !== '';
+      return form.name.trim() !== '' && form.region.trim() !== '' && form.theme.trim() !== '';
     }
     if (step === 1) {
       return form.phone.trim() !== '' && form.hours.trim() !== '';
@@ -353,16 +353,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   placeholder="예: 강남 힐링스파"
                 />
               </div>
-              <div>
-                <label className={labelClassName}>슬러그 (URL 영문) *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.slug}
-                  onChange={(event) => setForm({ ...form, slug: event.target.value })}
-                  className={inputClassName}
-                  placeholder="예: gangnam-healing-spa"
-                />
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.
               </div>
             </div>
 
@@ -735,7 +727,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">업소명</span><span className="font-semibold">{form.name || '-'}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">지역</span><span>{form.regionLabel} {form.subRegionLabel}</span></div>
                   <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">테마</span><span>{form.themeLabel}</span></div>
-                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">슬러그</span><span className="font-mono text-xs text-blue-600">/shop/{form.slug || '...'}</span></div>
+                  <div className="flex gap-2"><span className="w-20 shrink-0 text-gray-400">상세주소</span><span className="font-mono text-xs text-blue-600">저장 시 자동 생성</span></div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p className="border-b pb-1 text-xs font-bold text-gray-500">연락·운영</p>

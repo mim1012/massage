@@ -132,6 +132,30 @@ test('header logo always links to the main home route', async () => {
   assert.equal(headerSource.includes('<SmartPrefetchLink'), true);
   assert.equal(headerSource.includes('href="/"'), true);
 });
+test('shop cards prefetch detail pages on user intent', async () => {
+  const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
+
+  assert.equal(shopCardSource.includes('useRouter'), true);
+  assert.equal(shopCardSource.includes('router.prefetch(detailHref)'), true);
+  assert.equal(shopCardSource.includes('onMouseEnter={prefetchDetail}'), true);
+  assert.equal(shopCardSource.includes('onTouchStart={prefetchDetail}'), true);
+});
+
+test('shop detail routes run near the production database', async () => {
+  const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
+  const shopApiSource = await readProjectFile('src/app/api/shops/[slug]/route.ts');
+
+  assert.equal(shopPageSource.includes("export const preferredRegion = 'sin1'"), true);
+  assert.equal(shopApiSource.includes("export const preferredRegion = 'sin1'"), true);
+});
+
+test('shop editor does not expose manual slug input', async () => {
+  const editorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+
+  assert.equal(editorSource.includes('슬러그 (URL 영문)'), false);
+  assert.equal(editorSource.includes('value={form.slug}'), false);
+  assert.equal(editorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
+});
 test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');

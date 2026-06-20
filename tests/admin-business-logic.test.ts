@@ -259,6 +259,23 @@ function buildShopInput(overrides: Partial<Shop> = {}): Shop {
     ...overrides,
   };
 }
+test('shop creation auto-generates a unique slug from the shop name', async () => {
+  const createdShopIds: string[] = [];
+
+  await prisma.shop.deleteMany({ where: { slug: { in: ['auto-slug-shop', 'auto-slug-shop-2'] } } });
+
+  try {
+    const first = await createAdminShop(buildShopInput({ name: 'Auto Slug Shop', slug: 'user-supplied-slug' }));
+    createdShopIds.push(first.id);
+    assert.equal(first.slug, 'auto-slug-shop');
+
+    const second = await createAdminShop(buildShopInput({ name: 'Auto Slug Shop', slug: 'another-user-supplied-slug' }));
+    createdShopIds.push(second.id);
+    assert.equal(second.slug, 'auto-slug-shop-2');
+  } finally {
+    await cleanup({ shopIds: createdShopIds });
+  }
+});
 
 test('shop create and update ignore client-supplied aggregate ratings', async () => {
   let createdShopId = '';

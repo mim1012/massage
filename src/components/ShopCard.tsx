@@ -1,7 +1,8 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
 import type { ShopListItem } from '@/lib/types';
 import { formatRating } from '@/lib/utils';
@@ -37,6 +38,10 @@ const gradients = [
 ];
 
 function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
+  const router = useRouter();
+  const prefetchDetail = useCallback(() => {
+    router.prefetch(detailHref);
+  }, [detailHref, router]);
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
   const thumbnailUrl = shop.thumbnailUrl?.trim();
@@ -45,6 +50,9 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
     <Link
       href={detailHref}
       prefetch={false}
+      onMouseEnter={prefetchDetail}
+      onFocus={prefetchDetail}
+      onTouchStart={prefetchDetail}
       className={clsx(
         'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[color-mix(in_srgb,var(--portal-brand)_35%,white)]',
         isPremium ? 'border-[var(--portal-blue-banner-border)]' : 'border-gray-200 border-opacity-70',

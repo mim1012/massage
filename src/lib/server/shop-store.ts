@@ -500,7 +500,18 @@ export async function listShops(filters: ShopFilters = {}) {
 const getShopBySlugUncached = async (slug: string) => {
   const shop = await prisma.shop.findFirst({
     where: { slug, isVisible: true },
-    include: shopInclude,
+    include: {
+      images: {
+        orderBy: { sortOrder: 'asc' },
+      },
+      courses: {
+        orderBy: { sortOrder: 'asc' },
+      },
+      reviews: {
+        where: { isHidden: false },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
   });
 
   if (!shop) {
@@ -509,10 +520,7 @@ const getShopBySlugUncached = async (slug: string) => {
 
   return {
     shop: mapShop(shop),
-    reviews: shop.reviews
-      .filter((review) => !review.isHidden)
-      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
-      .map((review) => mapReview(review, shop.name)),
+    reviews: shop.reviews.map((review) => mapReview(review, shop.name)),
   };
 };
 
