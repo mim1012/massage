@@ -500,10 +500,10 @@ export default function HomePageClient({
                     className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
                   >
                     <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
-                      {shop.bannerUrl?.trim() ? (
+                      {shop.thumbnailUrl?.trim() ? (
                         <>
                           <img
-                            src={shop.bannerUrl}
+                            src={shop.thumbnailUrl}
                             alt=""
                             aria-hidden="true"
                             className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-sm"
@@ -513,7 +513,7 @@ export default function HomePageClient({
                             }}
                           />
                           <img
-                            src={shop.bannerUrl}
+                            src={shop.thumbnailUrl}
                             alt={shop.name}
                             className="absolute inset-0 h-full w-full object-contain"
                             onError={(e) => {

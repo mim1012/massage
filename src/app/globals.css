@@ -160,11 +160,11 @@ body {
 }
 .list-view .shop-card-img {
   width: 140px;
-  height: 100%;
-  aspect-ratio: auto;
+  height: 120px;
+  aspect-ratio: 1 / 1;
 }
 @media (max-width: 768px) {
-  .list-view .shop-card-img { width: 100px; height: auto; min-height: 100px; }
+  .list-view .shop-card-img { width: 100px; height: 100px; min-height: 100px; }
 }
 
 /* ===== 프리미엄 배너 그리드 ===== */

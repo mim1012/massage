@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { buildDirectorySearchParams, getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
 import { listDirectoryShops } from '@/lib/server/shop-store';
 
-const PUBLIC_DIRECTORY_CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=120';
+const PUBLIC_DIRECTORY_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=10';
 export const preferredRegion = 'sin1';
 
 export async function GET(request: NextRequest) {
@@ -43,9 +43,13 @@ export async function GET(request: NextRequest) {
     includePremium: regularOffset === 0,
   });
 
+  const cacheControl = directoryQuery.q
+    ? 'private, no-store'
+    : PUBLIC_DIRECTORY_CACHE_CONTROL;
+
   return Response.json(data, {
     headers: {
-      'Cache-Control': PUBLIC_DIRECTORY_CACHE_CONTROL,
+      'Cache-Control': cacheControl,
     },
   });
 }

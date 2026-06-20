@@ -177,7 +177,7 @@ test('shop card thumbnails fill the card and do not leak fallback emoji behind u
   assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), true);
   assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
   assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
-  assert.equal(homeClientSource.includes('{shop.bannerUrl?.trim() ? ('), true);
+  assert.equal(homeClientSource.includes('{shop.thumbnailUrl?.trim() ? ('), true);
   assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
 });
 
@@ -187,6 +187,13 @@ test('shop detail media preserves full external image over a filled backdrop', a
   assert.equal(shopPageSource.includes('alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain"'), true);
   assert.equal(shopPageSource.includes('alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain"'), true);
   assert.equal(shopPageSource.includes('scale-110 object-cover opacity-25 blur-sm'), true);
+});
+
+test('list view keeps a fixed thumbnail box instead of collapsing images', async () => {
+  const globalCssSource = await readProjectFile('src/app/globals.css');
+
+  assert.equal(globalCssSource.includes('height: 120px;'), true);
+  assert.equal(globalCssSource.includes('.list-view .shop-card-img { width: 100px; height: 100px; min-height: 100px; }'), true);
 });
 
 test('directory category menus collapse after a concrete region or theme choice', async () => {
@@ -229,9 +236,9 @@ test('public list APIs send CDN cache headers for smooth repeated navigation', a
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');
 
-  assert.equal(shopRouteSource.includes('public, s-maxage=30, stale-while-revalidate=120'), true);
+  assert.equal(shopRouteSource.includes('public, s-maxage=10, stale-while-revalidate=10'), true);
   assert.equal(themeRouteSource.includes('public, s-maxage=300, stale-while-revalidate=600'), true);
-  assert.equal(shopRouteSource.includes("'Cache-Control': PUBLIC_DIRECTORY_CACHE_CONTROL"), true);
+  assert.equal(shopRouteSource.includes("'Cache-Control': cacheControl"), true);
   assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
   assert.equal(shopRouteSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(themeRouteSource.includes("export const preferredRegion = 'sin1'"), true);

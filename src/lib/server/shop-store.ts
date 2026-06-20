@@ -201,7 +201,7 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     isPremium: record.isPremium,
     premiumOrder: record.premiumOrder ?? undefined,
     thumbnailUrl: record.thumbnailUrl ?? '',
-    bannerUrl: record.bannerUrl ?? '',
+    bannerUrl: '',
     tagline: record.tagline,
     rating: record.rating,
     reviewCount: record._count.reviews,
@@ -444,19 +444,7 @@ const getPersistentDirectoryShopList = unstable_cache(
 );
 
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
-  const cacheKey = normalizeDirectoryShopListCacheKey(filters);
-  return getPersistentDirectoryShopList(cacheKey).catch(() =>
-    listDirectoryShopsUncached({
-      region: filters.region,
-      subRegion: filters.subRegion,
-      theme: filters.theme,
-      query: filters.query,
-      sort: filters.sort,
-      regularOffset: filters.regularOffset,
-      regularLimit: filters.regularLimit,
-      includePremium: filters.includePremium,
-    }),
-  );
+  return listDirectoryShopsUncached(filters);
 }
 
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
