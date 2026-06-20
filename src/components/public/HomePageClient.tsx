@@ -500,7 +500,7 @@ export default function HomePageClient({
                     className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
                   >
                     <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
-                      {shop.bannerUrl?.trim() && (
+                      {shop.bannerUrl?.trim() ? (
                         <img
                           src={shop.bannerUrl}
                           alt={shop.name}
@@ -510,10 +510,11 @@ export default function HomePageClient({
                               "none";
                           }}
                         />
+                      ) : (
+                        <span className="text-6xl opacity-50 sm:text-7xl">
+                          {themeEmoji[shop.theme] ?? "✨"}
+                        </span>
                       )}
-                      <span className="text-6xl opacity-50 sm:text-7xl">
-                        {themeEmoji[shop.theme] ?? "✨"}
-                      </span>
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
                       <div className="mb-2 flex items-start justify-between gap-1">

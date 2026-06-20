@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
@@ -45,6 +45,8 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
   const thumbnailUrl = shop.thumbnailUrl?.trim();
+  const [imageFailed, setImageFailed] = useState(false);
+  const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;
 
   return (
     <Link
@@ -64,19 +66,18 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
           gradients[gIdx],
         )}
       >
-        {thumbnailUrl && (
+        {showThumbnail ? (
           <img
             src={thumbnailUrl}
             alt={shop.name}
-            className="absolute inset-0 h-full w-full bg-white object-contain transition-opacity duration-300 group-hover:opacity-90"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            className="absolute inset-0 h-full w-full bg-white object-cover transition-opacity duration-300 group-hover:opacity-90"
+            onError={() => setImageFailed(true)}
           />
+        ) : (
+          <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
+            {themeEmoji[shop.theme] ?? '✨'}
+          </span>
         )}
-        <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
-          {themeEmoji[shop.theme] ?? '✨'}
-        </span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col p-3">
         <div className="mb-1 flex items-start justify-between gap-1">

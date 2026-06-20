@@ -169,11 +169,33 @@ test('shop editor course rows keep stable keys while typing', async () => {
     assert.equal(editorSource.includes('current.map((course, courseIndex)'), true);
   }
 });
-test('shop card thumbnails preserve full banner image ratio', async () => {
+test('shop card thumbnails fill the card and do not leak fallback emoji behind uploaded images', async () => {
   const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
-  assert.equal(shopCardSource.includes('object-contain'), true);
-  assert.equal(shopCardSource.includes('object-cover transition-opacity'), false);
+  assert.equal(shopCardSource.includes('const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;'), true);
+  assert.equal(shopCardSource.includes('object-cover transition-opacity'), true);
+  assert.equal(shopCardSource.includes('object-contain'), false);
+  assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
+  assert.equal(homeClientSource.includes('{shop.bannerUrl?.trim() ? ('), true);
+  assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
+});
+
+test('directory category menus collapse after a concrete region or theme choice', async () => {
+  const sidebarSource = await readProjectFile('src/components/Sidebar.tsx');
+  const headerSource = await readProjectFile('src/components/Header.tsx');
+
+  assert.equal(sidebarSource.includes('currentRegion === r.code && !currentSubRegion && DISTRICTS[r.code]'), true);
+  assert.equal(headerSource.includes("directoryMode === 'theme' && currentRegion && (!currentTheme || currentTheme === 'all')"), true);
+});
+
+test('top-level navigation links prefetch on intent for faster page changes', async () => {
+  const headerSource = await readProjectFile('src/components/Header.tsx');
+
+  assert.equal(headerSource.includes('<SmartPrefetchLink href="/top100"'), true);
+  assert.equal(headerSource.includes('<SmartPrefetchLink href="/board"'), true);
+  assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
+  assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
 });
 test('shop image uploads are resized before persisting previews', async () => {
   const resizeSource = await readProjectFile('src/lib/client/image-resize.ts');

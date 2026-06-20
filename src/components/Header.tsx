@@ -224,24 +224,24 @@ export default function Header() {
               </SmartPrefetchLink>
             </li>
             <li>
-              <Link href="/top100" prefetch={false} className="block px-6 py-3 text-sky-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
+              <SmartPrefetchLink href="/top100" prefetch={false} className="block px-6 py-3 text-sky-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
                 인기순위
-              </Link>
+              </SmartPrefetchLink>
             </li>
             <li>
-              <Link href="/board" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <SmartPrefetchLink href="/board" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 커뮤니티
-              </Link>
+              </SmartPrefetchLink>
             </li>
             <li>
-              <Link href="/ad" prefetch={false} className="block px-6 py-3 text-amber-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
+              <SmartPrefetchLink href="/ad" prefetch={false} className="block px-6 py-3 text-amber-300 transition-colors hover:bg-[var(--portal-gnb-hover)]">
                 광고안내
-              </Link>
+              </SmartPrefetchLink>
             </li>
             <li>
-              <Link href="/board/qna" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
+              <SmartPrefetchLink href="/board/qna" prefetch={false} className="block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]">
                 고객센터
-              </Link>
+              </SmartPrefetchLink>
             </li>
           </ul>
         </div>
@@ -288,7 +288,7 @@ export default function Header() {
               ))}
           </nav>
 
-          {directoryMode === 'theme' && currentRegion && (
+          {directoryMode === 'theme' && currentRegion && (!currentTheme || currentTheme === 'all') && (
             <div className="bg-gray-50 border border-gray-200 p-3 mb-2 rounded flex flex-wrap gap-2">
               <SmartPrefetchLink
                 href={buildBrowseHref({
@@ -498,10 +498,10 @@ export default function Header() {
             { href: '/board/qna', label: '고객센터', emoji: '📞' },
             { href: myHref, label: myLabel, emoji: '👤' },
           ].map((item) => (
-            <Link key={`${item.label}-${item.href}`} href={item.href} prefetch={false} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
+            <SmartPrefetchLink key={`${item.label}-${item.href}`} href={item.href} prefetch={false} className="flex flex-col items-center gap-0.5 px-3 py-0.5">
               <span className="text-base">{item.emoji}</span>
               <span className="text-[10px] text-gray-500">{item.label}</span>
-            </Link>
+            </SmartPrefetchLink>
           ))}
         </div>
       </nav>

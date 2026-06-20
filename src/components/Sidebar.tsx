@@ -54,7 +54,7 @@ export default function Sidebar({ onDirectoryNavigate }: { onDirectoryNavigate?:
                   &rsaquo; {r.label}
                 </SmartPrefetchLink>
                 {/* 해당 지역이 선택되었고 세부 구가 있다면 표시 */}
-                {currentRegion === r.code && DISTRICTS[r.code] && (
+                {currentRegion === r.code && !currentSubRegion && DISTRICTS[r.code] && (
                   <div className="bg-gray-50/80 border-b border-gray-100 pb-1">
                     {DISTRICTS[r.code]
                       .filter((d) => d.code !== 'all')
