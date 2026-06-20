@@ -37,16 +37,24 @@ export default function SmartPrefetchLink({
     }
 
     const targetUrl = new URL(hrefString, window.location.origin);
-    if (window.location.pathname !== '/' || targetUrl.origin !== window.location.origin || targetUrl.pathname !== '/') {
+    if (targetUrl.origin !== window.location.origin) {
       return;
     }
 
-    window.dispatchEvent(
-      new CustomEvent('public-directory:navigate', {
-        detail: { href: `${targetUrl.pathname}${targetUrl.search}` },
-      }),
-    );
+    const targetHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+
+    if (window.location.pathname === '/' && targetUrl.pathname === '/') {
+      window.dispatchEvent(
+        new CustomEvent('public-directory:navigate', {
+          detail: { href: `${targetUrl.pathname}${targetUrl.search}` },
+        }),
+      );
+      event.preventDefault();
+      return;
+    }
+
     event.preventDefault();
+    router.push(targetHref);
   };
 
   const handleMouseEnter: MouseEventHandler<HTMLAnchorElement> = (event) => {

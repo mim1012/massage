@@ -113,7 +113,7 @@ test('smart prefetch links hand home directory clicks to the smooth client trans
   const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
 
   assert.equal(smartLinkSource.includes("new CustomEvent('public-directory:navigate'"), true);
-  assert.equal(smartLinkSource.includes("window.location.pathname !== '/'"), true);
+  assert.equal(smartLinkSource.includes("window.location.pathname === '/' && targetUrl.pathname === '/'"), true);
   assert.equal(smartLinkSource.includes('event.preventDefault();'), true);
 });
 test('footer RSS link has a real cached feed route', async () => {
@@ -206,11 +206,13 @@ test('directory category menus collapse after a concrete region or theme choice'
 
 test('top-level navigation links prefetch on intent for faster page changes', async () => {
   const headerSource = await readProjectFile('src/components/Header.tsx');
+  const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
 
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/top100"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
+  assert.equal(smartLinkSource.includes('router.push(targetHref)'), true);
   assert.equal(headerSource.includes("'/top100', '/board', '/ad', '/board/qna'"), true);
 });
 test('shop image uploads are resized before persisting previews', async () => {
