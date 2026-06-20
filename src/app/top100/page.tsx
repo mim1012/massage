@@ -42,12 +42,7 @@ export default async function Top100Page({ searchParams }: PageProps) {
     redirect(canonicalRedirect);
   }
 
-  const shops = await listTopShops({
-    region: directoryQuery.region,
-    subRegion: directoryQuery.subRegion,
-    theme: directoryQuery.theme,
-    query: directoryQuery.q,
-  });
+  const shops: Awaited<ReturnType<typeof listTopShops>> = [];
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>

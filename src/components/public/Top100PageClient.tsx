@@ -22,7 +22,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
   const directoryMode = getDirectoryMode(searchParams.get('view'));
 
   const [shops, setShops] = useState<ShopListItem[]>(initialShops);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(initialShops.length === 0);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const updateData = useCallback(async () => {
@@ -54,7 +54,16 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
 
   useEffect(() => {
     setShops(initialShops);
+    setIsRefreshing(initialShops.length === 0);
   }, [initialShops]);
+
+  useEffect(() => {
+    if (initialShops.length > 0) {
+      return;
+    }
+
+    void updateData();
+  }, [initialShops.length, updateData]);
 
   const regionLabel = useMemo(
     () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',
@@ -69,7 +78,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
   }, [selectedRegion, selectedSubRegion]);
   const themeLabel = useMemo(
     () => themes.find((theme) => theme.code === selectedTheme)?.label,
-    [selectedTheme],
+    [selectedTheme, themes],
   );
 
   const filterTitle = getTop100FilterTitle({
@@ -132,7 +141,9 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
               </div>
             </div>
 
-            {shops.length === 0 ? (
+            {shops.length === 0 && isRefreshing ? (
+              <div className="py-20 text-center text-sm text-gray-400">인기순위 목록을 불러오는 중입니다...</div>
+            ) : shops.length === 0 ? (
               <div className="py-20 text-center text-sm text-gray-400">해당 조건의 인기 업소가 없습니다.</div>
             ) : (
               <div

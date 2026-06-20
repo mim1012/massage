@@ -30,5 +30,6 @@ export async function GET(request: NextRequest) {
       theme: directorySearchParams.get('theme') ?? undefined,
       query: directorySearchParams.get('q') ?? undefined,
     }),
+    { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } },
   );
 }
