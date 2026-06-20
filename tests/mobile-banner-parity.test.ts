@@ -174,11 +174,19 @@ test('shop card thumbnails fill the card and do not leak fallback emoji behind u
   const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
   assert.equal(shopCardSource.includes('const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;'), true);
-  assert.equal(shopCardSource.includes('object-cover transition-opacity'), true);
-  assert.equal(shopCardSource.includes('object-contain'), false);
+  assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), true);
+  assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
   assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
   assert.equal(homeClientSource.includes('{shop.bannerUrl?.trim() ? ('), true);
   assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
+});
+
+test('shop detail media preserves full external image over a filled backdrop', async () => {
+  const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
+
+  assert.equal(shopPageSource.includes('alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain"'), true);
+  assert.equal(shopPageSource.includes('alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain"'), true);
+  assert.equal(shopPageSource.includes('scale-110 object-cover opacity-25 blur-sm'), true);
 });
 
 test('directory category menus collapse after a concrete region or theme choice', async () => {
