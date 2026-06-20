@@ -6,7 +6,10 @@ import { login } from '@/lib/server/auth-store';
 type LoginBody = {
   email?: string;
   password?: string;
+  audience?: LoginAudience;
 };
+type LoginAudience = 'user' | 'owner';
+
 
 type LoginPostDeps = {
   checkRateLimit?: typeof checkAuthRateLimit;
@@ -34,10 +37,22 @@ export async function handleLoginPost(request: Request, deps: LoginPostDeps = {}
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitHeaders);
     }
 
+    if (body.audience && !['user', 'owner'].includes(body.audience)) {
+      return applyRateLimitHeaders(Response.json({ error: '로그인 유형이 올바르지 않습니다.' }, { status: 400 }), rateLimitHeaders);
+    }
+
     const result = await loginWithStore({
       email: body.email,
       password: body.password,
     });
+
+    if (body.audience === 'user' && result.user.role === 'OWNER') {
+      return applyRateLimitHeaders(Response.json({ error: '업주 계정은 사장님 로그인에서 로그인해 주세요.' }, { status: 403 }), rateLimitHeaders);
+    }
+
+    if (body.audience === 'owner' && result.user.role === 'USER') {
+      return applyRateLimitHeaders(Response.json({ error: '일반 회원 계정은 일반 고객 로그인에서 로그인해 주세요.' }, { status: 403 }), rateLimitHeaders);
+    }
 
     await setCookie(result.token);
     return applyRateLimitHeaders(Response.json({ user: result.user }), rateLimitHeaders);

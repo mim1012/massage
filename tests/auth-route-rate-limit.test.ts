@@ -32,7 +32,7 @@ test('handleLoginPost forwards auth rate-limit headers on successful responses',
         assert.deepEqual(input, { email: ' User@Example.com ', password: 'secret' });
         return {
           token: 'session-token',
-          user: { id: 'user-1', email: 'user@example.com' },
+          user: { id: 'user-1', email: 'user@example.com', role: 'USER' },
         };
       },
       setSessionCookie: async (token) => {
@@ -46,7 +46,7 @@ test('handleLoginPost forwards auth rate-limit headers on successful responses',
   assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
   assert.equal(response.headers.get('X-RateLimit-Remaining'), '9');
   assert.deepEqual(await response.json(), {
-    user: { id: 'user-1', email: 'user@example.com' },
+    user: { id: 'user-1', email: 'user@example.com', role: 'USER' },
   });
 });
 test('handleLoginPost rejects owners that are not approved without setting a session cookie', async () => {
@@ -77,6 +77,69 @@ test('handleLoginPost rejects owners that are not approved without setting a ses
   assert.equal(response.status, 403);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.deepEqual(await response.json(), { error: '업주 계정은 관리자 승인 후 로그인할 수 있습니다.' });
+});
+test('handleLoginPost rejects approved owners from the general user login audience', async () => {
+  let cookieSet = false;
+  const response = await handleLoginPost(
+    new Request('https://example.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'owner@example.com', password: 'secret', audience: 'user' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+        }),
+      }),
+      login: async () => ({
+        token: 'owner-token',
+        user: { id: 'owner-1', email: 'owner@example.com', role: 'OWNER' },
+      }),
+      setSessionCookie: async () => {
+        cookieSet = true;
+      },
+    },
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(cookieSet, false);
+  assert.deepEqual(await response.json(), { error: '업주 계정은 사장님 로그인에서 로그인해 주세요.' });
+});
+
+test('handleLoginPost rejects regular users from the owner login audience', async () => {
+  let cookieSet = false;
+  const response = await handleLoginPost(
+    new Request('https://example.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'user@example.com', password: 'secret', audience: 'owner' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+        }),
+      }),
+      login: async () => ({
+        token: 'user-token',
+        user: { id: 'user-1', email: 'user@example.com', role: 'USER' },
+      }),
+      setSessionCookie: async () => {
+        cookieSet = true;
+      },
+    },
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(cookieSet, false);
+  assert.deepEqual(await response.json(), { error: '일반 회원 계정은 일반 고객 로그인에서 로그인해 주세요.' });
 });
 
 test('handleUserRegisterPost forwards auth rate-limit headers on successful responses', async () => {

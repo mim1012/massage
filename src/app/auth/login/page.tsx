@@ -68,6 +68,7 @@ function LoginContent() {
         body: JSON.stringify({
           email: form.id,
           password: form.password,
+          audience: activeTab,
         }),
       });
       const result = (await response.json()) as LoginResult;
