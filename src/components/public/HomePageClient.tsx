@@ -504,7 +504,7 @@ export default function HomePageClient({
                         <img
                           src={shop.thumbnailUrl}
                           alt={shop.name}
-                          className="absolute inset-0 h-full w-full bg-white object-contain"
+                          className="absolute inset-0 h-full w-full bg-white object-cover"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display =
                               "none";

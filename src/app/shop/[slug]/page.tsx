@@ -160,13 +160,13 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
               </div>
               <div className="space-y-3">
                 <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain" />
+                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-cover" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {shopGalleryImages.map((imageUrl, index) => (
                     <div key={`${imageUrl.slice(0, 40)}-${index}`} className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
                       <div className="relative aspect-square bg-white">
-                        <img src={imageUrl} alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain" />
+                        <img src={imageUrl} alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-cover" />
                       </div>
                       <div className="flex items-center justify-between border-t border-gray-100 px-2 py-1 text-[11px] text-gray-500">
                         <span>사진 {index + 1}</span>
