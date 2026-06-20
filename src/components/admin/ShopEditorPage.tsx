@@ -22,6 +22,7 @@ import { DISTRICTS, REGIONS, THEMES } from '@/lib/catalog';
 import { useThemes } from '@/lib/use-themes';
 import type { Course, Shop, User } from '@/lib/types';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import { resizeImageFileToDataUrl } from '@/lib/client/image-resize';
 
 
 type Props = {
@@ -174,13 +175,11 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     setGalleryPreviews(nextForm.images);
   };
 
-  const readFileAsDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => resolve(String(event.target?.result ?? ''));
-      reader.onerror = () => reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
-      reader.readAsDataURL(file);
-    });
+  const readGalleryFileAsDataUrl = (file: File) =>
+    resizeImageFileToDataUrl(file, { width: 1200, height: 1200, mode: 'contain', quality: 0.88 });
+
+  const readThumbnailFileAsDataUrl = (file: File) =>
+    resizeImageFileToDataUrl(file, { width: 800, height: 800, mode: 'cover', quality: 0.9 });
 
   const updateCourse = (index: number, field: keyof Course, value: string) => {
     setCourses((current) =>
@@ -606,7 +605,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   if (!file) {
                     return;
                   }
-                  const preview = await readFileAsDataUrl(file);
+                  const preview = await readThumbnailFileAsDataUrl(file);
                   const nextForm = { ...form, thumbnailUrl: preview, bannerUrl: preview };
                   syncPreviewState(nextForm);
                   event.target.value = '';
@@ -661,7 +660,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   if (files.length === 0) {
                     return;
                   }
-                  const previews = await Promise.all(files.map(readFileAsDataUrl));
+                  const previews = await Promise.all(files.map(readGalleryFileAsDataUrl));
                   const nextImages = [...galleryPreviews, ...previews];
                   syncPreviewState({ ...form, images: nextImages });
                   event.target.value = '';

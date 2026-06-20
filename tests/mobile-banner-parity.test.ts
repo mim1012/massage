@@ -175,6 +175,18 @@ test('shop card thumbnails preserve full banner image ratio', async () => {
   assert.equal(shopCardSource.includes('object-contain'), true);
   assert.equal(shopCardSource.includes('object-cover transition-opacity'), false);
 });
+test('shop image uploads are resized before persisting previews', async () => {
+  const resizeSource = await readProjectFile('src/lib/client/image-resize.ts');
+  const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
+
+  assert.equal(resizeSource.includes('canvas.width = width'), true);
+  assert.equal(resizeSource.includes("mode === 'cover'"), true);
+  assert.equal(sharedEditorSource.includes('readThumbnailFileAsDataUrl'), true);
+  assert.equal(sharedEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
+  assert.equal(adminEditorSource.includes('readThumbnailFile'), true);
+  assert.equal(adminEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
+});
 
 test('admin new shop editor waits for auth before initializing form state', async () => {
   const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');

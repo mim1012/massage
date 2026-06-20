@@ -8,6 +8,7 @@ import { useThemes } from '@/lib/use-themes';
 import Link from 'next/link';
 import clsx from 'clsx';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import { resizeImageFileToDataUrl } from '@/lib/client/image-resize';
 
 const STEPS = [
   { label: '기본 정보', desc: '업체명·지역·테마' },
@@ -106,8 +107,11 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   }, [loading, shop, currentUser, isNew]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const readFile = (file: File): Promise<string> =>
-    new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.readAsDataURL(file); });
+  const readGalleryFile = (file: File) =>
+    resizeImageFileToDataUrl(file, { width: 1200, height: 1200, mode: 'contain', quality: 0.88 });
+
+  const readThumbnailFile = (file: File) =>
+    resizeImageFileToDataUrl(file, { width: 800, height: 800, mode: 'cover', quality: 0.9 });
 
   if (loading) return <div className="p-10 text-center text-gray-500">로딩 중...</div>;
   if (!isNew && !shop) return <div className="p-10 text-center text-gray-500">업소를 찾을 수 없습니다.</div>;
@@ -346,7 +350,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
                 onChange={async e => {
                   const f = e.target.files?.[0];
                   if (!f) return;
-                  const b64 = await readFile(f);
+                  const b64 = await readThumbnailFile(f);
                   setThumbPreview(b64);
                   setForm(prev => ({ ...prev, thumbnailUrl: b64 }));
                 }}
@@ -377,7 +381,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
                 onChange={async e => {
                   const f = e.target.files?.[0];
                   if (!f) return;
-                  const b64 = await readFile(f);
+                  const b64 = await readGalleryFile(f);
                   setBannerPreview(b64);
                   setForm(prev => ({ ...prev, bannerUrl: b64 }));
                 }}
@@ -414,7 +418,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
               <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
                 onChange={async e => {
                   const files = Array.from(e.target.files || []);
-                  const b64s = await Promise.all(files.map(readFile));
+                  const b64s = await Promise.all(files.map(readGalleryFile));
                   const next = [...galleryPreviews, ...b64s];
                   setGalleryPreviews(next);
                   setForm(prev => ({ ...prev, images: next }));
