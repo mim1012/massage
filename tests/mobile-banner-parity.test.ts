@@ -169,6 +169,12 @@ test('shop editor course rows keep stable keys while typing', async () => {
     assert.equal(editorSource.includes('current.map((course, courseIndex)'), true);
   }
 });
+test('shop card thumbnails preserve full banner image ratio', async () => {
+  const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
+
+  assert.equal(shopCardSource.includes('object-contain'), true);
+  assert.equal(shopCardSource.includes('object-cover transition-opacity'), false);
+});
 
 test('admin new shop editor waits for auth before initializing form state', async () => {
   const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');

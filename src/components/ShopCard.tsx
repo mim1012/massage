@@ -68,7 +68,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
           <img
             src={thumbnailUrl}
             alt={shop.name}
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-90"
+            className="absolute inset-0 h-full w-full bg-white object-contain p-1 transition-opacity duration-300 group-hover:opacity-90"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
