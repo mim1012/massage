@@ -235,6 +235,14 @@ test('admin new shop editor waits for auth before initializing form state', asyn
   assert.equal(adminEditorSource.includes('setLoading(false);'), true);
   assert.equal(adminEditorSource.includes('initializedFormRef.current'), true);
 });
+test('admin settings keeps dad live preview component wired', async () => {
+  const settingsSource = await readProjectFile('src/app/admin/settings/page.tsx');
+  const previewSource = await readProjectFile('src/app/admin/settings/_components/SettingsPreview.tsx');
+
+  assert.equal(settingsSource.includes("import { SettingsPreview }"), true);
+  assert.equal(settingsSource.includes('<SettingsPreview siteForm={siteForm} seoForm={seoForm} />'), true);
+  assert.equal(previewSource.includes('export function SettingsPreview'), true);
+});
 test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');

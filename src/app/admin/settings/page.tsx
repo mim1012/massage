@@ -19,6 +19,7 @@ import {
   type AdminLegalDocumentState,
   type AdminSettingsBaseline,
 } from './editor-state';
+import { SettingsPreview } from './_components/SettingsPreview';
 
 function formatUpdatedAt(value?: string | null) {
   if (!value) return '아직 저장 기록 없음';
@@ -667,6 +668,7 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             </div>
+            <SettingsPreview siteForm={siteForm} seoForm={seoForm} />
           </div>
         </div>
       </section>
