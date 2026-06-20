@@ -98,6 +98,7 @@ export default function HomePageClient({
     useState<ShopListItem[]>(initialRegularShops);
   const [regularTotal, setRegularTotal] = useState(initialRegularTotal);
   const [isLoading, setIsLoading] = useState(deferInitialDirectoryFetch);
+  const [hasLoadedDirectory, setHasLoadedDirectory] = useState(!deferInitialDirectoryFetch);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(viewParam);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -110,6 +111,7 @@ export default function HomePageClient({
     ) => {
       setIsLoading(true);
       setError(null);
+      setHasLoadedDirectory(false);
 
       const nextRegion = params.get("region") ?? "all";
       const nextSubRegion = params.get("subRegion") ?? "all";
@@ -138,6 +140,7 @@ export default function HomePageClient({
         );
         setCurrentPage(page);
         setIsLoading(false);
+        setHasLoadedDirectory(true);
         return;
       }
 
@@ -170,8 +173,10 @@ export default function HomePageClient({
           nextResponse.regularTotal ?? nextResponse.regularShops.length,
         );
         setCurrentPage(page);
+        setHasLoadedDirectory(true);
       } catch {
         setError("업소 목록을 불러오지 못했습니다.");
+        setHasLoadedDirectory(true);
       } finally {
         setIsLoading(false);
       }
@@ -260,6 +265,7 @@ export default function HomePageClient({
     setCurrentPage(initialPage);
     setError(null);
     setIsLoading(deferInitialDirectoryFetch);
+    setHasLoadedDirectory(!deferInitialDirectoryFetch);
   }, [
     deferInitialDirectoryFetch,
     initialPremiumShops,
@@ -328,6 +334,7 @@ export default function HomePageClient({
     sortType,
     deferInitialDirectoryFetch,
     isLoading,
+    hasLoadedDirectory,
   ]);
   useEffect(() => {
     if (pathname !== "/" || searchQuery) {
@@ -660,6 +667,10 @@ export default function HomePageClient({
             {error ? (
               <div className="py-16 text-center text-sm text-red-500">
                 {error}
+              </div>
+            ) : regularShops.length === 0 && (!hasLoadedDirectory || isLoading) ? (
+              <div className="py-16 text-center text-sm text-gray-400">
+                업소 목록을 불러오는 중입니다...
               </div>
             ) : regularShops.length === 0 ? (
               <div className="py-16 text-center text-sm text-gray-400">
