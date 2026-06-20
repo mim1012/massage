@@ -288,6 +288,16 @@ export default function HomePageClient({
     initialPage,
   ]);
   useEffect(() => {
+    if (
+      isLoading ||
+      (deferInitialDirectoryFetch &&
+        premiumShops.length === 0 &&
+        regularShops.length === 0 &&
+        regularTotal === 0)
+    ) {
+      return;
+    }
+
     const params = buildDirectorySearchParams({
       region: selectedRegion,
       subRegion: selectedSubRegion,
@@ -316,6 +326,8 @@ export default function HomePageClient({
     selectedSubRegion,
     selectedTheme,
     sortType,
+    deferInitialDirectoryFetch,
+    isLoading,
   ]);
   useEffect(() => {
     if (pathname !== "/" || searchQuery) {
