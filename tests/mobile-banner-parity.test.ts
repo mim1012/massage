@@ -246,6 +246,15 @@ test('public list APIs send CDN cache headers for smooth repeated navigation', a
   assert.equal(shopRouteSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(themeRouteSource.includes("export const preferredRegion = 'sin1'"), true);
 });
+test('shop list payloads proxy heavy thumbnail data through cached media route', async () => {
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+  const thumbnailRouteSource = await readProjectFile('src/app/api/shops/[slug]/thumbnail/route.ts');
+
+  assert.equal(shopStoreSource.includes('/api/shops/${encodeURIComponent(record.slug)}/thumbnail'), true);
+  assert.equal(shopStoreSource.includes('export async function getShopThumbnailBySlug'), true);
+  assert.equal(thumbnailRouteSource.includes('public, max-age=31536000, immutable'), true);
+  assert.equal(thumbnailRouteSource.includes('parseDataUrl'), true);
+});
 test('directory cache prewarm cron covers common public list routes', async () => {
   const vercelConfig = await readProjectFile('vercel.json');
   const prewarmRoute = await readProjectFile('src/app/api/cron/prewarm-directory/route.ts');

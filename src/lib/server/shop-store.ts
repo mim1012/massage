@@ -58,6 +58,7 @@ const shopListSelect = {
   rating: true,
   tags: true,
   createdAt: true,
+  updatedAt: true,
   courses: {
     orderBy: { sortOrder: 'asc' },
     take: 1,
@@ -200,7 +201,7 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     themeLabel: record.themeLabel,
     isPremium: record.isPremium,
     premiumOrder: record.premiumOrder ?? undefined,
-    thumbnailUrl: record.thumbnailUrl ?? '',
+    thumbnailUrl: record.thumbnailUrl ? `/api/shops/${encodeURIComponent(record.slug)}/thumbnail?v=${record.updatedAt.getTime()}` : '',
     bannerUrl: '',
     tagline: record.tagline,
     rating: record.rating,
@@ -212,6 +213,26 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     })),
     tags: record.tags,
     createdAt: record.createdAt.toISOString(),
+  };
+}
+
+export async function getShopThumbnailBySlug(slug: string) {
+  const shop = await prisma.shop.findUnique({
+    where: { slug },
+    select: {
+      thumbnailUrl: true,
+      updatedAt: true,
+      isVisible: true,
+    },
+  });
+
+  if (!shop?.isVisible || !shop.thumbnailUrl) {
+    return null;
+  }
+
+  return {
+    thumbnailUrl: shop.thumbnailUrl,
+    updatedAt: shop.updatedAt,
   };
 }
 

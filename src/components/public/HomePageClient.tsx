@@ -285,7 +285,7 @@ export default function HomePageClient({
       return;
     }
 
-    void loadShops(initialPage);
+    void loadShops(initialPage, new URLSearchParams(window.location.search));
   }, [
     deferInitialDirectoryFetch,
     initialPremiumShops.length,
