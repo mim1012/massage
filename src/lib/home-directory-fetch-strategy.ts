@@ -2,7 +2,7 @@ import { type ShopListResponse } from '@/lib/public-page-data';
 
 export function shouldDeferInitialHomeDirectoryFetch(_input?: unknown) {
   void _input;
-  return true;
+  return false;
 }
 
 export function createDeferredHomeShopResponse(): ShopListResponse {
