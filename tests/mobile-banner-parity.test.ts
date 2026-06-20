@@ -149,12 +149,15 @@ test('shop detail routes run near the production database', async () => {
   assert.equal(shopApiSource.includes("export const preferredRegion = 'sin1'"), true);
 });
 
-test('shop editor does not expose manual slug input', async () => {
-  const editorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+test('shop editors do not expose manual slug input', async () => {
+  const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
 
-  assert.equal(editorSource.includes('슬러그 (URL 영문)'), false);
-  assert.equal(editorSource.includes('value={form.slug}'), false);
-  assert.equal(editorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
+  for (const editorSource of [sharedEditorSource, adminEditorSource]) {
+    assert.equal(editorSource.includes('슬러그 (URL 영문)'), false);
+    assert.equal(editorSource.includes('value={form.slug}'), false);
+    assert.equal(editorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
+  }
 });
 test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');

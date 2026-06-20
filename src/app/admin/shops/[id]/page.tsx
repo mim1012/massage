@@ -196,9 +196,8 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
                 <label className={lbl}>업소명 *</label>
                 <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={ipt} placeholder="예: 강남 힐링스파" />
               </div>
-              <div>
-                <label className={lbl}>슬러그 (URL 영문) *</label>
-                <input type="text" required value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} className={ipt} placeholder="예: gangnam-healing-spa" />
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -459,7 +458,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
                   <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">업소명</span><span className="font-semibold">{form.name || '-'}</span></div>
                   <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">지역</span><span>{form.regionLabel} {form.subRegionLabel}</span></div>
                   <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">테마</span><span>{form.themeLabel}</span></div>
-                  <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">슬러그</span><span className="text-blue-600 font-mono text-xs">/shop/{form.slug || '...'}</span></div>
+                  <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">상세주소</span><span className="text-blue-600 font-mono text-xs">저장 시 자동 생성</span></div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p className="text-xs font-bold text-gray-500 border-b pb-1">연락·운영</p>
