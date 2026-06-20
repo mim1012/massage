@@ -159,6 +159,24 @@ test('shop editors do not expose manual slug input', async () => {
     assert.equal(editorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
   }
 });
+test('shop editor course rows keep stable keys while typing', async () => {
+  const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
+
+  for (const editorSource of [sharedEditorSource, adminEditorSource]) {
+    assert.equal(editorSource.includes("key={`${course.name}-${index}`}"), false);
+    assert.equal(editorSource.includes("key={`course-${"), true);
+    assert.equal(editorSource.includes('current.map((course, courseIndex)'), true);
+  }
+});
+
+test('admin new shop editor waits for auth before initializing form state', async () => {
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
+
+  assert.equal(adminEditorSource.includes('const [loading, setLoading] = useState(true);'), true);
+  assert.equal(adminEditorSource.includes('setLoading(false);'), true);
+  assert.equal(adminEditorSource.includes('initializedFormRef.current'), true);
+});
 test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');

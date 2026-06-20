@@ -44,14 +44,19 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   const [shop, setShop] = useState<Shop | null>(null);
 
   const isNew = id === 'new';
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.json())
-      .then(data => setCurrentUser(data.user ?? null));
-  }, []);
+      .then(data => setCurrentUser(data.user ?? null))
+      .finally(() => {
+        if (isNew) {
+          setLoading(false);
+        }
+      });
+  }, [isNew]);
 
   useEffect(() => {
     if (isNew) {
@@ -76,11 +81,12 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
   const thumbRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const initializedFormRef = useRef(false);
 
   // Sync form state once data is loaded
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (loading) return;
+    if (loading || (isNew && initializedFormRef.current)) return;
     const data = isNew
       ? {
           ...EMPTY_SHOP,
@@ -96,6 +102,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
     setThumbPreview(data.thumbnailUrl || '');
     setBannerPreview(data.bannerUrl || '');
     setGalleryPreviews(data.images || []);
+    initializedFormRef.current = true;
   }, [loading, shop, currentUser, isNew]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -114,6 +121,12 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
     setForm({ ...form, region: rcode, regionLabel: rlabel, subRegion: '', subRegionLabel: '' });
   };
   const currentDistricts = DISTRICTS[form.region] || [];
+  const updateCourse = (index: number, field: keyof Shop['courses'][number], value: string) => {
+    setCourses((current) =>
+      current.map((course, courseIndex) => (courseIndex === index ? { ...course, [field]: value } : course)),
+    );
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,16 +288,16 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
             </div>
             <div className="space-y-3">
               {courses.map((course, idx) => (
-                <div key={idx} className="flex gap-2 items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div key={`course-${idx}`} className="flex gap-2 items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input type="text" placeholder="코스명" value={course.name}
-                      onChange={e => { const n = [...courses]; n[idx].name = e.target.value; setCourses(n); }}
+                      onChange={e => updateCourse(idx, 'name', e.target.value)}
                       className={ipt} />
                     <input type="text" placeholder="시간 (예: 60분)" value={course.duration}
-                      onChange={e => { const n = [...courses]; n[idx].duration = e.target.value; setCourses(n); }}
+                      onChange={e => updateCourse(idx, 'duration', e.target.value)}
                       className={ipt} />
                     <input type="text" placeholder="요금 (예: 70,000원)" value={course.price}
-                      onChange={e => { const n = [...courses]; n[idx].price = e.target.value; setCourses(n); }}
+                      onChange={e => updateCourse(idx, 'price', e.target.value)}
                       className={ipt} />
                   </div>
                   <button type="button" onClick={() => setCourses(courses.filter((_, i) => i !== idx))}

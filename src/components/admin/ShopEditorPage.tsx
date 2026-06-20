@@ -183,11 +183,9 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     });
 
   const updateCourse = (index: number, field: keyof Course, value: string) => {
-    setCourses((current) => {
-      const nextCourses = [...current];
-      nextCourses[index] = { ...nextCourses[index], [field]: value };
-      return nextCourses;
-    });
+    setCourses((current) =>
+      current.map((course, courseIndex) => (courseIndex === index ? { ...course, [field]: value } : course)),
+    );
   };
 
   const canNext = () => {
@@ -500,7 +498,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
 
             <div className="space-y-3">
               {courses.map((course, index) => (
-                <div key={`${course.name}-${index}`} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div key={`course-${index}`} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <div className="flex items-start gap-2">
                     <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
                       <input
@@ -742,7 +740,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                   <p className="mb-2 border-b pb-1 text-xs font-bold text-gray-500">코스 요금</p>
                   <div className="space-y-1">
                     {courses.map((course, index) => (
-                      <div key={`${course.name}-${index}`} className="flex justify-between rounded bg-gray-50 px-3 py-1.5 text-sm">
+                      <div key={`course-preview-${index}`} className="flex justify-between rounded bg-gray-50 px-3 py-1.5 text-sm">
                         <span>
                           {course.name || `코스 ${index + 1}`}{' '}
                           <span className="text-xs text-gray-400">({course.duration || '-'})</span>
