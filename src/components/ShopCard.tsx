@@ -67,21 +67,12 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
         )}
       >
         {showThumbnail ? (
-          <>
-            <img
-              src={thumbnailUrl}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-sm transition-opacity duration-300 group-hover:opacity-35"
-              onError={() => setImageFailed(true)}
-            />
-            <img
-              src={thumbnailUrl}
-              alt={shop.name}
-              className="absolute inset-0 h-full w-full object-contain transition-opacity duration-300 group-hover:opacity-95"
-              onError={() => setImageFailed(true)}
-            />
-          </>
+          <img
+            src={thumbnailUrl}
+            alt={shop.name}
+            className="absolute inset-0 h-full w-full bg-white object-contain transition-opacity duration-300 group-hover:opacity-95"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <span className="text-5xl opacity-50 transition-transform duration-300 group-hover:scale-110">
             {themeEmoji[shop.theme] ?? '✨'}

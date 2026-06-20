@@ -501,27 +501,15 @@ export default function HomePageClient({
                   >
                     <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
                       {shop.thumbnailUrl?.trim() ? (
-                        <>
-                          <img
-                            src={shop.thumbnailUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-sm"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                            }}
-                          />
-                          <img
-                            src={shop.thumbnailUrl}
-                            alt={shop.name}
-                            className="absolute inset-0 h-full w-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                            }}
-                          />
-                        </>
+                        <img
+                          src={shop.thumbnailUrl}
+                          alt={shop.name}
+                          className="absolute inset-0 h-full w-full bg-white object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                          }}
+                        />
                       ) : (
                         <span className="text-6xl opacity-50 sm:text-7xl">
                           {themeEmoji[shop.theme] ?? "✨"}
