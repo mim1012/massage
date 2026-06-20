@@ -70,7 +70,7 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
           <img
             src={thumbnailUrl}
             alt={shop.name}
-            className="absolute inset-0 h-full w-full bg-white object-cover transition-opacity duration-300 group-hover:opacity-95"
+            className="absolute inset-0 h-full w-full bg-white object-contain transition-opacity duration-300 group-hover:opacity-95"
             onError={() => setImageFailed(true)}
           />
         ) : (

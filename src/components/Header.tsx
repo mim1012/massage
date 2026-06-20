@@ -56,6 +56,27 @@ export default function Header() {
     setSelectedRegion(searchParams.get('region') || 'all');
   }, [searchParams]);
 
+  useEffect(() => {
+    const prefetchMenuRoutes = () => {
+      for (const href of ['/', '/top100', '/board', '/ad', '/board/qna']) {
+        router.prefetch(href);
+      }
+    };
+
+    const idleCallback: number =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(prefetchMenuRoutes, { timeout: 2000 })
+        : window.setTimeout(prefetchMenuRoutes, 1200);
+
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleCallback);
+      } else {
+        window.clearTimeout(idleCallback);
+      }
+    };
+  }, [router]);
+
   const handleLogout = async () => {
     if (loggingOut) {
       return;

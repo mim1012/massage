@@ -169,23 +169,23 @@ test('shop editor course rows keep stable keys while typing', async () => {
     assert.equal(editorSource.includes('current.map((course, courseIndex)'), true);
   }
 });
-test('shop card thumbnails fill media boxes without backdrop artifacts', async () => {
+test('shop card thumbnails preserve full scraped images without backdrop artifacts', async () => {
   const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
   const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
   assert.equal(shopCardSource.includes('const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;'), true);
   assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
-  assert.equal(shopCardSource.includes('object-cover transition-opacity'), true);
+  assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
   assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
   assert.equal(homeClientSource.includes('{shop.thumbnailUrl?.trim() ? ('), true);
   assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
 });
 
-test('shop detail media fills the image boxes on a clean background', async () => {
+test('shop detail media preserves full scraped images on a clean background', async () => {
   const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
 
-  assert.equal(shopPageSource.includes('alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-cover"'), true);
-  assert.equal(shopPageSource.includes('alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-cover"'), true);
+  assert.equal(shopPageSource.includes('alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain"'), true);
+  assert.equal(shopPageSource.includes('alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain"'), true);
   assert.equal(shopPageSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
 });
 
@@ -211,6 +211,7 @@ test('top-level navigation links prefetch on intent for faster page changes', as
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
+  assert.equal(headerSource.includes("'/top100', '/board', '/ad', '/board/qna'"), true);
 });
 test('shop image uploads are resized before persisting previews', async () => {
   const resizeSource = await readProjectFile('src/lib/client/image-resize.ts');
