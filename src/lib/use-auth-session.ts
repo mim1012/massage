@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 
 type SessionResponse = {
@@ -22,7 +21,6 @@ async function fetchSessionUser(): Promise<User | null> {
 export function useAuthSession() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +35,7 @@ export function useAuthSession() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, []);
 
   const refetch = async () => {
     const sessionUser = await fetchSessionUser();
