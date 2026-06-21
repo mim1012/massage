@@ -81,6 +81,101 @@ test('listPublicReviewPage applies server-side pagination and returns paging met
   });
 });
 
+test('listPublicReviewPage applies region and searchType filters on the server', async (t) => {
+  const originalCount = prisma.review.count;
+  const originalFindMany = prisma.review.findMany;
+  let capturedCountArgs: Parameters<typeof prisma.review.count>[0] | undefined;
+  let capturedFindManyArgs: Parameters<typeof prisma.review.findMany>[0] | undefined;
+
+  prisma.review.count = (async (args) => {
+    capturedCountArgs = args;
+    return 7;
+  }) as typeof prisma.review.count;
+
+  prisma.review.findMany = (async (args) => {
+    capturedFindManyArgs = args;
+    return [];
+  }) as typeof prisma.review.findMany;
+
+  t.after(() => {
+    prisma.review.count = originalCount;
+    prisma.review.findMany = originalFindMany;
+  });
+
+  await listPublicReviewPage({
+    page: 2,
+    pageSize: 5,
+    region: ' seoul ',
+    search: ' token ',
+    searchType: 'author',
+  });
+
+  assert.deepEqual(capturedCountArgs, {
+    where: {
+      isHidden: false,
+      shop: { isVisible: true, region: 'seoul' },
+      authorName: { contains: 'token', mode: Prisma.QueryMode.insensitive },
+    },
+  });
+
+  assert.deepEqual(capturedFindManyArgs, {
+    where: capturedCountArgs?.where,
+    include: { shop: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+    skip: 5,
+    take: 5,
+  });
+});
+
+test('listPublicReviewPage preserves visibility and region filters for shop-name search', async (t) => {
+  const originalCount = prisma.review.count;
+  const originalFindMany = prisma.review.findMany;
+  let capturedCountArgs: Parameters<typeof prisma.review.count>[0] | undefined;
+  let capturedFindManyArgs: Parameters<typeof prisma.review.findMany>[0] | undefined;
+
+  prisma.review.count = (async (args) => {
+    capturedCountArgs = args;
+    return 0;
+  }) as typeof prisma.review.count;
+
+  prisma.review.findMany = (async (args) => {
+    capturedFindManyArgs = args;
+    return [];
+  }) as typeof prisma.review.findMany;
+
+  t.after(() => {
+    prisma.review.count = originalCount;
+    prisma.review.findMany = originalFindMany;
+  });
+
+  await listPublicReviewPage({
+    page: 1,
+    pageSize: 5,
+    region: 'busan',
+    search: 'spa',
+    searchType: 'shop',
+  });
+
+  assert.deepEqual(capturedCountArgs, {
+    where: {
+      isHidden: false,
+      shop: {
+        isVisible: true,
+        region: 'busan',
+        name: { contains: 'spa', mode: Prisma.QueryMode.insensitive },
+      },
+    },
+  });
+
+  assert.deepEqual(capturedFindManyArgs, {
+    where: capturedCountArgs?.where,
+    include: { shop: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+    skip: 0,
+    take: 5,
+  });
+});
+
 test('listPublicQnaPage applies server-side pagination and returns paging metadata', async (t) => {
   const originalCount = prisma.qnA.count;
   const originalFindMany = prisma.qnA.findMany;
@@ -177,4 +272,70 @@ test('listPublicQnaPage applies server-side pagination and returns paging metada
     totalItems: 12,
     totalPages: 3,
   });
+});
+test('listPublicQnaPage legacy fallback keeps public visibility filter', async (t) => {
+  const originalCount = prisma.qnA.count;
+  const originalFindMany = prisma.qnA.findMany;
+  const capturedCountArgs: Array<Parameters<typeof prisma.qnA.count>[0]> = [];
+  const capturedFindManyArgs: Array<Parameters<typeof prisma.qnA.findMany>[0]> = [];
+
+  prisma.qnA.count = (async (args) => {
+    capturedCountArgs.push(args);
+    return 1;
+  }) as typeof prisma.qnA.count;
+
+  prisma.qnA.findMany = (async (args) => {
+    capturedFindManyArgs.push(args);
+    if (capturedFindManyArgs.length === 1) {
+      throw new Error('relation qna_comments does not exist');
+    }
+
+    return [
+      {
+        id: 'legacy-qna-1',
+        shopId: 'shop-legacy',
+        question: 'legacy question',
+        authorName: 'Legacy Asker',
+        status: 'OPEN',
+        createdAt: new Date('2026-05-18T01:00:00.000Z'),
+        updatedAt: new Date('2026-05-18T01:00:00.000Z'),
+        shop: {
+          ownerId: 'owner-legacy',
+          name: 'Legacy Shop',
+          regionLabel: 'Seoul',
+        },
+      },
+    ];
+  }) as typeof prisma.qnA.findMany;
+
+  t.after(() => {
+    prisma.qnA.count = originalCount;
+    prisma.qnA.findMany = originalFindMany;
+  });
+
+  const result = await listPublicQnaPage({ page: 1, pageSize: 10, shopId: ' shop-legacy ' });
+
+  assert.equal(capturedCountArgs.length, 2);
+  assert.deepEqual(capturedCountArgs[1], {
+    where: {
+      shopId: 'shop-legacy',
+      AND: [{ OR: [{ shopId: null }, { shop: { isVisible: true } }] }],
+    },
+  });
+  assert.deepEqual(capturedFindManyArgs[1], {
+    where: capturedCountArgs[1]?.where,
+    include: {
+      shop: {
+        select: {
+          ownerId: true,
+          name: true,
+          regionLabel: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    skip: 0,
+    take: 10,
+  });
+  assert.equal(result.items[0]?.shopName, 'Legacy Shop');
 });

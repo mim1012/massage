@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { validateUploadFiles } from '@/app/api/admin/upload/upload-validation';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 
@@ -9,10 +10,11 @@ export async function POST(request: Request) {
     await requireRole('ADMIN', 'OWNER');
 
     const formData = await request.formData();
-    const files = formData.getAll('file') as File[];
+    const files = formData.getAll('file').filter((entry): entry is File => entry instanceof File);
+    const validation = await validateUploadFiles(files);
 
-    if (files.length === 0) {
-      return Response.json({ error: '업로드할 파일이 없습니다.' }, { status: 400 });
+    if (!validation.ok) {
+      return Response.json({ error: validation.error }, { status: validation.status });
     }
 
     const uploadUrls: string[] = [];
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
 
       // Unique file name to prevent duplication/overwriting
       const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const ext = path.extname(file.name) || '.jpg';
+      const ext = path.extname(file.name).toLowerCase();
       const filename = `${uniqueSuffix}${ext}`;
       const filepath = path.join(publicUploadDir, filename);
 

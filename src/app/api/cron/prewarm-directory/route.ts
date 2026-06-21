@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    return true;
+    return false;
   }
 
   return request.headers.get('authorization') === `Bearer ${cronSecret}`;

@@ -4,11 +4,14 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PaginationControls from '@/components/public/PaginationControls';
+import { shouldUseServerPagination } from '@/components/public/review-pagination-state';
 import { getTotalPages, normalizePageParam, paginateItems } from '@/lib/pagination';
 import { ChevronRight, PenLine, Search, Star, X } from 'lucide-react';
 import { mapReviewsWithRegion, type ReviewWithRegion } from '@/lib/public-page-data';
 import type { Review, ShopListItem, User } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+
+type ReviewSearchType = 'all' | 'shop' | 'author' | 'content';
 
 type SessionResponse = {
   user?: User | null;
@@ -54,18 +57,30 @@ function ReviewContent({
   initialReviews,
   initialShops,
   initialPage: initialPageFromServer,
+  initialTotalPages: initialTotalPagesFromServer,
+  initialTotalItems: initialTotalItemsFromServer,
 }: {
   initialReviews: ReviewWithRegion[];
   initialShops: ShopListItem[];
   initialPage?: number;
   initialTotalPages?: number;
+  initialTotalItems?: number;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const initialShopId = searchParams.get('shopId') ?? '';
   const initialKeyword = searchParams.get('q') ?? '';
+  const initialSearchType =
+    searchParams.get('searchType') === 'shop' ||
+    searchParams.get('searchType') === 'author' ||
+    searchParams.get('searchType') === 'content'
+      ? (searchParams.get('searchType') as ReviewSearchType)
+      : 'all';
   const initialPage = normalizePageParam(searchParams.get('page')) || initialPageFromServer || 1;
+  const initialRegionTabFromServer =
+    searchParams.get('region') ??
+    (initialShopId ? initialShops.find((shop) => shop.id === initialShopId)?.region ?? 'all' : 'all');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,12 +91,13 @@ function ReviewContent({
   const [reviews, setReviews] = useState<ReviewWithRegion[]>(initialReviews);
   const [shops, setShops] = useState<ShopListItem[]>(initialShops);
   const [searchQuery, setSearchQuery] = useState(initialKeyword);
-  const [searchType, setSearchType] = useState<'all' | 'shop' | 'author' | 'content'>('all');
-  const [regionTab, setRegionTab] = useState('all');
+  const [searchType, setSearchType] = useState<ReviewSearchType>(initialSearchType);
+  const [regionTab, setRegionTab] = useState(initialRegionTabFromServer);
   const [shopTab, setShopTab] = useState(initialShopId || 'all');
   const [submitting, setSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const didInitPaginationReset = useRef(false);
+  const didInitFilterUrlSync = useRef(false);
   const [form, setForm] = useState({ shopId: initialShopId, authorName: '', rating: 5, content: '' });
   const [editingReview, setEditingReview] = useState<ReviewWithRegion | null>(null);
   const [lastSubmittedMode, setLastSubmittedMode] = useState<'create' | 'edit' | null>(null);
@@ -122,6 +138,9 @@ function ReviewContent({
       }
 
       setReviews((current) => current.filter((r) => r.id !== id));
+      if (usesServerPagination) {
+        router.refresh();
+      }
     } catch (deleteError) {
       alert(deleteError instanceof Error ? deleteError.message : '리뷰를 삭제하지 못했습니다.');
     }
@@ -166,10 +185,12 @@ function ReviewContent({
 
   useEffect(() => {
     setSearchQuery(initialKeyword);
+    setSearchType(initialSearchType);
     setShopTab(initialShopId || 'all');
+    setRegionTab(initialRegionTabFromServer);
     setCurrentPage(initialPage);
     setForm((current) => ({ ...current, shopId: initialShopId }));
-  }, [initialKeyword, initialPage, initialShopId]);
+  }, [initialKeyword, initialPage, initialRegionTabFromServer, initialSearchType, initialShopId]);
 
   useEffect(() => {
     if (!shops.length) {
@@ -177,9 +198,6 @@ function ReviewContent({
     }
 
     if (shopTab === 'all') {
-      if (!initialShopId) {
-        setRegionTab('all');
-      }
       return;
     }
 
@@ -187,7 +205,7 @@ function ReviewContent({
     if (selectedShop?.region) {
       setRegionTab(selectedShop.region);
     }
-  }, [initialShopId, shopTab, shops]);
+  }, [shopTab, shops]);
 
   useEffect(() => {
     if (!shops.length || !initialShopId) {
@@ -257,6 +275,18 @@ function ReviewContent({
     });
   }, [regionTab, reviews, searchQuery, searchType, shopTab]);
 
+  const initialShopTab = initialShopId || 'all';
+  const initialRegionTab = initialRegionTabFromServer;
+  const usesServerPagination = shouldUseServerPagination({
+    searchQuery,
+    initialKeyword,
+    searchType,
+    initialSearchType,
+    regionTab,
+    initialRegionTab,
+    shopTab,
+    initialShopTab,
+  });
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     regionTab !== 'all' ||
@@ -264,8 +294,14 @@ function ReviewContent({
     searchType !== 'all';
 
   const REVIEW_PAGE_SIZE = 30;
-  const totalPages = getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
-  const visibleReviews = useMemo(() => paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE), [currentPage, filteredReviews]);
+  const totalPages = usesServerPagination
+    ? (initialTotalPagesFromServer ?? 1)
+    : getTotalPages(filteredReviews.length, REVIEW_PAGE_SIZE);
+  const totalReviewCount = usesServerPagination ? (initialTotalItemsFromServer ?? filteredReviews.length) : filteredReviews.length;
+  const visibleReviews = useMemo(
+    () => (usesServerPagination ? filteredReviews : paginateItems(filteredReviews, currentPage, REVIEW_PAGE_SIZE)),
+    [currentPage, filteredReviews, usesServerPagination],
+  );
 
   useEffect(() => {
     if (!didInitPaginationReset.current) {
@@ -275,6 +311,47 @@ function ReviewContent({
 
     setCurrentPage(1);
   }, [regionTab, searchQuery, searchType, shopTab]);
+
+  useEffect(() => {
+    if (!didInitFilterUrlSync.current) {
+      didInitFilterUrlSync.current = true;
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    const trimmedQuery = searchQuery.trim();
+
+    if (trimmedQuery) {
+      nextParams.set('q', trimmedQuery);
+    } else {
+      nextParams.delete('q');
+    }
+
+    if (regionTab !== 'all') {
+      nextParams.set('region', regionTab);
+    } else {
+      nextParams.delete('region');
+    }
+
+    if (shopTab !== 'all') {
+      nextParams.set('shopId', shopTab);
+    } else {
+      nextParams.delete('shopId');
+    }
+
+    if (searchType !== 'all') {
+      nextParams.set('searchType', searchType);
+    } else {
+      nextParams.delete('searchType');
+    }
+
+    nextParams.delete('page');
+    const nextUrl = `${pathname}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`;
+    const currentUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    if (nextUrl !== currentUrl) {
+      router.replace(nextUrl, { scroll: false });
+    }
+  }, [pathname, regionTab, router, searchParams, searchQuery, searchType, shopTab]);
 
   function handleRegionTab(code: string) {
     setRegionTab(code);
@@ -356,6 +433,9 @@ function ReviewContent({
         setSubmitted(true);
         setShowModal(false);
         setEditingReview(null);
+        if (usesServerPagination) {
+          router.refresh();
+        }
       } else {
         const response = await fetch('/api/board/reviews', {
           method: 'POST',
@@ -379,6 +459,9 @@ function ReviewContent({
         setLastSubmittedMode('create');
         setSubmitted(true);
         setShowModal(false);
+        if (usesServerPagination) {
+          router.refresh();
+        }
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '작업을 완료하지 못했습니다.');
@@ -554,7 +637,7 @@ function ReviewContent({
         )}
       </div>
 
-      <div className="mt-2 text-right text-xs text-gray-400">총 {filteredReviews.length}개 후기</div>
+      <div className="mt-2 text-right text-xs text-gray-400">총 {totalReviewCount}개 후기</div>
       <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
 
       {showModal ? (
@@ -676,6 +759,7 @@ export default function ReviewPageClient(props: {
   initialShops: ShopListItem[];
   initialPage?: number;
   initialTotalPages?: number;
+  initialTotalItems?: number;
 }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>

@@ -847,20 +847,37 @@ function normalizePagination(options: PublicPaginationOptions) {
   return { pageSize, requestedPage };
 }
 
-function buildReviewWhere(shopId?: string, search?: string) {
+function buildReviewWhere(
+  shopId?: string,
+  search?: string,
+  region?: string,
+  searchType: 'all' | 'shop' | 'author' | 'content' = 'all',
+) {
+  const shopWhere = {
+    isVisible: true,
+    ...(region ? { region } : {}),
+  } satisfies Prisma.ShopWhereInput;
+
+  const searchWhere =
+    searchType === 'shop'
+      ? { shop: { ...shopWhere, name: buildContainsFilter(search ?? '') } }
+      : searchType === 'author'
+        ? { authorName: buildContainsFilter(search ?? '') }
+        : searchType === 'content'
+          ? { content: buildContainsFilter(search ?? '') }
+          : {
+              OR: [
+                { content: buildContainsFilter(search ?? '') },
+                { authorName: buildContainsFilter(search ?? '') },
+                { shop: { name: buildContainsFilter(search ?? '') } },
+              ],
+            };
+
   return {
     isHidden: false,
-    shop: { isVisible: true },
+    shop: shopWhere,
     ...(shopId ? { shopId } : {}),
-    ...(search
-      ? {
-          OR: [
-            { content: buildContainsFilter(search) },
-            { authorName: buildContainsFilter(search) },
-            { shop: { name: buildContainsFilter(search) } },
-          ],
-        }
-      : {}),
+    ...(search ? searchWhere : {}),
   } satisfies Prisma.ReviewWhereInput;
 }
 
@@ -904,7 +921,7 @@ export async function listPublicQnaPage(
       throw error;
     }
 
-    const where = buildLegacyQnaWhere(shopId, search);
+    const where = buildLegacyQnaWhere(shopId, search, undefined, true);
     const totalItems = await prisma.qnA.count({ where });
     const totalPages = getTotalPages(totalItems, pageSize);
     const page = clampPage(requestedPage, totalPages);
@@ -1193,10 +1210,14 @@ export async function createQna(
   }
 }
 
+type ReviewSearchType = 'all' | 'shop' | 'author' | 'content';
+
 type ReviewListOptions = {
   limit?: number;
   shopId?: string;
+  region?: string;
   search?: string;
+  searchType?: ReviewSearchType;
   page?: number;
   pageSize?: number;
   viewer?: ViewerContext;
@@ -1279,9 +1300,11 @@ export async function listPublicReviewPage(
   options: ReviewListOptions & PublicPaginationOptions = {},
 ): Promise<PaginatedListResult<Review>> {
   const shopId = options.shopId?.trim();
+  const region = options.region?.trim();
   const search = options.search?.trim();
+  const searchType = options.searchType ?? 'all';
   const { pageSize, requestedPage } = normalizePagination(options);
-  const where = buildReviewWhere(shopId, search);
+  const where = buildReviewWhere(shopId, search, region, searchType);
   const totalItems = await prisma.review.count({ where });
   const totalPages = getTotalPages(totalItems, pageSize);
   const page = clampPage(requestedPage, totalPages);
@@ -1308,9 +1331,11 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
       ? { limit: options }
       : options;
   const shopId = normalizedOptions.shopId?.trim();
+  const region = normalizedOptions.region?.trim();
   const search = normalizedOptions.search?.trim();
+  const searchType = normalizedOptions.searchType ?? 'all';
   const limit = typeof normalizedOptions.limit === 'number' ? normalizedOptions.limit : null;
-  const cacheKey = JSON.stringify({ shopId: shopId ?? '', search: search ?? '', limit, viewerId: normalizedOptions.viewer?.id ?? '', viewerRole: normalizedOptions.viewer?.role ?? '' });
+  const cacheKey = JSON.stringify({ shopId: shopId ?? '', region: region ?? '', search: search ?? '', searchType, limit, viewerId: normalizedOptions.viewer?.id ?? '', viewerRole: normalizedOptions.viewer?.role ?? '' });
   const cached = cachedPublicReviewLists.get(cacheKey);
   if (cached) {
     return cached;
@@ -1318,7 +1343,7 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
 
   const pending = prisma.review
     .findMany({
-      where: buildReviewWhere(shopId, search),
+      where: buildReviewWhere(shopId, search, region, searchType),
       include: { shop: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),

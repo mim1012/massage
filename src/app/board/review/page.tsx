@@ -15,6 +15,8 @@ type PageProps = {
   searchParams?: Promise<{
     page?: SearchParamValue;
     shopId?: SearchParamValue;
+    region?: SearchParamValue;
+    searchType?: SearchParamValue;
     q?: SearchParamValue;
   }>;
 };
@@ -31,10 +33,19 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const shopId = pickFirst(resolvedSearchParams?.shopId);
+  const region = pickFirst(resolvedSearchParams?.region);
+  const searchType = pickFirst(resolvedSearchParams?.searchType);
   const search = pickFirst(resolvedSearchParams?.q);
 
   const [reviewPage, shopsData] = await Promise.all([
-    listPublicReviewPage({ page, shopId, search, viewer: { id: user.id, role: user.role } }),
+    listPublicReviewPage({
+      page,
+      shopId,
+      region,
+      search,
+      searchType: searchType === 'shop' || searchType === 'author' || searchType === 'content' ? searchType : 'all',
+      viewer: { id: user.id, role: user.role },
+    }),
     listShops({}),
   ]);
 
@@ -48,6 +59,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
         initialShops={allShops}
         initialPage={reviewPage.page}
         initialTotalPages={reviewPage.totalPages}
+        initialTotalItems={reviewPage.totalItems}
       />
     </Suspense>
   );
