@@ -139,7 +139,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           setForm(initialShop);
           setCourses(initialShop.courses);
           setTagsStr(initialShop.tags.join(', '));
-          setThumbPreview(initialShop.thumbnailUrl || initialShop.bannerUrl);
+          setThumbPreview(initialShop.thumbnailUrl);
           setGalleryPreviews(initialShop.images);
           return;
         }
@@ -154,7 +154,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           setForm(shopResult.shop);
           setCourses(shopResult.shop.courses);
           setTagsStr(shopResult.shop.tags.join(', '));
-          setThumbPreview(shopResult.shop.thumbnailUrl || shopResult.shop.bannerUrl);
+          setThumbPreview(shopResult.shop.thumbnailUrl);
           setGalleryPreviews(shopResult.shop.images);
         } else {
           setForm(null);
@@ -174,6 +174,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
     setThumbPreview(nextForm.thumbnailUrl);
     setGalleryPreviews(nextForm.images);
   };
+
+  const effectiveCardThumbnailPreview = thumbPreview || galleryPreviews[0] || '';
 
   const readGalleryFileAsDataUrl = (file: File) =>
     resizeImageFileToDataUrl(file, { width: 1200, height: 1200, mode: 'contain', quality: 0.88 });
@@ -681,8 +683,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
                 <p className="mb-2 text-xs font-bold text-gray-500">목록 카드 미리보기</p>
                 <div className="max-w-[200px]">
                   <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-                    {thumbPreview ? (
-                      <img src={thumbPreview} alt="목록 썸네일 미리보기" className="aspect-square w-full object-cover" />
+                    {effectiveCardThumbnailPreview ? (
+                      <img src={effectiveCardThumbnailPreview} alt="목록 썸네일 미리보기" className="aspect-square w-full object-cover" />
                     ) : (
                       <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-amber-100 to-orange-50 text-5xl">
                         {THEME_EMOJI[form.theme] ?? '✨'}

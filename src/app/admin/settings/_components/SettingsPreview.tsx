@@ -80,7 +80,7 @@ export function SettingsPreview({ siteForm, seoForm }: SettingsPreviewProps) {
 
         {/* 3. SEO / Content Preview */}
         <div className="bg-white p-6 space-y-4 flex-1">
-          <div className="text-xs font-bold text-gray-400 mb-2">SEO 하단 섹션</div>
+          <div className="text-xs font-bold text-gray-400 mb-2">메인홈 하단 SEO 섹션 (푸터 위)</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">
               <h3 className={clsx("font-bold text-sm text-gray-700 mb-2", getHlClass(hlS1T))}>

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import GlobalLayout from '@/components/GlobalLayout';
+import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
+import { getPublicSiteContent } from '@/lib/server/communityStore';
 
 export const metadata: Metadata = {
   title: {
@@ -14,7 +16,13 @@ export const metadata: Metadata = {
   openGraph: { type: 'website', locale: 'ko_KR', siteName: '힐링찾기' },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const initialSiteContent =
+    (await getPublicSiteContent()) ?? {
+      siteSettings: MOCK_SITE_SETTINGS,
+      homeSeo: MOCK_HOME_SEO,
+    };
+
   return (
     <html lang="ko">
       <head>
@@ -26,9 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="bg-gray-100 text-gray-900 antialiased min-h-screen flex flex-col">
-        <GlobalLayout>
-          {children}
-        </GlobalLayout>
+        <GlobalLayout initialSiteContent={initialSiteContent}>{children}</GlobalLayout>
       </body>
     </html>
   );

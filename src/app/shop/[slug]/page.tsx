@@ -4,12 +4,11 @@ import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
 import { DISTRICTS } from '@/lib/catalog';
 import { buildShopBrowseHref, getShopBrowseLabel } from '@/lib/browse-context';
-import type { Review } from '@/lib/types';
-import { formatDate, formatRating } from '@/lib/utils';
+import { formatRating } from '@/lib/utils';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
-import { getShopBySlug } from '@/lib/server/shop-store';
-import { getSessionUser } from '@/lib/auth/guards';
-import ShopReviewForm from '@/components/public/ShopReviewForm';
+import { getShopBySlug, getShopMetadataBySlug } from '@/lib/server/shop-store';
+import ShopMediaSection from '@/components/public/ShopMediaSection';
+import ShopReviewSection from '@/components/public/ShopReviewSection';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -24,19 +23,18 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getShopBySlug(slug);
+  const data = await getShopMetadataBySlug(slug);
 
   if (!data) {
     return { title: '업소를 찾을 수 없습니다' };
   }
 
   return {
-    title: `${data.shop.name} - ${data.shop.regionLabel} ${data.shop.themeLabel}`,
-    description: stripShopDescriptionToText(data.shop.description).slice(0, 155),
+    title: `${data.name} - ${data.regionLabel} ${data.themeLabel}`,
+    description: stripShopDescriptionToText(data.description).slice(0, 155),
   };
 }
 
-export const dynamic = 'force-dynamic';
 export const preferredRegion = 'sin1';
 
 const themeEmoji: Record<string, string> = {
@@ -62,17 +60,14 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const currentSearchParams = searchParams ? await searchParams : undefined;
   const data = await getShopBySlug(slug);
-  const user = await getSessionUser();
 
   if (!data) {
     notFound();
   }
 
   const { shop } = data;
-  const reviews = user ? data.reviews : [];
   const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
   const primaryImage = (shop.thumbnailUrl || shop.bannerUrl).trim();
-  const shopGalleryImages = Array.from(new Set(shop.images.map((value) => value.trim()).filter(Boolean)));
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
   const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
   const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
@@ -152,36 +147,12 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             </div>
           </div>
 
-          {primaryImage ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
-                <h2 className="text-sm font-black text-gray-800">📸 업소 사진</h2>
-                <span className="text-[11px] text-gray-400">갤러리 {shopGalleryImages.length}장</span>
-              </div>
-              <div className="space-y-3">
-                <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                  <img src={primaryImage} alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {shopGalleryImages.map((imageUrl, index) => (
-                    <div key={`${imageUrl.slice(0, 40)}-${index}`} className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                      <div className="relative aspect-square bg-white">
-                        <img src={imageUrl} alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain" />
-                      </div>
-                      <div className="flex items-center justify-between border-t border-gray-100 px-2 py-1 text-[11px] text-gray-500">
-                        <span>사진 {index + 1}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
+          {primaryImage ? <ShopMediaSection shopName={shop.name} primaryImage={primaryImage} galleryImages={shop.images} /> : null}
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>
             <div
-              className="prose prose-sm max-w-none text-gray-600 prose-img:rounded-2xl prose-img:shadow-sm prose-p:leading-relaxed"
+              className="prose prose-sm max-w-none overflow-hidden break-words text-gray-600 [overflow-wrap:anywhere] prose-img:h-auto prose-img:max-w-full prose-img:rounded-2xl prose-img:shadow-sm prose-p:leading-relaxed [&_*]:max-w-full [&_a]:break-all"
               dangerouslySetInnerHTML={{ __html: shopDescriptionHtml }}
             />
             {shop.tags.length > 0 ? (
@@ -223,47 +194,12 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
             </table>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-              <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({reviews.length})</h2>
-              <Link href={`/board/review?shopId=${shop.id}`} className="text-xs text-[var(--portal-brand)] hover:underline">
-                전체보기 &raquo;
-              </Link>
-            </div>
-
-            {/* 후기 입력 폼 추가 */}
-            <ShopReviewForm shopId={shop.id} shopName={shop.name} />
-
-            {!user ? (
-              <p className="py-6 text-center text-sm text-gray-400">로그인 후 후기를 확인할 수 있습니다.</p>
-            ) : reviews.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {reviews.map((review: Review) => (
-                  <div key={review.id} className="py-3">
-                    <div className="mb-1 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-800">{review.authorName}</span>
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <Star
-                              key={value}
-                              className={`h-3 w-3 ${
-                                value <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ShopReviewSection
+            slug={shop.slug}
+            shopId={shop.id}
+            shopName={shop.name}
+            initialReviewCount={shop.reviewCount}
+          />
         </div>
 
         <div className="space-y-3">

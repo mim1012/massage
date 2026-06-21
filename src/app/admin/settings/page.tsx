@@ -13,6 +13,10 @@ import {
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import type { HomeSeoContent, SiteSettings } from '@/lib/types';
 import {
+  HOME_SEO_CONTENT_MAX_LENGTH,
+  HOME_SEO_TITLE_MAX_LENGTH,
+} from '@/lib/site-content-limits';
+import {
   createDefaultAdminSettingsState,
   getAdminSettingsDirtyState,
   resetLegalDocumentToDefault,
@@ -665,6 +669,10 @@ export default function AdminSettingsPage() {
                     onChange={(event) => setSiteForm((current) => ({ ...current, footerInfo: event.target.value }))}
                     className={ipt}
                   />
+                  <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                    이 칸은 푸터의 사업자·연락처 정보 전용입니다. 메인홈 하단의 SEO 안내 문구는 아래{' '}
+                    <span className="font-semibold text-[var(--portal-brand)]">2. 메인홈 하단 SEO 섹션</span>에서 설정합니다.
+                  </p>
                 </div>
               </div>
             </div>
@@ -678,10 +686,12 @@ export default function AdminSettingsPage() {
       <section className="space-y-6">
         <div className="flex items-center gap-2 border-l-4 border-[var(--portal-brand)] pl-3">
           <Layout className="h-5 w-5 text-gray-800" />
-          <h2 className="text-lg font-black text-gray-800">2. 홈페이지 하단 SEO 문구 관리</h2>
+          <h2 className="text-lg font-black text-gray-800">2. 메인홈 하단 SEO 섹션 (푸터 위)</h2>
           {dirtyState.hasSeoChanges ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">수정됨</span> : null}
         </div>
-
+        <p className="text-sm leading-relaxed text-gray-500">
+          메인 페이지 업소목록 아래, 푸터 바로 위에 노출되는 3단 SEO 안내 영역입니다. 푸터 사업자 정보와는 별개로 관리됩니다.
+        </p>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {seoSections.map((section) => (
             <div key={section.key} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -696,6 +706,7 @@ export default function AdminSettingsPage() {
                   onChange={(event) => section.setTitle(event.target.value)}
                   className={ipt}
                   placeholder="제목 입력"
+                  maxLength={HOME_SEO_TITLE_MAX_LENGTH}
                 />
                 <textarea
                   rows={5}
@@ -703,7 +714,11 @@ export default function AdminSettingsPage() {
                   onChange={(event) => section.setContent(event.target.value)}
                   className={ipt}
                   placeholder="내용 입력"
+                  maxLength={HOME_SEO_CONTENT_MAX_LENGTH}
                 />
+                <p className="text-right text-[11px] text-gray-400">
+                  {section.content.length}/{HOME_SEO_CONTENT_MAX_LENGTH}
+                </p>
               </div>
             </div>
           ))}

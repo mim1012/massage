@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
+import { after } from 'next/server';
 import { buildDirectorySearchParams, getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
-import { listDirectoryShops } from '@/lib/server/shop-store';
+import { listDirectoryShops, warmPublicShopDetailCaches } from '@/lib/server/shop-store';
 
 const PUBLIC_DIRECTORY_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=10';
 export const preferredRegion = 'sin1';
@@ -42,6 +43,17 @@ export async function GET(request: NextRequest) {
     regularLimit: Number.isFinite(regularLimit) && regularLimit > 0 ? regularLimit : undefined,
     includePremium: regularOffset === 0,
   });
+
+  const detailWarmupSlugs = [
+    ...data.premiumShops.slice(0, 1).map((shop) => shop.slug),
+    ...data.regularShops.slice(0, 2).map((shop) => shop.slug),
+  ];
+
+  if (detailWarmupSlugs.length > 0) {
+    after(async () => {
+      await warmPublicShopDetailCaches(detailWarmupSlugs);
+    });
+  }
 
   const cacheControl = directoryQuery.q
     ? 'private, no-store'

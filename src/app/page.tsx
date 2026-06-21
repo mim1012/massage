@@ -1,4 +1,6 @@
 import { Suspense } from 'react';
+import { after } from 'next/server';
+import HomeSeoSection from '@/components/public/HomeSeoSection';
 import HomePageClient from '@/components/public/HomePageClient';
 import { redirect } from 'next/navigation';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
@@ -6,8 +8,9 @@ import { buildHomePageData } from '@/lib/public-page-data';
 import { getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
 import { getDirectorySortType } from '@/lib/directory-sort';
 import { createDeferredHomeShopResponse, shouldDeferInitialHomeDirectoryFetch } from '@/lib/home-directory-fetch-strategy';
+import { normalizePageParam } from '@/lib/pagination';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
-import { listDirectoryShops } from '@/lib/server/shop-store';
+import { listDirectoryShops, warmPublicShopDetailCaches } from '@/lib/server/shop-store';
 
 const HOME_REGULAR_PAGE_SIZE = 30;
 export const preferredRegion = 'sin1';
@@ -22,6 +25,7 @@ type PageProps = {
     theme?: SearchParamValue;
     q?: SearchParamValue;
     sort?: SearchParamValue;
+    page?: SearchParamValue;
   }>;
 };
 
@@ -39,9 +43,13 @@ export default async function HomePage({ searchParams }: PageProps) {
     q: pickFirst(resolvedSearchParams?.q),
     sort: pickFirst(resolvedSearchParams?.sort),
   });
+  const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const canonicalRedirect = getDirectoryCanonicalRedirect({
     ...directoryQuery,
     basePath: '/',
+    extraParams: {
+      page: page > 1 ? page : undefined,
+    },
   });
 
   if (canonicalRedirect) {
@@ -66,8 +74,9 @@ export default async function HomePage({ searchParams }: PageProps) {
           theme: directoryQuery.theme,
           query: directoryQuery.q,
           sort: directoryQuery.sort,
-          regularOffset: 0,
+          regularOffset: (page - 1) * HOME_REGULAR_PAGE_SIZE,
           regularLimit: HOME_REGULAR_PAGE_SIZE,
+          includePremium: page === 1,
         }),
     getPublicSiteContent(),
   ]);
@@ -81,6 +90,17 @@ export default async function HomePage({ searchParams }: PageProps) {
     },
   });
 
+  const detailWarmupSlugs = [
+    ...initialData.premiumShops.slice(0, 1).map((shop) => shop.slug),
+    ...initialData.regularShops.slice(0, 2).map((shop) => shop.slug),
+  ];
+
+  if (detailWarmupSlugs.length > 0) {
+    after(async () => {
+      await warmPublicShopDetailCaches(detailWarmupSlugs);
+    });
+  }
+
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
       <HomePageClient
@@ -88,9 +108,10 @@ export default async function HomePage({ searchParams }: PageProps) {
         initialRegularShops={initialData.regularShops}
         initialRegularTotal={initialData.regularTotal}
         initialSiteSettings={initialData.siteSettings}
-        initialHomeSeo={initialData.homeSeo}
         deferInitialDirectoryFetch={deferInitialDirectoryFetch}
-      />
+      >
+        <HomeSeoSection homeSeo={initialData.homeSeo} />
+      </HomePageClient>
     </Suspense>
   );
 }

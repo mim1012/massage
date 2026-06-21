@@ -10,8 +10,8 @@ test('shouldDeferInitialHomeDirectoryFetch defers only real free-text queries', 
   assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '힐링' }), true);
   assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '  힐링  ' }), true);
   assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '서울' }), false);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '' }), false);
-  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: undefined }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: '', region: 'seoul' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', query: undefined, region: 'seoul' }), false);
 });
 
 test('shouldDeferInitialHomeDirectoryFetch defers broad theme landing but not narrowed theme routes', () => {
@@ -20,6 +20,14 @@ test('shouldDeferInitialHomeDirectoryFetch defers broad theme landing but not na
   assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', theme: 'swedish', query: undefined }), false);
   assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'theme', subRegion: 'gangnam', query: undefined }), false);
 });
+
+test('shouldDeferInitialHomeDirectoryFetch keeps the broad main landing server-rendered', () => {
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', region: 'all' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', region: 'seoul' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', subRegion: 'gangnam' }), false);
+  assert.equal(shouldDeferInitialHomeDirectoryFetch({ mode: 'region', theme: 'swedish' }), false);
+})
 
 test('createDeferredHomeShopResponse returns an empty first-paint payload', () => {
   assert.deepEqual(createDeferredHomeShopResponse(), {

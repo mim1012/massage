@@ -28,7 +28,12 @@ import {
   normalizeHomeSeo,
   normalizeSiteSettings,
 } from '@/lib/site-content-defaults';
-import { invalidatePublicShopListCache, mapShop, shopInclude } from '@/lib/server/shop-store';
+import { invalidatePublicShopCaches, mapShop, shopInclude } from '@/lib/server/shop-store';
+import {
+  HOME_SEO_CONTENT_MAX_LENGTH,
+  HOME_SEO_TITLE_MAX_LENGTH,
+  sanitizeBoundedText,
+} from '@/lib/site-content-limits';
 
 const managedShopListSelect = {
   id: true,
@@ -611,7 +616,7 @@ export async function updatePremiumOrder(orderedIds: string[], visibilityById: R
       }),
     ),
   ]);
-  invalidatePublicShopListCache();
+  invalidatePublicShopCaches();
 
   return await getPremiumBoardData();
 }
@@ -1284,7 +1289,7 @@ export async function createReview(input: {
   });
 
   await refreshShopReviewRating(input.shopId);
-  invalidatePublicShopListCache();
+  invalidatePublicShopCaches();
   invalidatePublicBoardCaches();
   return mapReview(review);
 }
@@ -1436,7 +1441,7 @@ export async function updateReview(
       return review;
     });
 
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
     return mapReview(updated);
   } catch (error) {
@@ -1459,7 +1464,7 @@ export async function deleteReview(reviewId: string) {
       await refreshShopReviewRating(review.shopId, tx);
     });
 
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
     return true;
   } catch (error) {
@@ -1607,7 +1612,7 @@ export async function setReviewHiddenState(
       return null;
     }
 
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
 
     return mapReview(updated);
@@ -1651,7 +1656,7 @@ export async function deleteManagedReview(user: { id: string; role: UserRole }, 
       return false;
     }
 
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
     return true;
   } catch (error) {
@@ -1743,7 +1748,7 @@ export async function createAdminShop(input: Shop) {
     include: shopInclude,
   });
 
-  invalidatePublicShopListCache();
+  invalidatePublicShopCaches();
 
   return mapShop(shop);
 }
@@ -1801,7 +1806,7 @@ export async function updateAdminShop(id: string, input: Shop, access?: { ownerI
       return null;
     }
 
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
 
     return mapShop(shop);
   } catch (error) {
@@ -1939,38 +1944,39 @@ export async function getPublicSiteContent() {
 }
 
 export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
+  const sanitizedInput = sanitizeSiteContentInput(input);
   const record = await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },
     update: {
-      siteName: input.siteName.trim(),
-      siteTitle: input.siteTitle.trim(),
-      siteDescription: input.siteDescription.trim(),
-      heroMainText: input.heroMainText.trim(),
-      heroSubText: input.heroSubText.trim(),
-      contactPhone: input.contactPhone.trim(),
-      footerInfo: input.footerInfo.trim(),
-      seoSection1Title: input.section1Title.trim(),
-      seoSection1Content: input.section1Content.trim(),
-      seoSection2Title: input.section2Title.trim(),
-      seoSection2Content: input.section2Content.trim(),
-      seoSection3Title: input.section3Title.trim(),
-      seoSection3Content: input.section3Content.trim(),
+      siteName: sanitizedInput.siteName,
+      siteTitle: sanitizedInput.siteTitle,
+      siteDescription: sanitizedInput.siteDescription,
+      heroMainText: sanitizedInput.heroMainText,
+      heroSubText: sanitizedInput.heroSubText,
+      contactPhone: sanitizedInput.contactPhone,
+      footerInfo: sanitizedInput.footerInfo,
+      seoSection1Title: sanitizedInput.section1Title,
+      seoSection1Content: sanitizedInput.section1Content,
+      seoSection2Title: sanitizedInput.section2Title,
+      seoSection2Content: sanitizedInput.section2Content,
+      seoSection3Title: sanitizedInput.section3Title,
+      seoSection3Content: sanitizedInput.section3Content,
     },
     create: {
       id: SITE_SETTINGS_ID,
-      siteName: input.siteName.trim(),
-      siteTitle: input.siteTitle.trim(),
-      siteDescription: input.siteDescription.trim(),
-      heroMainText: input.heroMainText.trim(),
-      heroSubText: input.heroSubText.trim(),
-      contactPhone: input.contactPhone.trim(),
-      footerInfo: input.footerInfo.trim(),
-      seoSection1Title: input.section1Title.trim(),
-      seoSection1Content: input.section1Content.trim(),
-      seoSection2Title: input.section2Title.trim(),
-      seoSection2Content: input.section2Content.trim(),
-      seoSection3Title: input.section3Title.trim(),
-      seoSection3Content: input.section3Content.trim(),
+      siteName: sanitizedInput.siteName,
+      siteTitle: sanitizedInput.siteTitle,
+      siteDescription: sanitizedInput.siteDescription,
+      heroMainText: sanitizedInput.heroMainText,
+      heroSubText: sanitizedInput.heroSubText,
+      contactPhone: sanitizedInput.contactPhone,
+      footerInfo: sanitizedInput.footerInfo,
+      seoSection1Title: sanitizedInput.section1Title,
+      seoSection1Content: sanitizedInput.section1Content,
+      seoSection2Title: sanitizedInput.section2Title,
+      seoSection2Content: sanitizedInput.section2Content,
+      seoSection3Title: sanitizedInput.section3Title,
+      seoSection3Content: sanitizedInput.section3Content,
     },
   });
 
@@ -1979,6 +1985,23 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
   safeRevalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG);
 
   return content;
+}
+function sanitizeSiteContentInput(input: SiteSettings & HomeSeoContent) {
+  return {
+    siteName: input.siteName.trim(),
+    siteTitle: input.siteTitle.trim(),
+    siteDescription: input.siteDescription.trim(),
+    heroMainText: input.heroMainText.trim(),
+    heroSubText: input.heroSubText.trim(),
+    contactPhone: input.contactPhone.trim(),
+    footerInfo: input.footerInfo.trim(),
+    section1Title: sanitizeBoundedText(input.section1Title, HOME_SEO_TITLE_MAX_LENGTH),
+    section1Content: sanitizeBoundedText(input.section1Content, HOME_SEO_CONTENT_MAX_LENGTH),
+    section2Title: sanitizeBoundedText(input.section2Title, HOME_SEO_TITLE_MAX_LENGTH),
+    section2Content: sanitizeBoundedText(input.section2Content, HOME_SEO_CONTENT_MAX_LENGTH),
+    section3Title: sanitizeBoundedText(input.section3Title, HOME_SEO_TITLE_MAX_LENGTH),
+    section3Content: sanitizeBoundedText(input.section3Content, HOME_SEO_CONTENT_MAX_LENGTH),
+  };
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {

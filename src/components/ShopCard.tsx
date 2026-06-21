@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, MapPin } from 'lucide-react';
@@ -12,7 +12,9 @@ interface ShopCardProps {
   shop: ShopListItem;
   variant?: 'premium' | 'regular';
   detailHref?: string;
+  prefetchStrategy?: 'intent' | 'lead';
 }
+
 
 const themeEmoji: Record<string, string> = {
   swedish: '',
@@ -37,24 +39,119 @@ const gradients = [
   'from-white to-[color-mix(in_srgb,var(--portal-brand)_10%,white)]',
 ];
 
-function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}` }: ShopCardProps) {
+function ShopCard({
+  shop,
+  variant = 'regular',
+  detailHref = `/shop/${shop.slug}`,
+  prefetchStrategy = 'intent',
+}: ShopCardProps) {
   const router = useRouter();
+  const linkRef = useRef<HTMLAnchorElement | null>(null);
+  const prefetchedRef = useRef(false);
+  const warmedImageRef = useRef(false);
+
+
+
+  useEffect(() => {
+    prefetchedRef.current = false;
+    warmedImageRef.current = false;
+  }, [detailHref]);
+
   const prefetchDetail = useCallback(() => {
+    if (prefetchedRef.current) {
+      return;
+    }
+
+    prefetchedRef.current = true;
     router.prefetch(detailHref);
   }, [detailHref, router]);
+
+  const thumbnailUrl = shop.thumbnailUrl?.trim();
+  const detailHeroUrl = shop.bannerUrl?.trim() || thumbnailUrl;
+  const warmDetailAssets = useCallback(() => {
+    prefetchDetail();
+
+    if (!detailHeroUrl || warmedImageRef.current || typeof window === 'undefined') {
+      return;
+    }
+
+    warmedImageRef.current = true;
+    const detailImage = new window.Image();
+    detailImage.decoding = 'async';
+    detailImage.src = detailHeroUrl;
+  }, [detailHeroUrl, prefetchDetail]);
+
+  useEffect(() => {
+    if (prefetchStrategy !== 'lead') {
+      return;
+    }
+
+    const currentLink = linkRef.current;
+    if (!currentLink) {
+      return;
+    }
+
+    const connection = (navigator as Navigator & {
+      connection?: {
+        saveData?: boolean;
+        effectiveType?: string;
+      };
+    }).connection;
+    if (connection?.saveData || connection?.effectiveType?.includes('2g')) {
+      return;
+    }
+
+    if (typeof window.IntersectionObserver === 'function') {
+      const observer = new window.IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            prefetchDetail();
+            observer.disconnect();
+          }
+        },
+        { rootMargin: '120px' },
+      );
+
+      observer.observe(currentLink);
+      return () => observer.disconnect();
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleHandle = window.requestIdleCallback(() => {
+        prefetchDetail();
+      }, { timeout: 1500 });
+
+      return () => {
+        if (typeof window.cancelIdleCallback === 'function') {
+          window.cancelIdleCallback(idleHandle);
+        }
+      };
+    }
+
+    const timeoutHandle = window.setTimeout(() => {
+      prefetchDetail();
+    }, 900);
+
+    return () => window.clearTimeout(timeoutHandle);
+  }, [prefetchDetail, prefetchStrategy]);
+
+
+
+
   const isPremium = variant === 'premium' || shop.isPremium;
   const gIdx = Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % gradients.length;
-  const thumbnailUrl = shop.thumbnailUrl?.trim();
   const [imageFailed, setImageFailed] = useState(false);
   const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;
 
   return (
     <Link
+      ref={linkRef}
       href={detailHref}
       prefetch={false}
-      onMouseEnter={prefetchDetail}
-      onFocus={prefetchDetail}
-      onTouchStart={prefetchDetail}
+      onMouseEnter={warmDetailAssets}
+      onFocus={warmDetailAssets}
+      onTouchStart={warmDetailAssets}
+      onPointerDown={warmDetailAssets}
       className={clsx(
         'shop-card group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[color-mix(in_srgb,var(--portal-brand)_35%,white)]',
         isPremium ? 'border-[var(--portal-blue-banner-border)]' : 'border-gray-200 border-opacity-70',
@@ -71,6 +168,9 @@ function ShopCard({ shop, variant = 'regular', detailHref = `/shop/${shop.slug}`
             src={thumbnailUrl}
             alt={shop.name}
             className="absolute inset-0 h-full w-full bg-white object-contain transition-opacity duration-300 group-hover:opacity-95"
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             onError={() => setImageFailed(true)}
           />
         ) : (

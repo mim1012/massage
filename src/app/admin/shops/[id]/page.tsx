@@ -125,6 +125,7 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
     setForm({ ...form, region: rcode, regionLabel: rlabel, subRegion: '', subRegionLabel: '' });
   };
   const currentDistricts = DISTRICTS[form.region] || [];
+  const effectiveCardThumbnailPreview = thumbPreview || galleryPreviews[0] || '';
   const updateCourse = (index: number, field: keyof Shop['courses'][number], value: string) => {
     setCourses((current) =>
       current.map((course, courseIndex) => (courseIndex === index ? { ...course, [field]: value } : course)),
@@ -442,9 +443,13 @@ export default function ShopEditPage({ params }: { params: Promise<{ id: string 
                 <p className="text-xs font-bold text-gray-500 mb-2">목록 카드 미리보기</p>
                 <div className="max-w-[200px]">
                   <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                    <div className="aspect-square bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center text-5xl">
-                      {themeEmoji[form.theme] ?? '✨'}
-                    </div>
+                    {effectiveCardThumbnailPreview ? (
+                      <img src={effectiveCardThumbnailPreview} alt="목록 썸네일 미리보기" className="aspect-square w-full object-cover" />
+                    ) : (
+                      <div className="aspect-square bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center text-5xl">
+                        {themeEmoji[form.theme] ?? '✨'}
+                      </div>
+                    )}
                     <div className="p-2.5">
                       <p className="text-sm font-bold text-gray-900 truncate">{form.name || '업소명'}</p>
                       <div className="flex items-center gap-1 mt-1">

@@ -15,16 +15,42 @@ const REQUIRED_SEED_IMAGE_NUMBERS = Array.from({ length: 50 }, (_, index) => ind
 
 test('home page server composition keeps canonical directory + deferred data flow intact', async () => {
   const homePageSource = await readProjectFile('src/app/page.tsx');
+  const appLayoutSource = await readProjectFile('src/app/layout.tsx');
+  const globalLayoutSource = await readProjectFile('src/components/GlobalLayout.tsx');
+  const siteContentSource = await readProjectFile('src/lib/use-site-content.tsx');
+  const homeSeoSectionSource = await readProjectFile('src/components/public/HomeSeoSection.tsx');
 
   assert.equal(homePageSource.includes("import HomePageClient from '@/components/public/HomePageClient';"), true);
+  assert.equal(homePageSource.includes("import HomeSeoSection from '@/components/public/HomeSeoSection';"), true);
   assert.equal(homePageSource.includes("import { getPublicSiteContent } from '@/lib/server/communityStore';"), true);
-  assert.equal(homePageSource.includes("import { listDirectoryShops } from '@/lib/server/shop-store';"), true);
+  assert.equal(homePageSource.includes("import { listDirectoryShops, warmPublicShopDetailCaches } from '@/lib/server/shop-store';"), true);
   assert.equal(homePageSource.includes('createDeferredHomeShopResponse'), true);
   assert.equal(homePageSource.includes('shouldDeferInitialHomeDirectoryFetch'), true);
   assert.equal(homePageSource.includes('getDirectoryCanonicalRedirect'), true);
   assert.equal(homePageSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(homePageSource.includes('<HomePageClient'), true);
+  assert.equal(homePageSource.includes('<HomeSeoSection homeSeo={initialData.homeSeo} />'), true);
+  assert.equal(appLayoutSource.includes("import { getPublicSiteContent } from '@/lib/server/communityStore';"), true);
+  assert.equal(appLayoutSource.includes('<GlobalLayout initialSiteContent={initialSiteContent}>'), true);
+  assert.equal(globalLayoutSource.includes('<SiteContentProvider initialContent={initialSiteContent}>'), true);
+  assert.equal(siteContentSource.includes("fetch('/api/site-settings'"), false);
+  assert.equal(homeSeoSectionSource.includes("contentVisibility: 'auto'"), true);
+  assert.equal(homeSeoSectionSource.includes("containIntrinsicSize: '720px'"), true);
 });
+
+test('home page and directory api both schedule limited post-response detail cache warmups for visible cards', async () => {
+  const homePageSource = await readProjectFile('src/app/page.tsx');
+  const shopsApiSource = await readProjectFile('src/app/api/shops/route.ts');
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+
+  assert.equal(homePageSource.includes("import { after } from 'next/server';"), true);
+  assert.equal(homePageSource.includes('after(async () => {'), true);
+  assert.equal(homePageSource.includes('warmPublicShopDetailCaches(detailWarmupSlugs);'), true);
+  assert.equal(shopsApiSource.includes("import { after } from 'next/server';"), true);
+  assert.equal(shopsApiSource.includes('warmPublicShopDetailCaches(detailWarmupSlugs);'), true);
+  assert.equal(shopStoreSource.includes('export async function warmPublicShopDetailCaches(slugs: string[]) {'), true);
+})
+
 
 test('top100 page server composition keeps canonical redirect + data loading intact', async () => {
   const top100PageSource = await readProjectFile('src/app/top100/page.tsx');
@@ -36,7 +62,7 @@ test('top100 page server composition keeps canonical redirect + data loading int
   assert.equal(top100PageSource.includes('<Top100PageClient initialShops={shops} />'), true);
 });
 
-test('home client keeps mobile region chips before premium cards and mobile banner rail after the list', async () => {
+test('home client keeps mobile region chips before premium cards and mobile banner rail before the deferred seo section slot', async () => {
   const prodSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
   assert.equal(prodSource.includes('import Sidebar from "@/components/Sidebar";'), true);
@@ -44,7 +70,9 @@ test('home client keeps mobile region chips before premium cards and mobile bann
   assert.equal(prodSource.includes('scrollbar-hide md:hidden'), true);
   assert.equal(prodSource.indexOf('scrollbar-hide md:hidden') < prodSource.indexOf('{premiumShops.length > 0 && ('), true);
   assert.equal(prodSource.indexOf('{premiumShops.length > 0 && (') < prodSource.indexOf('<MobileBannerRail />'), true);
-  assert.equal(prodSource.indexOf('<MobileBannerRail />') < prodSource.indexOf('seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5'), true);
+  assert.equal(prodSource.indexOf('<MobileBannerRail />') < prodSource.indexOf('{children}'), true);
+  assert.equal(prodSource.includes('initialHomeSeo'), false);
+  assert.equal(prodSource.includes('children?: ReactNode;'), true);
   assert.equal(prodSource.includes('📋 ${sortType === "popular" ? "인기 추천 업소" : "전체 업소"}'), true);
   assert.equal(prodSource.includes('지역이나 테마를 바꿔 다른 업소를 찾아보세요.'), false);
 });
@@ -105,10 +133,15 @@ test('home directory navigation uses client-side data fetch for smooth theme tra
   assert.equal(homeClientSource.includes('<Sidebar onDirectoryNavigate={handleDirectoryNavigate} />'), true);
   assert.equal(homeClientSource.includes('fetch(`/api/shops?${cacheKey}`)'), true);
   assert.equal(homeClientSource.includes('window.addEventListener('), true);
-  assert.equal(homeClientSource.includes('PREWARM_REGION_CODES'), true);
-  assert.equal(homeClientSource.includes('PREWARM_THEME_CODES'), true);
-  assert.equal(homeClientSource.includes('Opportunistic prewarm only'), true);
+  assert.equal(homeClientSource.includes('requestIdleCallback'), true);
+  assert.equal(homeClientSource.includes('hasLoadedDirectory'), true);
+  assert.equal(homeClientSource.includes('connection?.saveData'), true);
+  assert.equal(homeClientSource.includes('selectedRegion === "all" && selectedSubRegion === "all" && selectedTheme === "all"'), true);
+  assert.equal(homeClientSource.includes('PREWARM_REGION_CODES'), false);
+  assert.equal(homeClientSource.includes('PREWARM_THEME_CODES'), false);
+  assert.equal(homeClientSource.includes('Visible navigation still loads on demand.'), true);
 });
+
 test('smart prefetch links hand home directory clicks to the smooth client transition path', async () => {
   const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
 
@@ -132,22 +165,58 @@ test('header logo always links to the main home route', async () => {
   assert.equal(headerSource.includes('<SmartPrefetchLink'), true);
   assert.equal(headerSource.includes('href="/"'), true);
 });
-test('shop cards prefetch detail pages on user intent', async () => {
+
+test('mobile header menu exposes region to district navigation without dropping below-the-fold categories', async () => {
+  const headerSource = await readProjectFile('src/components/Header.tsx');
+
+  assert.equal(headerSource.includes("const mobileRegionNavigatorCode = selectedRegion !== 'all' ? selectedRegion : currentRegion ?? 'all';"), true);
+  assert.equal(headerSource.includes('지역 선택 후 구·군까지 바로 이동'), true);
+  assert.equal(headerSource.includes("mode: 'region'"), true);
+  assert.equal(headerSource.includes('mobileDistricts.map((district) => ('), true);
+  assert.equal(headerSource.includes('고객 및 제휴 서비스'), true);
+})
+test('shop cards prefetch detail pages on direct user intent while limiting automatic home prefetching to lead cards', async () => {
   const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
 
   assert.equal(shopCardSource.includes('useRouter'), true);
   assert.equal(shopCardSource.includes('router.prefetch(detailHref)'), true);
-  assert.equal(shopCardSource.includes('onMouseEnter={prefetchDetail}'), true);
-  assert.equal(shopCardSource.includes('onTouchStart={prefetchDetail}'), true);
+  assert.equal(shopCardSource.includes("prefetchStrategy?: 'intent' | 'lead';"), true);
+  assert.equal(shopCardSource.includes("if (prefetchStrategy !== 'lead')"), true);
+  assert.equal(shopCardSource.includes('prefetch={false}'), true);
+  assert.equal(homeClientSource.includes('premium-shop-card flex overflow-hidden'), true);
+  assert.equal(homeClientSource.includes('const warmPremiumDetailAssets = useCallback('), true);
+  assert.equal(homeClientSource.includes('prefetch={false}'), true);
+  assert.equal(homeClientSource.includes('prefetchStrategy={index < 2 ? "lead" : "intent"}'), true);
+  assert.equal(homeClientSource.includes('onMouseEnter={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}'), true);
+  assert.equal(homeClientSource.includes('href={detailHref}'), true);
+  assert.equal(shopCardSource.includes('new window.Image()'), true);
+  assert.equal(shopCardSource.includes('detailImage.decoding = \'async\''), true);
+  assert.equal(shopCardSource.includes('IntersectionObserver'), true);
+  assert.equal(shopCardSource.includes('requestIdleCallback'), true);
+  assert.equal(shopCardSource.includes('onMouseEnter={warmDetailAssets}'), true);
+  assert.equal(shopCardSource.includes('onTouchStart={warmDetailAssets}'), true);
+  assert.equal(shopCardSource.includes('onPointerDown={warmDetailAssets}'), true);
 });
 
-test('shop detail routes run near the production database', async () => {
+test('shop detail routes stay near the production database with a loading shell, cached public detail reads, and deferred review hydration', async () => {
   const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
   const shopApiSource = await readProjectFile('src/app/api/shops/[slug]/route.ts');
+  const shopLoadingSource = await readProjectFile('src/app/shop/[slug]/loading.tsx');
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
 
   assert.equal(shopPageSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(shopApiSource.includes("export const preferredRegion = 'sin1'"), true);
-});
+  assert.equal(shopPageSource.includes("export const dynamic = 'force-dynamic';"), false);
+  assert.equal(shopPageSource.includes("import ShopMediaSection from '@/components/public/ShopMediaSection';"), true);
+  assert.equal(shopApiSource.includes('getShopReviewsBySlug'), true);
+  assert.equal(shopLoadingSource.includes('animate-pulse'), true);
+  assert.equal(shopLoadingSource.includes('grid grid-cols-1 gap-3 lg:grid-cols-[1fr_280px]'), true);
+  assert.equal(shopStoreSource.includes("const PUBLIC_SHOP_DETAIL_CACHE_TAG = 'public-shop-detail';"), true);
+  assert.equal(shopStoreSource.includes('const getPersistentShopDetail = unstable_cache('), true);
+  assert.equal(shopStoreSource.includes('const getPersistentShopMetadata = unstable_cache('), true);
+  assert.equal(shopStoreSource.includes('invalidatePublicShopDetailCache();'), true);
+})
 
 test('shop editors do not expose manual slug input', async () => {
   const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
@@ -176,18 +245,38 @@ test('shop card thumbnails preserve full scraped images without backdrop artifac
   assert.equal(shopCardSource.includes('const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;'), true);
   assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
   assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
+  assert.equal(shopCardSource.includes('fetchPriority="low"'), true);
   assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
-  assert.equal(homeClientSource.includes('{shop.thumbnailUrl?.trim() ? ('), true);
+  assert.equal(homeClientSource.includes('const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, \'premium-card\');'), true);
+  assert.equal(homeClientSource.includes('loading={index === 0 ? "eager" : "lazy"}'), true);
+  assert.equal(homeClientSource.includes('decoding="async"'), true);
+  assert.equal(homeClientSource.includes('fetchPriority={index === 0 ? "high" : "low"}'), true);
   assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
 });
 
-test('shop detail media preserves full scraped images on a clean background', async () => {
+test('shop detail media preserves full scraped images while deferring heavier gallery work, using sized proxy variants, and keeping description blocks inside the mobile viewport', async () => {
   const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+  const mediaSource = await readProjectFile('src/components/public/ShopMediaSection.tsx');
+  const bannerRouteSource = await readProjectFile('src/app/api/shops/[slug]/banner/route.ts');
+  const galleryRouteSource = await readProjectFile('src/app/api/shops/[slug]/images/[index]/route.ts');
 
-  assert.equal(shopPageSource.includes('alt={`${shop.name} 대표 이미지`} className="absolute inset-0 h-full w-full object-contain"'), true);
-  assert.equal(shopPageSource.includes('alt={`${shop.name} 갤러리 ${index + 1}`} className="absolute inset-0 h-full w-full object-contain"'), true);
-  assert.equal(shopPageSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
-});
+  assert.equal(shopPageSource.includes('<ShopMediaSection shopName={shop.name} primaryImage={primaryImage} galleryImages={shop.images} />'), true);
+  assert.equal(shopStoreSource.includes("buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')"), true);
+  assert.equal(shopStoreSource.includes("buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, index, 'gallery')"), true);
+  assert.equal(shopStoreSource.includes("buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')"), true);
+  assert.equal(mediaSource.includes('loading="eager"'), true);
+  assert.equal(mediaSource.includes('fetchPriority="high"'), true);
+  assert.equal(mediaSource.includes('loading="lazy"'), true);
+  assert.equal(mediaSource.includes('추가 사진 {dedupedGalleryImages.length}장 불러오기'), true);
+  assert.equal(mediaSource.includes('사진 {remainingImageCount}장 더 보기'), true);
+  assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
+  assert.equal(galleryRouteSource.includes('Number.parseInt(index, 10)'), true);
+  assert.equal(galleryRouteSource.includes("searchParams.get('size')"), true);
+  assert.equal(mediaSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
+  assert.equal(shopPageSource.includes('[overflow-wrap:anywhere]'), true);
+  assert.equal(shopPageSource.includes('[&_a]:break-all'), true);
+})
 
 test('list view keeps a fixed thumbnail box instead of collapsing images', async () => {
   const globalCssSource = await readProjectFile('src/app/globals.css');
@@ -207,13 +296,19 @@ test('directory category menus collapse after a concrete region or theme choice'
 test('top-level navigation links prefetch on intent for faster page changes', async () => {
   const headerSource = await readProjectFile('src/components/Header.tsx');
   const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
+  const themesSource = await readProjectFile('src/lib/use-themes.ts');
+  const authSessionSource = await readProjectFile('src/lib/use-auth-session.ts');
 
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/top100"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
   assert.equal(smartLinkSource.includes('router.push(targetHref)'), true);
-  assert.equal(headerSource.includes("'/top100', '/board', '/ad', '/board/qna'"), true);
+  assert.equal(headerSource.includes('useAuthSession({ defer: true })'), true);
+  assert.equal(headerSource.includes('router.prefetch(href)'), false);
+  assert.equal(themesSource.includes('requestIdleCallback'), true);
+  assert.equal(themesSource.includes("fetch('/api/themes', { cache: 'force-cache' })"), true);
+  assert.equal(authSessionSource.includes('window.requestIdleCallback'), true);
 });
 test('shop image uploads are resized before persisting previews', async () => {
   const resizeSource = await readProjectFile('src/lib/client/image-resize.ts');
@@ -226,6 +321,18 @@ test('shop image uploads are resized before persisting previews', async () => {
   assert.equal(sharedEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
   assert.equal(adminEditorSource.includes('readThumbnailFile'), true);
   assert.equal(adminEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
+});
+
+test('shop editor preview card mirrors the actual list thumbnail fallback instead of drifting to banner-only state', async () => {
+  const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
+
+  assert.equal(sharedEditorSource.includes("const effectiveCardThumbnailPreview = thumbPreview || galleryPreviews[0] || '';"), true);
+  assert.equal(sharedEditorSource.includes('setThumbPreview(shopResult.shop.thumbnailUrl);'), true);
+  assert.equal(sharedEditorSource.includes('setThumbPreview(shopResult.shop.thumbnailUrl || shopResult.shop.bannerUrl);'), false);
+  assert.equal(sharedEditorSource.includes('src={effectiveCardThumbnailPreview}'), true);
+  assert.equal(adminEditorSource.includes("const effectiveCardThumbnailPreview = thumbPreview || galleryPreviews[0] || '';"), true);
+  assert.equal(adminEditorSource.includes('src={effectiveCardThumbnailPreview}'), true);
 });
 
 test('admin new shop editor waits for auth before initializing form state', async () => {
@@ -243,26 +350,58 @@ test('admin settings keeps dad live preview component wired', async () => {
   assert.equal(settingsSource.includes('<SettingsPreview siteForm={siteForm} seoForm={seoForm} />'), true);
   assert.equal(previewSource.includes('export function SettingsPreview'), true);
 });
+test('admin seo editor caps footer copy length and stores the limit in one shared place', async () => {
+  const settingsSource = await readProjectFile('src/app/admin/settings/page.tsx');
+  const settingsRouteSource = await readProjectFile('src/app/api/admin/settings/route.ts');
+  const siteContentLimitsSource = await readProjectFile('src/lib/site-content-limits.ts');
+
+  assert.equal(siteContentLimitsSource.includes('export const HOME_SEO_CONTENT_MAX_LENGTH = 4000;'), true);
+  assert.equal(settingsSource.includes('maxLength={HOME_SEO_CONTENT_MAX_LENGTH}'), true);
+  assert.equal(settingsSource.includes('{section.content.length}/{HOME_SEO_CONTENT_MAX_LENGTH}'), true);
+  assert.equal(settingsRouteSource.includes('sanitizeSiteContentPayload'), true);
+  assert.equal(settingsRouteSource.includes('sanitizeBoundedText(body.section1Content, HOME_SEO_CONTENT_MAX_LENGTH)'), true);
+});
 test('public list APIs send CDN cache headers for smooth repeated navigation', async () => {
   const shopRouteSource = await readProjectFile('src/app/api/shops/route.ts');
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
 
   assert.equal(shopRouteSource.includes('public, s-maxage=10, stale-while-revalidate=10'), true);
   assert.equal(themeRouteSource.includes('public, s-maxage=300, stale-while-revalidate=600'), true);
   assert.equal(shopRouteSource.includes("'Cache-Control': cacheControl"), true);
   assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
+  assert.equal(shopStoreSource.includes('return await getPersistentDirectoryShopList(cacheKey);'), true);
+  assert.equal(shopStoreSource.includes('return listDirectoryShopsUncached({'), true);
   assert.equal(shopRouteSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(themeRouteSource.includes("export const preferredRegion = 'sin1'"), true);
 });
-test('shop list payloads proxy heavy thumbnail data through cached media route', async () => {
+test('shop list and detail payloads proxy heavy shop images through cached, size-aware media routes', async () => {
   const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+  const mediaHelperSource = await readProjectFile('src/lib/server/shop-media.ts');
   const thumbnailRouteSource = await readProjectFile('src/app/api/shops/[slug]/thumbnail/route.ts');
+  const bannerRouteSource = await readProjectFile('src/app/api/shops/[slug]/banner/route.ts');
+  const galleryRouteSource = await readProjectFile('src/app/api/shops/[slug]/images/[index]/route.ts');
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
+  const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
 
-  assert.equal(shopStoreSource.includes('/api/shops/${encodeURIComponent(record.slug)}/thumbnail'), true);
+  assert.equal(shopStoreSource.includes('buildShopThumbnailProxyUrl'), true);
+  assert.equal(shopStoreSource.includes('&size=${size}'), true);
+  assert.equal(shopStoreSource.includes("buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'card')"), true);
+  assert.equal(shopStoreSource.includes("buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')"), true);
   assert.equal(shopStoreSource.includes('export async function getShopThumbnailBySlug'), true);
-  assert.equal(thumbnailRouteSource.includes('public, max-age=31536000, immutable'), true);
-  assert.equal(thumbnailRouteSource.includes('parseDataUrl'), true);
-});
+  assert.equal(shopStoreSource.includes('export async function getShopBannerBySlug'), true);
+  assert.equal(shopStoreSource.includes('export async function getShopGalleryImageBySlug'), true);
+  assert.equal(mediaHelperSource.includes("import sharp from 'sharp';"), true);
+  assert.equal(mediaHelperSource.includes("'premium-card': { width: 480, height: 480, quality: 68 }"), true);
+  assert.equal(mediaHelperSource.includes("return value && value in SHOP_MEDIA_VARIANTS ? (value as ShopMediaVariant) : 'card';"), true);
+  assert.equal(mediaHelperSource.includes("new URL(source, request.url)"), true);
+  assert.equal(mediaHelperSource.includes("image/avif,image/webp,image/*,*/*;q=0.8"), true);
+  assert.equal(thumbnailRouteSource.includes("searchParams.get('size')"), true);
+  assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
+  assert.equal(galleryRouteSource.includes("searchParams.get('size')"), true);
+  assert.equal(homeClientSource.includes('const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, \'premium-card\');'), true);
+  assert.equal(shopCardSource.includes('const detailHeroUrl = shop.bannerUrl?.trim() || thumbnailUrl;'), true);
+})
 test('directory cache prewarm cron covers common public list routes', async () => {
   const vercelConfig = await readProjectFile('vercel.json');
   const prewarmRoute = await readProjectFile('src/app/api/cron/prewarm-directory/route.ts');

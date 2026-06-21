@@ -11,11 +11,23 @@ async function readProjectFile(relativePath: string) {
   return fs.readFile(path.join(projectRoot, relativePath), 'utf8');
 }
 
-test('shop detail page keeps embedded review form above the review list', async () => {
-  const source = await readProjectFile('src/app/shop/[slug]/page.tsx');
+test('shop detail page delegates review loading to a client section after the shell paints', async () => {
+  const pageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
+  const sectionSource = await readProjectFile('src/components/public/ShopReviewSection.tsx');
 
-  assert.equal(source.includes("<ShopReviewForm shopId={shop.id} shopName={shop.name} />"), true);
-  assert.equal(source.indexOf("<ShopReviewForm shopId={shop.id} shopName={shop.name} />") < source.indexOf('아직 후기가 없습니다.'), true);
+  assert.equal(pageSource.includes("import ShopReviewSection from '@/components/public/ShopReviewSection';"), true);
+  assert.equal(pageSource.includes('<ShopReviewSection'), true);
+  assert.equal(pageSource.includes('getSessionUser'), false);
+  assert.equal(pageSource.includes("export const dynamic = 'force-dynamic';"), false);
+  assert.equal(sectionSource.includes('<ShopReviewForm shopId={shopId} shopName={shopName} />'), true);
+  assert.equal(sectionSource.indexOf('<ShopReviewForm shopId={shopId} shopName={shopName} />') < sectionSource.indexOf('아직 후기가 없습니다.'), true);
+  assert.equal(sectionSource.includes('useAuthSession'), true);
+  assert.equal(sectionSource.includes("fetch(`/api/shops/${encodeURIComponent(slug)}`"), true);
+  assert.equal(sectionSource.includes('usePathname'), true);
+  assert.equal(sectionSource.includes('useSearchParams'), true);
+  assert.equal(sectionSource.includes('후기는 회원만 확인 가능합니다.'), true);
+  assert.equal(sectionSource.includes('locked-review-'), true);
+  assert.equal(sectionSource.includes('onClick={() => router.push(loginHref)}'), true);
 });
 
 test('shop review form preserves login redirect including current pathname and query', async () => {

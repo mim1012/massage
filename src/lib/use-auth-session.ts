@@ -7,6 +7,10 @@ type SessionResponse = {
   user?: User | null;
 };
 
+type UseAuthSessionOptions = {
+  defer?: boolean;
+};
+
 async function fetchSessionUser(): Promise<User | null> {
   try {
     const response = await fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' });
@@ -18,24 +22,46 @@ async function fetchSessionUser(): Promise<User | null> {
   }
 }
 
-export function useAuthSession() {
+export function useAuthSession(options: UseAuthSessionOptions = {}) {
+  const { defer = false } = options;
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      const sessionUser = await fetchSessionUser();
-      if (cancelled) return;
-      setUser(sessionUser);
-      setAuthChecked(true);
-    })();
+    const loadSession = () => {
+      void (async () => {
+        const sessionUser = await fetchSessionUser();
+        if (cancelled) return;
+        setUser(sessionUser);
+        setAuthChecked(true);
+      })();
+    };
 
+    if (!defer) {
+      loadSession();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleHandle = window.requestIdleCallback(loadSession, { timeout: 2000 });
+      return () => {
+        cancelled = true;
+        if (typeof window.cancelIdleCallback === 'function') {
+          window.cancelIdleCallback(idleHandle);
+        }
+      };
+    }
+
+    const timeoutId = window.setTimeout(loadSession, 1200);
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [defer]);
 
   const refetch = async () => {
     const sessionUser = await fetchSessionUser();

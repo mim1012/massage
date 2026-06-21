@@ -1,10 +1,26 @@
-import { cache } from 'react';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import type { Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
+import type { ShopMediaVariant } from '@/lib/server/shop-media';
+
+function getShopMediaVersion(updatedAt: Date) {
+  return updatedAt.getTime();
+}
+
+function buildShopThumbnailProxyUrl(slug: string, updatedAt: Date, size: ShopMediaVariant) {
+  return `/api/shops/${encodeURIComponent(slug)}/thumbnail?v=${getShopMediaVersion(updatedAt)}&size=${size}`;
+}
+
+function buildShopBannerProxyUrl(slug: string, updatedAt: Date, size: ShopMediaVariant) {
+  return `/api/shops/${encodeURIComponent(slug)}/banner?v=${getShopMediaVersion(updatedAt)}&size=${size}`;
+}
+
+function buildShopGalleryImageProxyUrl(slug: string, updatedAt: Date, index: number, size: ShopMediaVariant) {
+  return `/api/shops/${encodeURIComponent(slug)}/images/${index}?v=${getShopMediaVersion(updatedAt)}&size=${size}`;
+}
 
 interface ShopFilters {
   region?: string;
@@ -40,6 +56,59 @@ export const shopInclude = {
   reviews: true,
 } satisfies Prisma.ShopInclude;
 
+const shopDetailSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  region: true,
+  regionLabel: true,
+  subRegion: true,
+  subRegionLabel: true,
+  theme: true,
+  themeLabel: true,
+  isPremium: true,
+  premiumOrder: true,
+  thumbnailUrl: true,
+  bannerUrl: true,
+  tagline: true,
+  description: true,
+  address: true,
+  phone: true,
+  hours: true,
+  rating: true,
+  tags: true,
+  isVisible: true,
+  ownerId: true,
+  createdAt: true,
+  updatedAt: true,
+  images: {
+    orderBy: { sortOrder: 'asc' },
+    select: {
+      imageUrl: true,
+      sortOrder: true,
+    },
+  },
+  courses: {
+    orderBy: { sortOrder: 'asc' },
+    select: {
+      name: true,
+      durationMinutes: true,
+      price: true,
+      description: true,
+      sortOrder: true,
+    },
+  },
+  _count: {
+    select: {
+      reviews: {
+        where: {
+          isHidden: false,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ShopSelect;
+
 const shopListSelect = {
   id: true,
   name: true,
@@ -59,6 +128,13 @@ const shopListSelect = {
   tags: true,
   createdAt: true,
   updatedAt: true,
+  images: {
+    orderBy: { sortOrder: 'asc' },
+    take: 1,
+    select: {
+      imageUrl: true,
+    },
+  },
   courses: {
     orderBy: { sortOrder: 'asc' },
     take: 1,
@@ -77,12 +153,20 @@ const shopListSelect = {
   },
 } satisfies Prisma.ShopSelect;
 
+export type ShopDetailRecord = Prisma.ShopGetPayload<{
+  select: typeof shopDetailSelect;
+}>;
+
 export type ShopListRecord = Prisma.ShopGetPayload<{
   select: typeof shopListSelect;
 }>;
 
 const PUBLIC_DIRECTORY_SHOPS_CACHE_TAG = 'public-directory-shops';
+const PUBLIC_SHOP_DETAIL_CACHE_TAG = 'public-shop-detail';
 
+function normalizePublicShopSlugCacheKey(slug: string) {
+  return slug.trim();
+}
 
 function normalizeDirectoryShopListFilters(filters: DirectoryShopFilters) {
   return {
@@ -123,7 +207,6 @@ function isMissingNextCacheContextError(error: unknown) {
 }
 
 export function invalidatePublicShopListCache() {
-
   try {
     revalidateTag(PUBLIC_DIRECTORY_SHOPS_CACHE_TAG, 'max');
   } catch (error) {
@@ -131,6 +214,21 @@ export function invalidatePublicShopListCache() {
       throw error;
     }
   }
+}
+
+export function invalidatePublicShopDetailCache() {
+  try {
+    revalidateTag(PUBLIC_SHOP_DETAIL_CACHE_TAG, 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
+}
+
+export function invalidatePublicShopCaches() {
+  invalidatePublicShopListCache();
+  invalidatePublicShopDetailCache();
 }
 
 export function mapShop(record: ShopRecord): Shop {
@@ -176,19 +274,19 @@ export function mapShop(record: ShopRecord): Shop {
   };
 }
 
-function mapReview(review: DbReview, shopName: string): Review {
-  return {
-    id: review.id,
-    shopId: review.shopId,
-    shopName,
-    authorName: review.authorName,
-    rating: review.rating,
-    content: review.content,
-    createdAt: review.createdAt.toISOString(),
-  };
-}
+function mapShopDetail(record: ShopDetailRecord): Shop {
+  const firstGalleryImage = record.images[0]?.imageUrl ?? '';
+  const thumbnailUrl = record.thumbnailUrl
+    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'hero')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      : '';
+  const bannerUrl = record.bannerUrl
+    ? buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      : '';
 
-function mapShopList(record: ShopListRecord): ShopListItem {
   return {
     id: record.id,
     name: record.name,
@@ -201,8 +299,57 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     themeLabel: record.themeLabel,
     isPremium: record.isPremium,
     premiumOrder: record.premiumOrder ?? undefined,
-    thumbnailUrl: record.thumbnailUrl ? `/api/shops/${encodeURIComponent(record.slug)}/thumbnail?v=${record.updatedAt.getTime()}` : '',
-    bannerUrl: '',
+    thumbnailUrl,
+    bannerUrl,
+    images: record.images.map((_image, index) => buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, index, 'gallery')),
+    tagline: record.tagline,
+    description: record.description,
+    address: record.address,
+    phone: record.phone,
+    hours: record.hours,
+    rating: record.rating,
+    reviewCount: record._count.reviews,
+    courses: record.courses.map((course) => ({
+      name: course.name,
+      duration: `${course.durationMinutes}분`,
+      price: `${course.price}`,
+      description: course.description ?? undefined,
+    })),
+    tags: record.tags,
+    isVisible: record.isVisible,
+    ownerId: record.ownerId ?? undefined,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+function mapShopList(record: ShopListRecord): ShopListItem {
+  const firstGalleryImage = record.images[0]?.imageUrl ?? '';
+  const thumbnailUrl = record.thumbnailUrl
+    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'card')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'card')
+      : '';
+  const bannerUrl = record.bannerUrl
+    ? buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      : '';
+
+  return {
+    id: record.id,
+    name: record.name,
+    slug: record.slug,
+    region: record.region,
+    regionLabel: record.regionLabel,
+    subRegion: record.subRegion ?? undefined,
+    subRegionLabel: record.subRegionLabel ?? undefined,
+    theme: record.theme,
+    themeLabel: record.themeLabel,
+    isPremium: record.isPremium,
+    premiumOrder: record.premiumOrder ?? undefined,
+    thumbnailUrl,
+    bannerUrl,
     tagline: record.tagline,
     rating: record.rating,
     reviewCount: record._count.reviews,
@@ -232,6 +379,56 @@ export async function getShopThumbnailBySlug(slug: string) {
 
   return {
     thumbnailUrl: shop.thumbnailUrl,
+    updatedAt: shop.updatedAt,
+  };
+}
+
+export async function getShopBannerBySlug(slug: string) {
+  const shop = await prisma.shop.findUnique({
+    where: { slug },
+    select: {
+      bannerUrl: true,
+      updatedAt: true,
+      isVisible: true,
+    },
+  });
+
+  if (!shop?.isVisible || !shop.bannerUrl) {
+    return null;
+  }
+
+  return {
+    bannerUrl: shop.bannerUrl,
+    updatedAt: shop.updatedAt,
+  };
+}
+
+export async function getShopGalleryImageBySlug(slug: string, index: number) {
+  const shop = await prisma.shop.findUnique({
+    where: { slug },
+    select: {
+      updatedAt: true,
+      isVisible: true,
+      images: {
+        orderBy: { sortOrder: 'asc' },
+        select: {
+          imageUrl: true,
+        },
+      },
+    },
+  });
+
+  if (!shop?.isVisible) {
+    return null;
+  }
+
+  const source = shop.images[index]?.imageUrl;
+  if (!source) {
+    return null;
+  }
+
+  return {
+    imageUrl: source,
     updatedAt: shop.updatedAt,
   };
 }
@@ -465,7 +662,24 @@ const getPersistentDirectoryShopList = unstable_cache(
 );
 
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
-  return listDirectoryShopsUncached(filters);
+  const normalizedQuery = filters.query?.trim();
+  if (normalizedQuery) {
+    return listDirectoryShopsUncached({
+      ...filters,
+      query: normalizedQuery,
+    });
+  }
+
+  const cacheKey = normalizeDirectoryShopListCacheKey(filters);
+  try {
+    return await getPersistentDirectoryShopList(cacheKey);
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return listDirectoryShopsUncached(filters);
+    }
+
+    throw error;
+  }
 }
 
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
@@ -509,18 +723,7 @@ export async function listShops(filters: ShopFilters = {}) {
 const getShopBySlugUncached = async (slug: string) => {
   const shop = await prisma.shop.findFirst({
     where: { slug, isVisible: true },
-    include: {
-      images: {
-        orderBy: { sortOrder: 'asc' },
-      },
-      courses: {
-        orderBy: { sortOrder: 'asc' },
-      },
-      reviews: {
-        where: { isHidden: false },
-        orderBy: { createdAt: 'desc' },
-      },
-    },
+    select: shopDetailSelect,
   });
 
   if (!shop) {
@@ -528,12 +731,109 @@ const getShopBySlugUncached = async (slug: string) => {
   }
 
   return {
-    shop: mapShop(shop),
-    reviews: shop.reviews.map((review) => mapReview(review, shop.name)),
+    shop: mapShopDetail(shop),
   };
 };
 
-export const getShopBySlug = cache(getShopBySlugUncached);
+const getPersistentShopDetail = unstable_cache(
+  async (normalizedSlug: string) => getShopBySlugUncached(normalizedSlug),
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'detail'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function getShopBySlug(slug: string) {
+  const normalizedSlug = normalizePublicShopSlugCacheKey(slug);
+
+  try {
+    return await getPersistentShopDetail(normalizedSlug);
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return getShopBySlugUncached(normalizedSlug);
+    }
+
+    throw error;
+  }
+}
+
+const getShopMetadataBySlugUncached = async (slug: string) => {
+  return prisma.shop.findFirst({
+    where: { slug, isVisible: true },
+    select: {
+      name: true,
+      regionLabel: true,
+      themeLabel: true,
+      description: true,
+    },
+  });
+};
+
+const getPersistentShopMetadata = unstable_cache(
+  async (normalizedSlug: string) => getShopMetadataBySlugUncached(normalizedSlug),
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'metadata'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function getShopMetadataBySlug(slug: string) {
+  const normalizedSlug = normalizePublicShopSlugCacheKey(slug);
+
+  try {
+    return await getPersistentShopMetadata(normalizedSlug);
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return getShopMetadataBySlugUncached(normalizedSlug);
+    }
+
+    throw error;
+  }
+}
+
+export async function warmPublicShopDetailCaches(slugs: string[]) {
+  const normalizedSlugs = Array.from(
+    new Set(slugs.map((slug) => normalizePublicShopSlugCacheKey(slug)).filter(Boolean)),
+  );
+
+  await Promise.all(
+    normalizedSlugs.flatMap((slug) => [
+      getShopBySlug(slug),
+      getShopMetadataBySlug(slug),
+    ]),
+  );
+}
+export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
+  const reviews = await prisma.review.findMany({
+    where: {
+      isHidden: false,
+      shop: {
+        slug,
+        isVisible: true,
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      shopId: true,
+      authorName: true,
+      rating: true,
+      content: true,
+      createdAt: true,
+      shop: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return reviews.map((review) => ({
+    id: review.id,
+    shopId: review.shopId,
+    shopName: review.shop.name,
+    authorName: review.authorName,
+    rating: review.rating,
+    content: review.content,
+    createdAt: review.createdAt.toISOString(),
+  }));
+}
 
 export async function updateShopVisibility(shopId: string, isVisible: boolean) {
   try {
@@ -542,7 +842,7 @@ export async function updateShopVisibility(shopId: string, isVisible: boolean) {
       data: { isVisible },
       include: shopInclude,
     });
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     return mapShop(shop);
   } catch {
     return null;
@@ -559,7 +859,7 @@ export async function updateShopPremium(shopId: string, isPremium: boolean, prem
       },
       include: shopInclude,
     });
-    invalidatePublicShopListCache();
+    invalidatePublicShopCaches();
     return mapShop(shop);
   } catch {
     return null;

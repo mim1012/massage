@@ -26,18 +26,24 @@ export default function Header() {
   const currentTheme = searchParams.get('theme');
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const themeEntryRegion = currentRegion ?? 'seoul';
+  const basePath = pathname === '/' || pathname === '/top100' ? pathname : '/';
+  const mobileRegionNavigatorCode = selectedRegion !== 'all' ? selectedRegion : currentRegion ?? 'all';
+  const mobileDistricts =
+    mobileRegionNavigatorCode !== 'all'
+      ? (DISTRICTS[mobileRegionNavigatorCode] ?? []).filter((district) => district.code !== 'all')
+      : [];
+  const mobileNavigatorRegionLabel =
+    REGIONS.find((region) => region.code === mobileRegionNavigatorCode)?.label ?? '전체';
   const { siteSettings } = useSiteContent();
-  const { user, authChecked, refetch, clearSession } = useAuthSession();
+  const { user, authChecked, refetch, clearSession } = useAuthSession({ defer: true });
   const themes = useThemes();
+
   const myHref = getMyHref(user?.role);
   const myLabel = getMyLabel(user?.role);
   const isAuthed = authChecked && Boolean(user);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    
-    // If we're on a non-home page (like board or qna), always go back to home for search
-    const basePath = pathname === '/' || pathname === '/top100' ? pathname : '/';
 
     router.push(
       buildBrowseHref({
@@ -56,26 +62,6 @@ export default function Header() {
     setSelectedRegion(searchParams.get('region') || 'all');
   }, [searchParams]);
 
-  useEffect(() => {
-    const prefetchMenuRoutes = () => {
-      for (const href of ['/', '/top100', '/board', '/ad', '/board/qna']) {
-        router.prefetch(href);
-      }
-    };
-
-    const idleCallback: number =
-      typeof window.requestIdleCallback === 'function'
-        ? window.requestIdleCallback(prefetchMenuRoutes, { timeout: 2000 })
-        : window.setTimeout(prefetchMenuRoutes, 1200);
-
-    return () => {
-      if (typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleCallback);
-      } else {
-        window.clearTimeout(idleCallback);
-      }
-    };
-  }, [router]);
 
   const handleLogout = async () => {
     if (loggingOut) {
@@ -408,25 +394,103 @@ export default function Header() {
               </button>
             </div>
           </form>
-          <div className="p-3">
-            <p className="text-xs text-gray-400 font-bold mb-2">테마별</p>
-            <div className="flex flex-wrap gap-1 mb-3">
-              {themes.filter((theme) => theme.code !== 'all').map((theme) => (
+          <div className="space-y-4 p-3">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold text-gray-400">지역별</p>
+                  <p className="text-[11px] text-gray-500">지역 선택 후 구·군까지 바로 이동</p>
+                </div>
                 <Link
-                  key={theme.code}
                   href={buildBrowseHref({
-                    mode: 'theme',
-                    region: themeEntryRegion,
-                    subRegion: currentRegion ? currentSubRegion : undefined,
-                    theme: theme.code,
+                    basePath,
+                    mode: 'region',
+                    region: mobileRegionNavigatorCode === 'all' ? undefined : mobileRegionNavigatorCode,
+                    theme: currentTheme ?? undefined,
                   })}
                   prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-[var(--portal-brand)] hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
+                  className="shrink-0 rounded-full border border-[var(--portal-brand)] bg-white px-3 py-1 text-[11px] font-semibold text-[var(--portal-brand)]"
                 >
-                  {theme.label}
+                  {mobileRegionNavigatorCode === 'all' ? '전체보기' : `${mobileNavigatorRegionLabel} 전체`}
                 </Link>
-              ))}
+              </div>
+              <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegion('all')}
+                  className={clsx(
+                    'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    mobileRegionNavigatorCode === 'all'
+                      ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                      : 'border-gray-200 bg-white text-gray-600',
+                  )}
+                >
+                  전체
+                </button>
+                {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+                  <button
+                    key={region.code}
+                    type="button"
+                    onClick={() => setSelectedRegion(region.code)}
+                    className={clsx(
+                      'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                      mobileRegionNavigatorCode === region.code
+                        ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                        : 'border-gray-200 bg-white text-gray-600',
+                    )}
+                  >
+                    {region.label}
+                  </button>
+                ))}
+              </div>
+              {mobileDistricts.length > 0 ? (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {mobileDistricts.map((district) => (
+                    <Link
+                      key={district.code}
+                      href={buildBrowseHref({
+                        basePath,
+                        mode: 'region',
+                        region: mobileRegionNavigatorCode,
+                        subRegion: district.code,
+                        theme: currentTheme ?? undefined,
+                      })}
+                      prefetch={false}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={clsx(
+                        'rounded-xl border px-2 py-2 text-center text-xs font-medium transition-colors',
+                        currentRegion === mobileRegionNavigatorCode && currentSubRegion === district.code
+                          ? 'border-[var(--portal-brand)] bg-[var(--portal-brand)] text-white'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-[var(--portal-brand)] hover:text-[var(--portal-brand)]',
+                      )}
+                    >
+                      {district.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-bold text-gray-400">테마별</p>
+              <div className="mb-3 flex flex-wrap gap-1">
+                {themes.filter((theme) => theme.code !== 'all').map((theme) => (
+                  <Link
+                    key={theme.code}
+                    href={buildBrowseHref({
+                      mode: 'theme',
+                      region: themeEntryRegion,
+                      subRegion: currentRegion ? currentSubRegion : undefined,
+                      theme: theme.code,
+                    })}
+                    prefetch={false}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:border-[var(--portal-brand)] hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]"
+                  >
+                    {theme.label}
+                  </Link>
+                ))}
+              </div>
             </div>
             <div className="border-t border-gray-100 pt-3 mb-4">
               <p className="text-xs text-gray-400 font-bold mb-2">고객 및 제휴 서비스</p>

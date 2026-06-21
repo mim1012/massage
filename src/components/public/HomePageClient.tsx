@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type MouseEventHandler,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -33,7 +34,7 @@ import {
   getDirectoryMode,
 } from "@/lib/directory-mode";
 import { getDirectorySortType, sortRegularShops } from "@/lib/directory-sort";
-import type { HomeSeoContent, ShopListItem, SiteSettings } from "@/lib/types";
+import type { ShopListItem, SiteSettings } from "@/lib/types";
 import { formatRating } from "@/lib/utils";
 import { normalizePageParam } from "@/lib/pagination";
 
@@ -60,23 +61,34 @@ const themeEmoji: Record<string, string> = {
 };
 
 const REGULAR_PAGE_SIZE = 30;
-const PREWARM_REGION_CODES = ["seoul", "gyeonggi", "busan"] as const;
-const PREWARM_THEME_CODES = ["swedish", "aroma", "thai"] as const;
+
+function withShopMediaVariant(source: string, variant: 'premium-card' | 'hero') {
+  if (!source.trim()) {
+    return '';
+  }
+
+  if (/([?&])size=[^&]*/.test(source)) {
+    return source.replace(/([?&])size=[^&]*/, `$1size=${variant}`);
+  }
+
+  return `${source}${source.includes('?') ? '&' : '?'}size=${variant}`;
+}
+
 
 export default function HomePageClient({
   initialPremiumShops,
   initialRegularShops,
   initialRegularTotal,
   initialSiteSettings,
-  initialHomeSeo,
   deferInitialDirectoryFetch = false,
+  children,
 }: {
   initialPremiumShops: ShopListItem[];
   initialRegularShops: ShopListItem[];
   initialRegularTotal: number;
   initialSiteSettings: SiteSettings;
-  initialHomeSeo: HomeSeoContent;
   deferInitialDirectoryFetch?: boolean;
+  children?: ReactNode;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -103,6 +115,30 @@ export default function HomePageClient({
   const [viewMode, setViewMode] = useState<ViewMode>(viewParam);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const shopResponseCache = useRef(new Map<string, ShopListResponse>());
+  const prefetchedDetailHrefs = useRef(new Set<string>());
+  const warmedDetailImages = useRef(new Set<string>());
+
+
+  const warmPremiumDetailAssets = useCallback(
+    (detailHref: string, imageUrl?: string | null) => {
+      if (!prefetchedDetailHrefs.current.has(detailHref)) {
+        prefetchedDetailHrefs.current.add(detailHref);
+        router.prefetch(detailHref);
+      }
+
+      const normalizedImageUrl = imageUrl?.trim();
+      if (!normalizedImageUrl || warmedDetailImages.current.has(normalizedImageUrl) || typeof window === "undefined") {
+        return;
+      }
+
+      warmedDetailImages.current.add(normalizedImageUrl);
+      const detailImage = new window.Image();
+      detailImage.decoding = "async";
+      detailImage.src = normalizedImageUrl;
+    },
+    [router],
+  );
+
 
   const loadShops = useCallback(
     async (
@@ -337,68 +373,80 @@ export default function HomePageClient({
     hasLoadedDirectory,
   ]);
   useEffect(() => {
-    if (pathname !== "/" || searchQuery) {
+    if (pathname !== "/" || searchQuery || isLoading || !hasLoadedDirectory) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      const prewarmKeys = new Set<string>();
-      const addPrewarmKey = (params: {
-        region?: string;
-        theme?: string;
-        subRegion?: string;
-      }) => {
-        const apiParams = buildDirectorySearchParams({
-          region: params.region ?? "all",
-          subRegion: params.subRegion ?? "all",
-          theme: params.theme ?? "all",
-          extraParams: {
-            regularOffset: 0,
-            regularLimit: REGULAR_PAGE_SIZE,
-          },
-        });
-        const cacheKey = apiParams.toString();
+    if (selectedRegion === "all" && selectedSubRegion === "all" && selectedTheme === "all") {
+      return;
+    }
 
-        if (!shopResponseCache.current.has(cacheKey)) {
-          prewarmKeys.add(cacheKey);
-        }
+    const connection = (navigator as Navigator & {
+      connection?: {
+        saveData?: boolean;
+        effectiveType?: string;
       };
+    }).connection;
+    if (connection?.saveData || connection?.effectiveType?.includes("2g")) {
+      return;
+    }
 
-      if (selectedRegion !== "all") {
-        addPrewarmKey({
-          region: selectedRegion,
-          subRegion: selectedSubRegion !== "all" ? selectedSubRegion : undefined,
-          theme: selectedTheme !== "all" ? selectedTheme : undefined,
-        });
+    const runPrewarm = () => {
+      const apiParams = buildDirectorySearchParams({
+        region: selectedRegion,
+        subRegion: selectedSubRegion,
+        theme: selectedTheme,
+        extraParams: {
+          regularOffset: 0,
+          regularLimit: REGULAR_PAGE_SIZE,
+        },
+      });
+      const cacheKey = apiParams.toString();
+
+      if (shopResponseCache.current.has(cacheKey)) {
+        return;
       }
 
-      PREWARM_REGION_CODES.forEach((region) => addPrewarmKey({ region }));
-      PREWARM_THEME_CODES.forEach((theme) => addPrewarmKey({ theme }));
+      void fetch(`/api/shops?${cacheKey}`)
+        .then(async (response) => {
+          if (!response.ok) {
+            return;
+          }
 
-      prewarmKeys.forEach((cacheKey) => {
-        void fetch(`/api/shops?${cacheKey}`)
-          .then(async (response) => {
-            if (!response.ok) {
-              return;
-            }
-
-            const result = (await response.json()) as Partial<ShopListResponse>;
-            shopResponseCache.current.set(cacheKey, {
-              allShops: result.allShops ?? [],
-              premiumShops: result.premiumShops ?? [],
-              regularShops: result.regularShops ?? [],
-              regularTotal: result.regularTotal ?? result.regularShops?.length ?? 0,
-              total: result.total ?? result.regularTotal ?? result.regularShops?.length ?? 0,
-            });
-          })
-          .catch(() => {
-            // Opportunistic prewarm only; visible navigation still loads on demand.
+          const result = (await response.json()) as Partial<ShopListResponse>;
+          shopResponseCache.current.set(cacheKey, {
+            allShops: result.allShops ?? [],
+            premiumShops: result.premiumShops ?? [],
+            regularShops: result.regularShops ?? [],
+            regularTotal: result.regularTotal ?? result.regularShops?.length ?? 0,
+            total: result.total ?? result.regularTotal ?? result.regularShops?.length ?? 0,
           });
-      });
-    }, 800);
+        })
+        .catch(() => {
+          // Visible navigation still loads on demand.
+        });
+    };
 
+    if (typeof window.requestIdleCallback === "function") {
+      const idleHandle = window.requestIdleCallback(runPrewarm, { timeout: 4000 });
+      return () => {
+        if (typeof window.cancelIdleCallback === "function") {
+          window.cancelIdleCallback(idleHandle);
+        }
+      };
+    }
+
+    const timeoutId = window.setTimeout(runPrewarm, 3000);
     return () => window.clearTimeout(timeoutId);
-  }, [pathname, searchQuery, selectedRegion, selectedSubRegion, selectedTheme]);
+  }, [
+    hasLoadedDirectory,
+    isLoading,
+    pathname,
+    searchQuery,
+    selectedRegion,
+    selectedSubRegion,
+    selectedTheme,
+  ]);
 
   const regionLabel = useMemo(
     () =>
@@ -501,91 +549,105 @@ export default function HomePageClient({
               </div>
 
               <div className="premium-shop-grid">
-                {premiumShops.map((shop) => (
-                  <Link
-                    key={shop.id}
-                    href={buildShopDetailHref(shop.slug, {
-                      mode: directoryMode,
-                      region:
-                        selectedRegion !== "all" ? selectedRegion : undefined,
-                      subRegion:
-                        selectedSubRegion !== "all"
-                          ? selectedSubRegion
-                          : undefined,
-                      theme:
-                        selectedTheme !== "all" ? selectedTheme : undefined,
-                    })}
-                    prefetch={false}
-                    className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
-                  >
-                    <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
-                      {shop.thumbnailUrl?.trim() ? (
-                        <img
-                          src={shop.thumbnailUrl}
-                          alt={shop.name}
-                          className="absolute inset-0 h-full w-full bg-white object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display =
-                              "none";
-                          }}
-                        />
-                      ) : (
-                        <span className="text-6xl opacity-50 sm:text-7xl">
-                          {themeEmoji[shop.theme] ?? "✨"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
-                      <div className="mb-2 flex items-start justify-between gap-1">
-                        <div className="min-w-0">
-                          <div className="mb-1 flex items-center gap-1.5">
-                            <span className="rounded bg-[var(--portal-brand)] px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">
-                              AD
-                            </span>
-                            <h3 className="truncate text-base font-bold text-gray-900 sm:text-lg">
-                              {shop.name}
-                            </h3>
+                {premiumShops.map((shop, index) => {
+                  const detailHref = buildShopDetailHref(shop.slug, {
+                    mode: directoryMode,
+                    region:
+                      selectedRegion !== "all" ? selectedRegion : undefined,
+                    subRegion:
+                      selectedSubRegion !== "all"
+                        ? selectedSubRegion
+                        : undefined,
+                    theme:
+                      selectedTheme !== "all" ? selectedTheme : undefined,
+                  });
+
+                  const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, 'premium-card');
+                  const detailHeroUrl = shop.bannerUrl?.trim() || withShopMediaVariant(shop.thumbnailUrl, 'hero');
+
+                  return (
+                    <Link
+                      key={shop.id}
+                      href={detailHref}
+                      prefetch={false}
+                      onMouseEnter={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}
+                      onFocus={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}
+                      onTouchStart={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}
+                      onPointerDown={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}
+                      className="premium-shop-card flex overflow-hidden rounded-2xl border-2 border-[var(--portal-blue-banner-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:border-[var(--portal-brand-hover)]"
+                    >
+                      <div className="premium-shop-media relative flex aspect-square shrink-0 items-center justify-center border-[color-mix(in_srgb,var(--portal-brand)_16%,white)] bg-gradient-to-br from-[var(--portal-brand-soft)] to-white">
+                        {premiumThumbnailUrl ? (
+                          <img
+                            src={premiumThumbnailUrl}
+                            alt={shop.name}
+                            className="absolute inset-0 h-full w-full bg-white object-contain"
+                            loading={index === 0 ? "eager" : "lazy"}
+                            decoding="async"
+                            fetchPriority={index === 0 ? "high" : "low"}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                            }}
+                          />
+                        ) : (
+                          <span className="text-6xl opacity-50 sm:text-7xl">
+                            {themeEmoji[shop.theme] ?? "✨"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
+                        <div className="mb-2 flex items-start justify-between gap-1">
+                          <div className="min-w-0">
+                            <div className="mb-1 flex items-center gap-1.5">
+                              <span className="rounded bg-[var(--portal-brand)] px-1.5 py-0.5 text-[10px] font-black text-white sm:text-xs">
+                                AD
+                              </span>
+                              <h3 className="truncate text-base font-bold text-gray-900 sm:text-lg">
+                                {shop.name}
+                              </h3>
+                            </div>
+                            <p className="line-clamp-1 text-xs text-gray-500 sm:text-sm">
+                              {shop.tagline}
+                            </p>
                           </div>
-                          <p className="line-clamp-1 text-xs text-gray-500 sm:text-sm">
-                            {shop.tagline}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-2 py-1">
-                          <Star className="h-4 w-4 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
-                          <span className="text-sm font-bold text-[var(--portal-brand-dark)]">
-                            {formatRating(shop.rating)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
-                        <span className="flex items-center gap-0.5">
-                          <MapPin className="h-3.5 w-3.5 text-[var(--portal-brand)]" />
-                          {shop.regionLabel}
-                        </span>
-                        <span className="font-medium text-[var(--portal-brand)]">
-                          #{shop.themeLabel}
-                        </span>
-                      </div>
-                      <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-2">
-                        <div className="flex flex-wrap gap-1.5">
-                          {shop.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 sm:text-xs"
-                            >
-                              {tag}
+                          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--portal-brand)_18%,white)] bg-[var(--portal-brand-soft)] px-2 py-1">
+                            <Star className="h-4 w-4 fill-[var(--portal-rank)] text-[var(--portal-rank)]" />
+                            <span className="text-sm font-bold text-[var(--portal-brand-dark)]">
+                              {formatRating(shop.rating)}
                             </span>
-                          ))}
+                          </div>
                         </div>
-                        {shop.courses[0] ? (
-                          <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">
-                            {shop.courses[0].price}~
+                        <div className="mb-2 flex items-center gap-2 text-xs text-gray-500 sm:text-sm">
+                          <span className="flex items-center gap-0.5">
+                            <MapPin className="h-3.5 w-3.5 text-[var(--portal-brand)]" />
+                            {shop.regionLabel}
                           </span>
-                        ) : null}
+                          <span className="font-medium text-[var(--portal-brand)]">
+                            #{shop.themeLabel}
+                          </span>
+                        </div>
+                        <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {shop.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 sm:text-xs"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          {shop.courses[0] ? (
+                            <span className="text-sm font-black text-[var(--portal-brand)] sm:text-base">
+                              {shop.courses[0].price}~
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -683,10 +745,11 @@ export default function HomePageClient({
                     isLoading ? "opacity-30" : "opacity-100"
                   } ${viewMode === "list" ? "list-view" : "card-view"}`}
                 >
-                  {regularShops.map((shop) => (
+                  {regularShops.map((shop, index) => (
                     <ShopCard
                       key={shop.id}
                       shop={shop}
+                      prefetchStrategy={index < 2 ? "lead" : "intent"}
                       detailHref={buildShopDetailHref(shop.slug, {
                         mode: directoryMode,
                         region:
@@ -719,28 +782,7 @@ export default function HomePageClient({
 
           <MobileBannerRail />
 
-          <div className="seo-content mt-6 rounded-lg border border-gray-200 bg-white p-5">
-            <h1 className="mb-3 text-xl font-bold text-slate-800">
-              {initialHomeSeo.section1Title}
-            </h1>
-            <p className="mb-6 text-sm leading-relaxed text-gray-600">
-              {initialHomeSeo.section1Content}
-            </p>
-
-            <h2 className="mb-2 text-lg font-bold text-slate-800">
-              {initialHomeSeo.section2Title}
-            </h2>
-            <p className="mb-6 text-sm leading-relaxed text-gray-600">
-              {initialHomeSeo.section2Content}
-            </p>
-
-            <h2 className="mb-2 text-lg font-bold text-slate-800">
-              {initialHomeSeo.section3Title}
-            </h2>
-            <p className="text-sm leading-relaxed text-gray-600">
-              {initialHomeSeo.section3Content}
-            </p>
-          </div>
+          {children}
         </div>
 
         <HomeUtilityRail mode="sidebar" directoryMode={directoryMode} />

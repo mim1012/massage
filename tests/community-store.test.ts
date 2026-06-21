@@ -450,6 +450,22 @@ dbTest('site settings can be loaded and updated', async () => {
   assert.equal(reloaded?.siteSettings.siteName, nextName);
 });
 
+dbTest('site settings seo sections are trimmed to the supported footer limit', async () => {
+  const current = await getSiteContent();
+  assert.ok(current, 'expected seeded site settings');
+
+  const updated = await upsertSiteContent({
+    ...current.siteSettings,
+    ...current.homeSeo,
+    section1Title: `  ${'T'.repeat(150)}  `,
+    section1Content: `  ${'가'.repeat(4500)}  `,
+  });
+
+  assert.equal(updated.homeSeo.section1Title.length, 120);
+  assert.equal(updated.homeSeo.section1Content.length, 4000);
+  assert.equal(updated.homeSeo.section1Content, '가'.repeat(4000));
+});
+
 dbTest('partnership inquiries can be created, listed, updated, and deleted', async () => {
   const created = await createPartnershipInquiry({
     shopName: `Partnership ${uniqueSuffix()}`,
