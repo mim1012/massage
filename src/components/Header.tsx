@@ -41,6 +41,39 @@ export default function Header() {
   const myHref = getMyHref(user?.role);
   const myLabel = getMyLabel(user?.role);
   const isAuthed = authChecked && Boolean(user);
+  const desktopThemeBrowseHref = buildBrowseHref({ mode: 'theme', region: themeEntryRegion, theme: currentTheme });
+  const mobilePrimaryLinks = [
+    {
+      href: '/?view=list',
+      label: '지역별업소',
+      className: 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]',
+    },
+    {
+      href: desktopThemeBrowseHref,
+      label: '테마별업소',
+      className: 'border-violet-200 bg-violet-50 text-violet-700',
+    },
+    {
+      href: '/top100',
+      label: '인기순위',
+      className: 'border-sky-200 bg-sky-50 text-sky-700',
+    },
+    {
+      href: '/board',
+      label: '커뮤니티',
+      className: 'border-gray-200 bg-gray-50 text-gray-700',
+    },
+    {
+      href: '/ad',
+      label: '광고안내',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    },
+    {
+      href: '/board/qna',
+      label: '고객센터',
+      className: 'border-blue-200 bg-blue-50 text-blue-700',
+    },
+  ];
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -220,7 +253,7 @@ export default function Header() {
             </li>
             <li>
               <SmartPrefetchLink
-                href={buildBrowseHref({ mode: 'theme', region: themeEntryRegion, theme: currentTheme })}
+                href={desktopThemeBrowseHref}
                 prefetch={false}
                 className={clsx(
                   'block px-6 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
@@ -493,32 +526,22 @@ export default function Header() {
               </div>
             </div>
             <div className="border-t border-gray-100 pt-3 mb-4">
-              <p className="text-xs text-gray-400 font-bold mb-2">고객 및 제휴 서비스</p>
-              <div className="grid grid-cols-3 gap-2">
-                <Link
-                  href="/ad"
-                  prefetch={false}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-amber-200 rounded-xl bg-amber-50 font-bold text-amber-700 hover:bg-amber-100/70 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">📢</span> 광고안내
-                </Link>
-                <Link
-                  href="/board/partnership"
-                  prefetch={false}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-rose-200 rounded-xl bg-rose-50 font-bold text-rose-700 hover:bg-rose-100/70 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">✍️</span> 제휴입점
-                </Link>
-                <Link
-                  href="/board/qna"
-                  prefetch={false}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex flex-col items-center justify-center py-2.5 text-xs border border-blue-200 rounded-xl bg-blue-50 font-bold text-blue-700 hover:bg-blue-100/70 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">📞</span> 고객센터
-                </Link>
+              <p className="mb-2 text-xs font-bold text-gray-400">주요 카테고리</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {mobilePrimaryLinks.map((item) => (
+                  <SmartPrefetchLink
+                    key={item.label}
+                    href={item.href}
+                    prefetch={false}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={clsx(
+                      'flex items-center justify-center rounded-xl border px-3 py-2.5 text-xs font-bold shadow-sm transition-colors hover:opacity-90',
+                      item.className,
+                    )}
+                  >
+                    {item.label}
+                  </SmartPrefetchLink>
+                ))}
               </div>
             </div>
             {!isAuthed ? (

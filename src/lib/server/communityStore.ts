@@ -67,6 +67,12 @@ let cachedPublicSiteContent:
     }
   | null
   | undefined;
+let cachedPublicSiteContentPromise:
+  | Promise<{
+      siteSettings: SiteSettings;
+      homeSeo: HomeSeoContent;
+    } | null>
+  | null = null;
 let cachedBoardSummary: Promise<{ notices: number; qna: number; reviews: number }> | null = null;
 const cachedPublicNoticeLists = new Map<string, Promise<Notice[]>>();
 const cachedPublicReviewLists = new Map<string, Promise<Review[]>>();
@@ -1938,9 +1944,18 @@ export async function getPublicSiteContent() {
     return cachedPublicSiteContent;
   }
 
-  cachedPublicSiteContent = await readPublicSiteContentWithFallback();
+  if (!cachedPublicSiteContentPromise) {
+    cachedPublicSiteContentPromise = readPublicSiteContentWithFallback()
+      .then((content) => {
+        cachedPublicSiteContent = content;
+        return content;
+      })
+      .finally(() => {
+        cachedPublicSiteContentPromise = null;
+      });
+  }
 
-  return cachedPublicSiteContent;
+  return cachedPublicSiteContentPromise;
 }
 
 export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
@@ -1982,6 +1997,7 @@ export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
 
   const content = mapSiteSettings(record);
   cachedPublicSiteContent = content;
+  cachedPublicSiteContentPromise = null;
   safeRevalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG);
 
   return content;

@@ -166,14 +166,20 @@ test('header logo always links to the main home route', async () => {
   assert.equal(headerSource.includes('href="/"'), true);
 });
 
-test('mobile header menu exposes region to district navigation without dropping below-the-fold categories', async () => {
+test('mobile header menu exposes region to district navigation and the same top-level browse categories as desktop', async () => {
   const headerSource = await readProjectFile('src/components/Header.tsx');
 
   assert.equal(headerSource.includes("const mobileRegionNavigatorCode = selectedRegion !== 'all' ? selectedRegion : currentRegion ?? 'all';"), true);
   assert.equal(headerSource.includes('지역 선택 후 구·군까지 바로 이동'), true);
   assert.equal(headerSource.includes("mode: 'region'"), true);
   assert.equal(headerSource.includes('mobileDistricts.map((district) => ('), true);
-  assert.equal(headerSource.includes('고객 및 제휴 서비스'), true);
+  assert.equal(headerSource.includes('const mobilePrimaryLinks = ['), true);
+  assert.equal(headerSource.includes("label: '지역별업소'"), true);
+  assert.equal(headerSource.includes("label: '테마별업소'"), true);
+  assert.equal(headerSource.includes("label: '인기순위'"), true);
+  assert.equal(headerSource.includes("label: '커뮤니티'"), true);
+  assert.equal(headerSource.includes("label: '광고안내'"), true);
+  assert.equal(headerSource.includes("label: '고객센터'"), true);
 })
 test('shop cards prefetch detail pages on direct user intent while limiting automatic home prefetching to lead cards', async () => {
   const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');

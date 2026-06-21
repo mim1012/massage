@@ -1,4 +1,5 @@
 import { revalidateTag, unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import type { Review as DbReview, Shop as DbShop, ShopCourse, ShopImage } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
@@ -728,11 +729,15 @@ export async function listShops(filters: ShopFilters = {}) {
   return listShopsUncached(filters);
 }
 
-const getShopBySlugUncached = async (slug: string) => {
-  const shop = await prisma.shop.findFirst({
+const getVisibleShopDetailRecord = cache(async (slug: string) => {
+  return prisma.shop.findFirst({
     where: { slug, isVisible: true },
     select: shopDetailSelect,
   });
+});
+
+const getShopBySlugUncached = async (slug: string) => {
+  const shop = await getVisibleShopDetailRecord(slug);
 
   if (!shop) {
     return null;
@@ -764,15 +769,18 @@ export async function getShopBySlug(slug: string) {
 }
 
 const getShopMetadataBySlugUncached = async (slug: string) => {
-  return prisma.shop.findFirst({
-    where: { slug, isVisible: true },
-    select: {
-      name: true,
-      regionLabel: true,
-      themeLabel: true,
-      description: true,
-    },
-  });
+  const shop = await getVisibleShopDetailRecord(slug);
+
+  if (!shop) {
+    return null;
+  }
+
+  return {
+    name: shop.name,
+    regionLabel: shop.regionLabel,
+    themeLabel: shop.themeLabel,
+    description: shop.description,
+  };
 };
 
 const getPersistentShopMetadata = unstable_cache(
@@ -789,6 +797,34 @@ export async function getShopMetadataBySlug(slug: string) {
   } catch (error) {
     if (isMissingNextCacheContextError(error)) {
       return getShopMetadataBySlugUncached(normalizedSlug);
+    }
+
+    throw error;
+  }
+}
+
+const getVisibleShopSlugsUncached = async () => {
+  const shops = await prisma.shop.findMany({
+    where: { isVisible: true },
+    select: { slug: true },
+    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  return shops.map((shop) => shop.slug);
+};
+
+const getPersistentVisibleShopSlugs = unstable_cache(
+  async () => getVisibleShopSlugsUncached(),
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'slugs'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function listVisibleShopSlugs() {
+  try {
+    return await getPersistentVisibleShopSlugs();
+  } catch (error) {
+    if (isMissingNextCacheContextError(error)) {
+      return getVisibleShopSlugsUncached();
     }
 
     throw error;

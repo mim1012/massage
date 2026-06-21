@@ -12,9 +12,10 @@ type SessionResponse = {
 interface ShopReviewFormProps {
   shopId: string;
   shopName: string;
+  onRequireLogin?: () => void;
 }
 
-export default function ShopReviewForm({ shopId, shopName }: ShopReviewFormProps) {
+export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: ShopReviewFormProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -68,7 +69,11 @@ export default function ShopReviewForm({ shopId, shopName }: ShopReviewFormProps
     event.preventDefault();
 
     if (!user) {
-      router.push(loginHref);
+      if (onRequireLogin) {
+        onRequireLogin();
+      } else {
+        router.push(loginHref);
+      }
       return;
     }
 
@@ -113,16 +118,46 @@ export default function ShopReviewForm({ shopId, shopName }: ShopReviewFormProps
 
   if (!user) {
     return (
-      <div className="mb-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
-        <p className="text-sm text-gray-500">후기를 작성하려면 로그인이 필요합니다.</p>
-        <button
-          type="button"
-          onClick={() => router.push(loginHref)}
-          className="mt-2 text-xs font-bold text-[var(--portal-brand)] hover:underline"
-        >
-          로그인하러 가기
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (onRequireLogin) {
+            onRequireLogin();
+            return;
+          }
+
+          router.push(loginHref);
+        }}
+        className="mb-6 block w-full overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--portal-brand)_14%,white)] bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(255,247,245,0.98))] p-4 text-left shadow-sm transition hover:border-[color-mix(in_srgb,var(--portal-brand)_26%,white)] hover:shadow-md"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]">
+              <PenLine className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-gray-900">로그인 후 후기를 남길 수 있습니다.</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">작성 시도 시 현재 상세페이지로 다시 돌아오도록 이어집니다.</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[var(--portal-brand)] shadow-sm">
+            회원 전용
+          </span>
+        </div>
+        <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-white/85 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((score) => (
+                <Star key={score} className="h-4 w-4 fill-gray-200 text-gray-200" />
+              ))}
+            </div>
+            <span className="text-[11px] font-semibold text-gray-400">로그인 필요</span>
+          </div>
+          <div className="mt-3 rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-400">
+            {shopName} 방문 후기를 작성해 보세요.
+          </div>
+        </div>
+      </button>
     );
   }
 

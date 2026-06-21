@@ -19,15 +19,17 @@ test('shop detail page delegates review loading to a client section after the sh
   assert.equal(pageSource.includes('<ShopReviewSection'), true);
   assert.equal(pageSource.includes('getSessionUser'), false);
   assert.equal(pageSource.includes("export const dynamic = 'force-dynamic';"), false);
-  assert.equal(sectionSource.includes('<ShopReviewForm shopId={shopId} shopName={shopName} />'), true);
-  assert.equal(sectionSource.indexOf('<ShopReviewForm shopId={shopId} shopName={shopName} />') < sectionSource.indexOf('아직 후기가 없습니다.'), true);
+  assert.equal(sectionSource.includes("<ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} />"), true);
+  assert.equal(sectionSource.includes('let reviewBody: React.ReactNode;'), true);
   assert.equal(sectionSource.includes('useAuthSession'), true);
   assert.equal(sectionSource.includes("fetch(`/api/shops/${encodeURIComponent(slug)}`"), true);
   assert.equal(sectionSource.includes('usePathname'), true);
   assert.equal(sectionSource.includes('useSearchParams'), true);
+  assert.equal(sectionSource.includes("type ReviewGateIntent = 'view' | 'write';"), true);
   assert.equal(sectionSource.includes('후기는 회원만 확인 가능합니다.'), true);
+  assert.equal(sectionSource.includes('후기 작성은 회원만 가능합니다.'), true);
+  assert.equal(sectionSource.includes("onClick={() => setGateIntent('view')"), true);
   assert.equal(sectionSource.includes('locked-review-'), true);
-  assert.equal(sectionSource.includes('onClick={() => router.push(loginHref)}'), true);
 });
 
 test('shop review form preserves login redirect including current pathname and query', async () => {
@@ -38,7 +40,10 @@ test('shop review form preserves login redirect including current pathname and q
   assert.equal(source.includes('const query = searchParams.toString();'), true);
   assert.equal(source.includes("const redirectPath = pathname ? `${pathname}${query ? `?${query}` : ''}` : '/';"), true);
   assert.equal(source.includes('return `/auth/login?redirect=${encodeURIComponent(redirectPath)}`;'), true);
-  assert.equal(source.includes('onClick={() => router.push(loginHref)}'), true);
+  assert.equal(source.includes('onRequireLogin?: () => void;'), true);
+  assert.equal(source.includes('로그인 후 후기를 남길 수 있습니다.'), true);
+  assert.equal(source.includes('회원 전용'), true);
+  assert.equal(source.includes('onRequireLogin();'), true);
 });
 
 test('shop review form keeps auth-loading guard and refreshes page after successful submit', async () => {

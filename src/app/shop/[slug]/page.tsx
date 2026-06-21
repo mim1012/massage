@@ -2,24 +2,27 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
-import { DISTRICTS } from '@/lib/catalog';
-import { buildShopBrowseHref, getShopBrowseLabel } from '@/lib/browse-context';
 import { formatRating } from '@/lib/utils';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
-import { getShopBySlug, getShopMetadataBySlug } from '@/lib/server/shop-store';
+import { getShopBySlug, getShopMetadataBySlug, listVisibleShopSlugs } from '@/lib/server/shop-store';
 import ScrollToTopOnMount from '@/components/public/ScrollToTopOnMount';
+import ShopBrowseBreadcrumbs from '@/components/public/ShopBrowseBreadcrumbs';
 import ShopMediaSection from '@/components/public/ShopMediaSection';
 import ShopReviewSection from '@/components/public/ShopReviewSection';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{
-    source?: string;
-    view?: string;
-    region?: string;
-    subRegion?: string;
-    theme?: string;
-  }>;
+}
+
+export const revalidate = 120;
+
+export async function generateStaticParams() {
+  try {
+    const slugs = await listVisibleShopSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -57,9 +60,8 @@ const bgColors = [
   'from-yellow-200 to-amber-100',
 ];
 
-export default async function ShopDetailPage({ params, searchParams }: Props) {
+export default async function ShopDetailPage({ params }: Props) {
   const { slug } = await params;
-  const currentSearchParams = searchParams ? await searchParams : undefined;
   const data = await getShopBySlug(slug);
 
   if (!data) {
@@ -70,57 +72,19 @@ export default async function ShopDetailPage({ params, searchParams }: Props) {
   const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
   const primaryImage = (shop.thumbnailUrl || shop.bannerUrl).trim();
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
-  const source = currentSearchParams?.source === 'top100' ? 'top100' : 'home';
-  const preservedMode = currentSearchParams?.view === 'theme' && currentSearchParams?.theme === shop.theme ? 'theme' : 'region';
-  const preservedRegion =
-    source === 'top100'
-      ? currentSearchParams?.region === shop.region
-        ? currentSearchParams.region
-        : undefined
-      : currentSearchParams?.region === shop.region
-        ? currentSearchParams.region
-        : shop.region;
-  const preservedSubRegion =
-    currentSearchParams?.subRegion && currentSearchParams.subRegion === shop.subRegion ? currentSearchParams.subRegion : undefined;
-  const preservedTheme =
-    currentSearchParams?.theme && currentSearchParams.theme === shop.theme ? currentSearchParams.theme : undefined;
-  const browseHref = buildShopBrowseHref({
-    mode: preservedMode,
-    source,
-    region: preservedRegion,
-    subRegion: preservedSubRegion,
-    theme: preservedTheme,
-  });
-  const browseLabel = getShopBrowseLabel({
-    mode: preservedMode,
-    source,
-    region: preservedRegion,
-    subRegion: preservedSubRegion,
-    theme: preservedTheme,
-    fallbackRegionLabel: shop.regionLabel,
-    fallbackThemeLabel: shop.themeLabel,
-    subRegionLabel:
-      currentSearchParams?.region && currentSearchParams?.subRegion
-        ? DISTRICTS[currentSearchParams.region]?.find((district) => district.code === currentSearchParams.subRegion)?.label
-        : undefined,
-  });
 
   return (
     <>
       <ScrollToTopOnMount />
       <div className="mx-auto max-w-[1400px] px-3 py-3">
-        <div className="mb-3 flex items-center gap-1 text-xs text-gray-500">
-          <Link href="/" className="hover:text-[var(--portal-brand)]">
-            홈
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <Link href={browseHref} className="hover:text-[var(--portal-brand)]">
-            {browseLabel}
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="font-medium text-gray-800">{shop.name}</span>
-        </div>
-
+        <ShopBrowseBreadcrumbs
+          shopName={shop.name}
+          shopRegion={shop.region}
+          shopRegionLabel={shop.regionLabel}
+          shopSubRegion={shop.subRegion}
+          shopTheme={shop.theme}
+          shopThemeLabel={shop.themeLabel}
+        />
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_280px]">
           <div className="space-y-3">
             <div className={`relative overflow-hidden rounded-lg bg-gradient-to-br ${bgColor} p-6 sm:p-8`}>
