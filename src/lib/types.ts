@@ -13,6 +13,7 @@ export interface ShopListItem {
   premiumOrder?: number;     // 프리미엄 순서
   thumbnailUrl: string;      // 썸네일 이미지
   bannerUrl: string;         // 상세 배너 이미지
+  detailImageUrl?: string;    // 상세 첫 화면 대표 이미지
   tagline: string;           // 짧은 소개 문구
   rating: number;            // 평점 (0~5)
   reviewCount: number;       // 후기 수

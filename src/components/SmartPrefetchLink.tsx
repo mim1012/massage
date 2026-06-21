@@ -54,7 +54,7 @@ export default function SmartPrefetchLink({
     }
 
     event.preventDefault();
-    router.push(targetHref);
+    router.push(targetHref, { scroll: true });
   };
 
   const handleMouseEnter: MouseEventHandler<HTMLAnchorElement> = (event) => {

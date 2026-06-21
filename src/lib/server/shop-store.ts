@@ -286,6 +286,7 @@ function mapShopDetail(record: ShopDetailRecord): Shop {
     : firstGalleryImage
       ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
       : '';
+  const detailImageUrl = thumbnailUrl || bannerUrl;
 
   return {
     id: record.id,
@@ -301,6 +302,7 @@ function mapShopDetail(record: ShopDetailRecord): Shop {
     premiumOrder: record.premiumOrder ?? undefined,
     thumbnailUrl,
     bannerUrl,
+    detailImageUrl,
     images: record.images.map((_image, index) => buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, index, 'gallery')),
     tagline: record.tagline,
     description: record.description,
@@ -335,6 +337,11 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     : firstGalleryImage
       ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
       : '';
+  const detailImageUrl = record.thumbnailUrl
+    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'hero')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      : bannerUrl;
 
   return {
     id: record.id,
@@ -350,6 +357,7 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     premiumOrder: record.premiumOrder ?? undefined,
     thumbnailUrl,
     bannerUrl,
+    detailImageUrl,
     tagline: record.tagline,
     rating: record.rating,
     reviewCount: record._count.reviews,

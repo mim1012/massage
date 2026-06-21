@@ -67,19 +67,20 @@ function ShopCard({
   }, [detailHref, router]);
 
   const thumbnailUrl = shop.thumbnailUrl?.trim();
-  const detailHeroUrl = shop.bannerUrl?.trim() || thumbnailUrl;
+  const detailImageUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || thumbnailUrl;
   const warmDetailAssets = useCallback(() => {
     prefetchDetail();
 
-    if (!detailHeroUrl || warmedImageRef.current || typeof window === 'undefined') {
+    if (!detailImageUrl || warmedImageRef.current || typeof window === 'undefined') {
       return;
     }
 
     warmedImageRef.current = true;
     const detailImage = new window.Image();
     detailImage.decoding = 'async';
-    detailImage.src = detailHeroUrl;
-  }, [detailHeroUrl, prefetchDetail]);
+    detailImage.fetchPriority = 'high';
+    detailImage.src = detailImageUrl;
+  }, [detailImageUrl, prefetchDetail]);
 
   useEffect(() => {
     if (prefetchStrategy !== 'lead') {
@@ -105,7 +106,7 @@ function ShopCard({
       const observer = new window.IntersectionObserver(
         (entries) => {
           if (entries.some((entry) => entry.isIntersecting)) {
-            prefetchDetail();
+            warmDetailAssets();
             observer.disconnect();
           }
         },
@@ -118,7 +119,7 @@ function ShopCard({
 
     if (typeof window.requestIdleCallback === 'function') {
       const idleHandle = window.requestIdleCallback(() => {
-        prefetchDetail();
+        warmDetailAssets();
       }, { timeout: 1500 });
 
       return () => {
@@ -129,11 +130,11 @@ function ShopCard({
     }
 
     const timeoutHandle = window.setTimeout(() => {
-      prefetchDetail();
+      warmDetailAssets();
     }, 900);
 
     return () => window.clearTimeout(timeoutHandle);
-  }, [prefetchDetail, prefetchStrategy]);
+  }, [prefetchStrategy, warmDetailAssets]);
 
 
 
@@ -147,6 +148,7 @@ function ShopCard({
     <Link
       ref={linkRef}
       href={detailHref}
+      scroll
       prefetch={false}
       onMouseEnter={warmDetailAssets}
       onFocus={warmDetailAssets}

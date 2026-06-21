@@ -25,14 +25,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="ko">
-      <head>
-        <link
-          rel="stylesheet"
-          as="style"
-          crossOrigin="anonymous"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
-        />
-      </head>
       <body className="bg-gray-100 text-gray-900 antialiased min-h-screen flex flex-col">
         <GlobalLayout initialSiteContent={initialSiteContent}>{children}</GlobalLayout>
       </body>

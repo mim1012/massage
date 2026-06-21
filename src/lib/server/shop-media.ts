@@ -8,7 +8,7 @@ const SHOP_MEDIA_VARIANTS = {
   card: { width: 320, height: 320, quality: 64 },
   'premium-card': { width: 480, height: 480, quality: 68 },
   gallery: { width: 720, height: 720, quality: 72 },
-  hero: { width: 1080, height: 1080, quality: 76 },
+  hero: { width: 960, height: 960, quality: 70 },
 } as const;
 
 export type ShopMediaVariant = keyof typeof SHOP_MEDIA_VARIANTS;
@@ -103,7 +103,7 @@ async function optimizeShopMediaBuffer(
     switch (targetContentType) {
       case 'image/avif':
         return {
-          body: await pipeline.avif({ quality, effort: 4 }).toBuffer(),
+          body: await pipeline.avif({ quality, effort: 3 }).toBuffer(),
           contentType: targetContentType,
         };
       case 'image/webp':

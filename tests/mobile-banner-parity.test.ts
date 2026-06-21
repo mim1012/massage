@@ -184,14 +184,16 @@ test('shop cards prefetch detail pages on direct user intent while limiting auto
   assert.equal(shopCardSource.includes("prefetchStrategy?: 'intent' | 'lead';"), true);
   assert.equal(shopCardSource.includes("if (prefetchStrategy !== 'lead')"), true);
   assert.equal(shopCardSource.includes('prefetch={false}'), true);
+  assert.equal(shopCardSource.includes('scroll'), true);
   assert.equal(homeClientSource.includes('premium-shop-card flex overflow-hidden'), true);
   assert.equal(homeClientSource.includes('const warmPremiumDetailAssets = useCallback('), true);
   assert.equal(homeClientSource.includes('prefetch={false}'), true);
+  assert.equal(homeClientSource.includes('scroll'), true);
   assert.equal(homeClientSource.includes('prefetchStrategy={index < 2 ? "lead" : "intent"}'), true);
   assert.equal(homeClientSource.includes('onMouseEnter={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}'), true);
   assert.equal(homeClientSource.includes('href={detailHref}'), true);
   assert.equal(shopCardSource.includes('new window.Image()'), true);
-  assert.equal(shopCardSource.includes('detailImage.decoding = \'async\''), true);
+  assert.equal(shopCardSource.includes("detailImage.decoding = 'async'"), true);
   assert.equal(shopCardSource.includes('IntersectionObserver'), true);
   assert.equal(shopCardSource.includes('requestIdleCallback'), true);
   assert.equal(shopCardSource.includes('onMouseEnter={warmDetailAssets}'), true);
@@ -199,15 +201,20 @@ test('shop cards prefetch detail pages on direct user intent while limiting auto
   assert.equal(shopCardSource.includes('onPointerDown={warmDetailAssets}'), true);
 });
 
-test('shop detail routes stay near the production database with a loading shell, cached public detail reads, and deferred review hydration', async () => {
+test('shop detail routes stay near the production database with a loading shell, cached public detail reads, deferred review hydration, and a hard scroll reset', async () => {
   const shopPageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
   const shopApiSource = await readProjectFile('src/app/api/shops/[slug]/route.ts');
   const shopLoadingSource = await readProjectFile('src/app/shop/[slug]/loading.tsx');
   const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+  const scrollResetSource = await readProjectFile('src/components/public/ScrollToTopOnMount.tsx');
 
   assert.equal(shopPageSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(shopApiSource.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(shopPageSource.includes("export const dynamic = 'force-dynamic';"), false);
+  assert.equal(shopPageSource.includes("import ScrollToTopOnMount from '@/components/public/ScrollToTopOnMount';"), true);
+  assert.equal(shopPageSource.includes('<ScrollToTopOnMount />'), true);
+  assert.equal(scrollResetSource.includes('useLayoutEffect'), true);
+  assert.equal(scrollResetSource.includes("behavior: 'auto'"), true);
   assert.equal(shopPageSource.includes("import ShopMediaSection from '@/components/public/ShopMediaSection';"), true);
   assert.equal(shopApiSource.includes('getShopReviewsBySlug'), true);
   assert.equal(shopLoadingSource.includes('animate-pulse'), true);
@@ -303,7 +310,7 @@ test('top-level navigation links prefetch on intent for faster page changes', as
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
-  assert.equal(smartLinkSource.includes('router.push(targetHref)'), true);
+  assert.equal(smartLinkSource.includes('router.push(targetHref, { scroll: true });'), true);
   assert.equal(headerSource.includes('useAuthSession({ defer: true })'), true);
   assert.equal(headerSource.includes('router.prefetch(href)'), false);
   assert.equal(themesSource.includes('requestIdleCallback'), true);
@@ -341,6 +348,19 @@ test('admin new shop editor waits for auth before initializing form state', asyn
   assert.equal(adminEditorSource.includes('const [loading, setLoading] = useState(true);'), true);
   assert.equal(adminEditorSource.includes('setLoading(false);'), true);
   assert.equal(adminEditorSource.includes('initializedFormRef.current'), true);
+});
+
+test('home route avoids global smooth-scroll drift and external font blocking on first paint', async () => {
+  const appLayoutSource = await readProjectFile('src/app/layout.tsx');
+  const globalCssSource = await readProjectFile('src/app/globals.css');
+  const smartLinkSource = await readProjectFile('src/components/SmartPrefetchLink.tsx');
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
+
+  assert.equal(appLayoutSource.includes('cdn.jsdelivr.net/gh/orioncactus/pretendard'), false);
+  assert.equal(globalCssSource.includes('html { scroll-behavior: auto; }'), true);
+  assert.equal(globalCssSource.includes('html { scroll-behavior: smooth; }'), false);
+  assert.equal(smartLinkSource.includes('router.push(targetHref, { scroll: true });'), true);
+  assert.equal(homeClientSource.includes('window.scrollTo({ top: 0, behavior: "auto" });'), true);
 });
 test('admin settings keeps dad live preview component wired', async () => {
   const settingsSource = await readProjectFile('src/app/admin/settings/page.tsx');
@@ -400,7 +420,15 @@ test('shop list and detail payloads proxy heavy shop images through cached, size
   assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
   assert.equal(galleryRouteSource.includes("searchParams.get('size')"), true);
   assert.equal(homeClientSource.includes('const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, \'premium-card\');'), true);
-  assert.equal(shopCardSource.includes('const detailHeroUrl = shop.bannerUrl?.trim() || thumbnailUrl;'), true);
+  assert.equal(homeClientSource.includes('const leadPremiumHeroImage = premiumShops[0]?.detailImageUrl?.trim() || premiumShops[0]?.bannerUrl?.trim() || (premiumShops[0] ? withShopMediaVariant(premiumShops[0].thumbnailUrl, \'hero\') : \'\');'), true);
+  assert.equal(homeClientSource.includes('fetchPriority="high" />'), true);
+  assert.equal(homeClientSource.includes("const detailHeroUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || withShopMediaVariant(shop.thumbnailUrl, 'hero');"), true);
+  assert.equal(homeClientSource.includes('premiumShops.slice(0, 2).map((shop) => ({'), true);
+  assert.equal(homeClientSource.includes('warmPremiumDetailAssets(leadPremium.detailHref, leadPremium.detailHeroUrl);'), true);
+  assert.equal(homeClientSource.includes('warmPremiumDetailAssets(detailHref, detailHeroUrl);'), true);
+  assert.equal(shopCardSource.includes("const detailImageUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || thumbnailUrl;"), true);
+  assert.equal(shopCardSource.includes('detailImage.fetchPriority = \'high\';'), true);
+  assert.equal(shopCardSource.includes('warmDetailAssets();'), true);
 })
 test('directory cache prewarm cron covers common public list routes', async () => {
   const vercelConfig = await readProjectFile('vercel.json');
