@@ -53,8 +53,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const NAV_ITEMS = currentUser
-    ? ALL_NAV_ITEMS.filter((item) => item.roles.includes(currentUser.role))
+    ? ALL_NAV_ITEMS.filter((item) => item.roles.includes(currentUser.role)).map((item) => {
+        if (currentUser.role === 'OWNER' && item.href === '/admin/shops') {
+          return { ...item, href: '/owner/shops' };
+        }
+
+        return item;
+      })
     : [];
+
 
   if (!currentUser) {
     return <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">인증 확인 중...</div>;
@@ -86,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href));
             return (
               <Link
-                key={item.href}
+                key={`${item.href}-${item.label}`}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={`mb-1 flex items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${

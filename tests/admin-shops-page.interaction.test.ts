@@ -4,7 +4,7 @@ import React from 'react';
 import { JSDOM } from 'jsdom';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import AdminShopsPage from '@/app/admin/shops/page';
+import AdminShopsPageClient from '@/components/admin/AdminShopsPageClient';
 import type { AdminShopListItem } from '@/lib/communityTypes';
 
 const baseShop: AdminShopListItem = {
@@ -19,8 +19,7 @@ const baseShop: AdminShopListItem = {
   isVisible: true,
   isPremium: false,
   premiumOrder: undefined,
-  ownerName: null,
-  ownerEmail: null,
+  ownerId: 'owner-1',
   reviewCount: 0,
   createdAt: '2026-05-16T00:00:00.000Z',
   updatedAt: '2026-05-16T00:00:00.000Z',
@@ -49,6 +48,7 @@ async function renderHarness(options?: {
   const previousEvent = globalThis.Event;
   const previousMouseEvent = globalThis.MouseEvent;
   const previousFetch = globalThis.fetch;
+  const previousAlert = globalThis.alert;
   const previousSelf = (globalThis as typeof globalThis & { self?: Window & typeof globalThis }).self;
   const previousRequestIdleCallback = (globalThis as typeof globalThis & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback;
   const previousCancelIdleCallback = (globalThis as typeof globalThis & { cancelIdleCallback?: typeof cancelIdleCallback }).cancelIdleCallback;
@@ -62,6 +62,7 @@ async function renderHarness(options?: {
     Node: { configurable: true, writable: true, value: dom.window.Node },
     Event: { configurable: true, writable: true, value: dom.window.Event },
     MouseEvent: { configurable: true, writable: true, value: dom.window.MouseEvent },
+    alert: { configurable: true, writable: true, value: () => {} },
     self: { configurable: true, writable: true, value: dom.window },
     requestIdleCallback: { configurable: true, writable: true, value: (callback: IdleRequestCallback) => setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 50 } as IdleDeadline), 0) },
     cancelIdleCallback: { configurable: true, writable: true, value: (handle: number) => clearTimeout(handle) },
@@ -72,20 +73,15 @@ async function renderHarness(options?: {
   const fetchCalls: Array<{ url: string; method: string; body?: string }> = [];
   const fetchImpl = options?.fetchImpl ?? (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    const method = init?.method ?? 'GET';
-
-    if (url.endsWith('/api/admin/shops') && method === 'GET') {
-      return Response.json({ shops }, { status: 200 });
-    }
-
-    const shopId = url.includes('/shop-2/') ? 'shop-2' : 'shop-1';
     const requestBody = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+    const shopId = url.includes('/shop-2/') ? 'shop-2' : 'shop-1';
     return Response.json({
       shop: buildShop({
         id: shopId,
         slug: shopId,
         name: shopId === 'shop-2' ? '테스트 업소 2' : '테스트 업소 1',
         phone: shopId === 'shop-2' ? '010-2222-3333' : '010-1111-2222',
+        ownerId: shopId === 'shop-2' ? 'owner-2' : 'owner-1',
         isVisible: requestBody.isVisible ?? true,
         isPremium: requestBody.isPremium ?? false,
         premiumOrder: requestBody.premiumOrder,
@@ -105,7 +101,7 @@ async function renderHarness(options?: {
   const root = createRoot(container);
 
   await act(async () => {
-    root.render(React.createElement(AdminShopsPage));
+    root.render(React.createElement(AdminShopsPageClient, { initialShops: shops }));
   });
 
   await act(async () => {
@@ -135,6 +131,7 @@ async function renderHarness(options?: {
         Node: { configurable: true, writable: true, value: previousNode },
         Event: { configurable: true, writable: true, value: previousEvent },
         MouseEvent: { configurable: true, writable: true, value: previousMouseEvent },
+        alert: { configurable: true, writable: true, value: previousAlert },
         self: { configurable: true, writable: true, value: previousSelf },
         requestIdleCallback: { configurable: true, writable: true, value: previousRequestIdleCallback },
         cancelIdleCallback: { configurable: true, writable: true, value: previousCancelIdleCallback },
@@ -144,6 +141,23 @@ async function renderHarness(options?: {
     },
   };
 }
+
+test('renders initial shops without issuing a list fetch after mount', async () => {
+  const harness = await renderHarness({
+    fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      throw new Error(`unexpected fetch ${method} ${String(input)}`);
+    }) as typeof fetch,
+  });
+
+  try {
+    assert.match(harness.dom.window.document.body.textContent ?? '', /테스트 업소 1/);
+    const listFetchCalls = harness.fetchCalls.filter((call) => call.method === 'GET');
+    assert.equal(listFetchCalls.length, 0);
+  } finally {
+    await harness.cleanup();
+  }
+});
 
 test('rapid duplicate visibility clicks trigger only one patch request for the same row', async () => {
   const harness = await renderHarness();
@@ -170,18 +184,13 @@ test('while one shop premium action is pending another row visibility action can
   let resolveVisibility: (() => void) | null = null;
   const shops = [
     buildShop({ id: 'shop-1' }),
-    buildShop({ id: 'shop-2', name: '테스트 업소 2', slug: 'shop-2', phone: '010-2222-3333' }),
+    buildShop({ id: 'shop-2', name: '테스트 업소 2', slug: 'shop-2', phone: '010-2222-3333', ownerId: 'owner-2' }),
   ];
 
   const harness = await renderHarness({
     shops,
     fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      const method = init?.method ?? 'GET';
-      if (url.endsWith('/api/admin/shops') && method === 'GET') {
-        return Response.json({ shops }, { status: 200 });
-      }
-
       if (url.endsWith('/shop-1/premium')) {
         await new Promise<void>((resolve) => {
           resolvePremium = resolve;
@@ -193,10 +202,10 @@ test('while one shop premium action is pending another row visibility action can
         await new Promise<void>((resolve) => {
           resolveVisibility = resolve;
         });
-        return Response.json({ shop: buildShop({ id: 'shop-2', slug: 'shop-2', name: '테스트 업소 2', phone: '010-2222-3333', isVisible: false }) }, { status: 200 });
+        return Response.json({ shop: buildShop({ id: 'shop-2', slug: 'shop-2', name: '테스트 업소 2', phone: '010-2222-3333', ownerId: 'owner-2', isVisible: false }) }, { status: 200 });
       }
 
-      throw new Error(`unexpected fetch ${method} ${url}`);
+      throw new Error(`unexpected fetch ${(init?.method ?? 'GET')} ${url}`);
     }) as typeof fetch,
   });
 
