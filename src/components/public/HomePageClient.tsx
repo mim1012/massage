@@ -117,6 +117,7 @@ export default function HomePageClient({
   const shopResponseCache = useRef(new Map<string, ShopListResponse>());
   const prefetchedDetailHrefs = useRef(new Set<string>());
   const warmedDetailImages = useRef(new Set<string>());
+  const bootstrappedFromUrl = useRef(false);
   const leadPremiumHeroImage = premiumShops[0]?.detailImageUrl?.trim() || premiumShops[0]?.bannerUrl?.trim() || (premiumShops[0] ? withShopMediaVariant(premiumShops[0].thumbnailUrl, 'hero') : '');
 
 
@@ -386,6 +387,36 @@ export default function HomePageClient({
     initialRegularShops.length,
     loadShops,
     initialPage,
+  ]);
+  useEffect(() => {
+    if (bootstrappedFromUrl.current || pathname !== "/") {
+      return;
+    }
+
+    const shouldHydrateFromUrl =
+      initialPage > 1 ||
+      selectedRegion !== "all" ||
+      selectedSubRegion !== "all" ||
+      selectedTheme !== "all" ||
+      Boolean(searchQuery) ||
+      Boolean(searchParams.get("sort")) ||
+      searchParams.get("view") === "theme";
+
+    if (!shouldHydrateFromUrl) {
+      return;
+    }
+
+    bootstrappedFromUrl.current = true;
+    void loadShops(initialPage, new URLSearchParams(window.location.search));
+  }, [
+    initialPage,
+    loadShops,
+    pathname,
+    searchParams,
+    searchQuery,
+    selectedRegion,
+    selectedSubRegion,
+    selectedTheme,
   ]);
   useEffect(() => {
     if (

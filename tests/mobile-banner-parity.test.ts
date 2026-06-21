@@ -13,8 +13,9 @@ async function readProjectFile(relativePath: string) {
 
 const REQUIRED_SEED_IMAGE_NUMBERS = Array.from({ length: 50 }, (_, index) => index + 2);
 
-test('home page server composition keeps canonical directory + deferred data flow intact', async () => {
+test('home page server composition keeps a static default shell while client bootstraps filtered URLs on demand', async () => {
   const homePageSource = await readProjectFile('src/app/page.tsx');
+  const homeClientSource = await readProjectFile('src/components/public/HomePageClient.tsx');
   const appLayoutSource = await readProjectFile('src/app/layout.tsx');
   const globalLayoutSource = await readProjectFile('src/components/GlobalLayout.tsx');
   const siteContentSource = await readProjectFile('src/lib/use-site-content.tsx');
@@ -24,12 +25,19 @@ test('home page server composition keeps canonical directory + deferred data flo
   assert.equal(homePageSource.includes("import HomeSeoSection from '@/components/public/HomeSeoSection';"), true);
   assert.equal(homePageSource.includes("import { getPublicSiteContent } from '@/lib/server/communityStore';"), true);
   assert.equal(homePageSource.includes("import { listDirectoryShops, warmPublicShopDetailCaches } from '@/lib/server/shop-store';"), true);
-  assert.equal(homePageSource.includes('createDeferredHomeShopResponse'), true);
-  assert.equal(homePageSource.includes('shouldDeferInitialHomeDirectoryFetch'), true);
-  assert.equal(homePageSource.includes('getDirectoryCanonicalRedirect'), true);
+  assert.equal(homePageSource.includes('createDeferredHomeShopResponse'), false);
+  assert.equal(homePageSource.includes('shouldDeferInitialHomeDirectoryFetch'), false);
+  assert.equal(homePageSource.includes('getDirectoryCanonicalRedirect'), false);
+  assert.equal(homePageSource.includes('searchParams'), false);
+  assert.equal(homePageSource.includes('export const revalidate = 120;'), true);
   assert.equal(homePageSource.includes("export const preferredRegion = 'sin1'"), true);
+  assert.equal(homePageSource.includes('deferInitialDirectoryFetch={false}'), true);
   assert.equal(homePageSource.includes('<HomePageClient'), true);
   assert.equal(homePageSource.includes('<HomeSeoSection homeSeo={initialData.homeSeo} />'), true);
+  assert.equal(homeClientSource.includes('const bootstrappedFromUrl = useRef(false);'), true);
+  assert.equal(homeClientSource.includes('const shouldHydrateFromUrl ='), true);
+  assert.equal(homeClientSource.includes('searchParams.get("view") === "theme"'), true);
+  assert.equal(homeClientSource.includes('void loadShops(initialPage, new URLSearchParams(window.location.search));'), true);
   assert.equal(appLayoutSource.includes("import { getPublicSiteContent } from '@/lib/server/communityStore';"), true);
   assert.equal(appLayoutSource.includes('<GlobalLayout initialSiteContent={initialSiteContent}>'), true);
   assert.equal(globalLayoutSource.includes('<SiteContentProvider initialContent={initialSiteContent}>'), true);
