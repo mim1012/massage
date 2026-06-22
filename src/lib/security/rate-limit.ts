@@ -21,6 +21,9 @@ type RateLimitCheckResult =
 
 const DEFAULT_LIMIT = 10;
 const DEFAULT_WINDOW_MS = 60_000;
+const AUTH_LOGIN_IP_LIMIT = 30;
+const AUTH_LOGIN_CREDENTIAL_LIMIT = 5;
+const AUTH_LOGIN_WINDOW_MS = 10 * 60_000;
 const TOO_MANY_REQUESTS_MESSAGE = '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
 
 type AuthRateLimitOptions = {
@@ -94,6 +97,14 @@ export function createMemoryRateLimiter(options: MemoryRateLimiterOptions = {}) 
 }
 
 const authRateLimiter = createMemoryRateLimiter();
+const authLoginIpRateLimiter = createMemoryRateLimiter({
+  limit: AUTH_LOGIN_IP_LIMIT,
+  windowMs: AUTH_LOGIN_WINDOW_MS,
+});
+const authLoginCredentialRateLimiter = createMemoryRateLimiter({
+  limit: AUTH_LOGIN_CREDENTIAL_LIMIT,
+  windowMs: AUTH_LOGIN_WINDOW_MS,
+});
 
 function normalizeCredential(credential: string) {
   return credential.trim().toLowerCase();
@@ -119,6 +130,14 @@ export function checkAuthRateLimit(
   routeKey: string,
   options: AuthRateLimitOptions = {},
 ) {
+  if (routeKey === 'auth:login:ip') {
+    return authLoginIpRateLimiter.check(buildAuthRateLimitKey(request, routeKey));
+  }
+
+  if (routeKey === 'auth:login:credential') {
+    return authLoginCredentialRateLimiter.check(buildAuthRateLimitKey(request, routeKey, options));
+  }
+
   return authRateLimiter.check(buildAuthRateLimitKey(request, routeKey, options));
 }
 

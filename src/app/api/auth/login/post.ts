@@ -23,19 +23,26 @@ export async function handleLoginPost(request: Request, deps: LoginPostDeps = {}
   const loginWithStore = deps.login ?? login;
   const setCookie = deps.setSessionCookie ?? setSessionCookie;
   const respondWithError = deps.errorResponse ?? errorResponse;
-  let rateLimitHeaders: Headers | null = null;
+
+  const ipRateLimitResult = checkRateLimit(request, 'auth:login:ip');
+  if (ipRateLimitResult.limited) {
+    return ipRateLimitResult.response;
+  }
+
+  let rateLimitHeaders: Headers | null = ipRateLimitResult.headers;
 
   try {
     const body = (await request.json()) as LoginBody;
-    const rateLimitResult = checkRateLimit(request, 'auth:login', { credential: body.email });
-    if (rateLimitResult.limited) {
-      return rateLimitResult.response;
-    }
-    rateLimitHeaders = rateLimitResult.headers;
 
     if (!body.email || !body.password) {
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitHeaders);
     }
+
+    const credentialRateLimitResult = checkRateLimit(request, 'auth:login:credential', { credential: body.email });
+    if (credentialRateLimitResult.limited) {
+      return credentialRateLimitResult.response;
+    }
+    rateLimitHeaders = credentialRateLimitResult.headers;
 
     if (body.audience && !['user', 'owner'].includes(body.audience)) {
       return applyRateLimitHeaders(Response.json({ error: '로그인 유형이 올바르지 않습니다.' }, { status: 400 }), rateLimitHeaders);

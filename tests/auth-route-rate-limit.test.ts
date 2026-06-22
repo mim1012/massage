@@ -4,7 +4,9 @@ import { handleLoginPost } from '@/app/api/auth/login/post';
 import { handleOwnerRegisterPost } from '@/app/api/auth/register/owner/post';
 import { handleUserRegisterPost } from '@/app/api/auth/register/user/post';
 
-test('handleLoginPost forwards auth rate-limit headers on successful responses', async () => {
+test('handleLoginPost checks IP and credential limits before successful responses', async () => {
+  const observedCalls: Array<{ routeKey: string; credential?: string }> = [];
+
   const response = await handleLoginPost(
     new Request('https://example.com/api/auth/login', {
       method: 'POST',
@@ -17,14 +19,13 @@ test('handleLoginPost forwards auth rate-limit headers on successful responses',
     {
       checkRateLimit: (request, routeKey, options) => {
         assert.equal(request.headers.get('x-forwarded-for'), '203.0.113.10');
-        assert.equal(routeKey, 'auth:login');
-        assert.equal(options?.credential, ' User@Example.com ');
+        observedCalls.push({ routeKey, credential: options?.credential });
         return {
           limited: false,
           headers: new Headers({
             'Cache-Control': 'no-store',
-            'X-RateLimit-Limit': '10',
-            'X-RateLimit-Remaining': '9',
+            'X-RateLimit-Limit': routeKey === 'auth:login:credential' ? '5' : '30',
+            'X-RateLimit-Remaining': routeKey === 'auth:login:credential' ? '4' : '29',
           }),
         };
       },
@@ -41,14 +42,78 @@ test('handleLoginPost forwards auth rate-limit headers on successful responses',
     },
   );
 
+  assert.deepEqual(observedCalls, [
+    { routeKey: 'auth:login:ip', credential: undefined },
+    { routeKey: 'auth:login:credential', credential: ' User@Example.com ' },
+  ]);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
-  assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
-  assert.equal(response.headers.get('X-RateLimit-Remaining'), '9');
+  assert.equal(response.headers.get('X-RateLimit-Limit'), '5');
+  assert.equal(response.headers.get('X-RateLimit-Remaining'), '4');
   assert.deepEqual(await response.json(), {
     user: { id: 'user-1', email: 'user@example.com', role: 'USER' },
   });
 });
+
+test('handleLoginPost returns the IP limiter response before parsing the body when blocked', async () => {
+  const response = await handleLoginPost(
+    new Request('https://example.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{"email":',
+    }),
+    {
+      checkRateLimit: (_request, routeKey) => {
+        assert.equal(routeKey, 'auth:login:ip');
+        return {
+          limited: true,
+          response: Response.json({ error: 'blocked' }, { status: 429 }),
+        };
+      },
+      login: async () => {
+        throw new Error('login should not be called');
+      },
+    },
+  );
+
+  assert.equal(response.status, 429);
+  assert.deepEqual(await response.json(), { error: 'blocked' });
+});
+
+test('handleLoginPost preserves IP limiter headers when request JSON is malformed', async () => {
+  const response = await handleLoginPost(
+    new Request('https://example.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{"email":',
+    }),
+    {
+      checkRateLimit: (_request, routeKey) => {
+        assert.equal(routeKey, 'auth:login:ip');
+        return {
+          limited: false,
+          headers: new Headers({
+            'Cache-Control': 'no-store',
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '29',
+          }),
+        };
+      },
+      login: async () => {
+        throw new Error('login should not be called');
+      },
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('X-RateLimit-Limit'), '30');
+  assert.equal(response.headers.get('X-RateLimit-Remaining'), '29');
+});
+
 test('handleLoginPost rejects owners that are not approved without setting a session cookie', async () => {
   const response = await handleLoginPost(
     new Request('https://example.com/api/auth/login', {
@@ -59,10 +124,11 @@ test('handleLoginPost rejects owners that are not approved without setting a ses
       body: JSON.stringify({ email: 'pending-owner@example.com', password: 'secret' }),
     }),
     {
-      checkRateLimit: () => ({
+      checkRateLimit: (_request, routeKey) => ({
         limited: false,
         headers: new Headers({
           'Cache-Control': 'no-store',
+          'X-RateLimit-Limit': routeKey === 'auth:login:credential' ? '5' : '30',
         }),
       }),
       login: async () => {
@@ -78,6 +144,7 @@ test('handleLoginPost rejects owners that are not approved without setting a ses
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.deepEqual(await response.json(), { error: '업주 계정은 관리자 승인 후 로그인할 수 있습니다.' });
 });
+
 test('handleLoginPost rejects approved owners from the general user login audience', async () => {
   let cookieSet = false;
   const response = await handleLoginPost(
@@ -89,10 +156,11 @@ test('handleLoginPost rejects approved owners from the general user login audien
       body: JSON.stringify({ email: 'owner@example.com', password: 'secret', audience: 'user' }),
     }),
     {
-      checkRateLimit: () => ({
+      checkRateLimit: (_request, routeKey) => ({
         limited: false,
         headers: new Headers({
           'Cache-Control': 'no-store',
+          'X-RateLimit-Limit': routeKey === 'auth:login:credential' ? '5' : '30',
         }),
       }),
       login: async () => ({
@@ -121,10 +189,11 @@ test('handleLoginPost rejects regular users from the owner login audience', asyn
       body: JSON.stringify({ email: 'user@example.com', password: 'secret', audience: 'owner' }),
     }),
     {
-      checkRateLimit: () => ({
+      checkRateLimit: (_request, routeKey) => ({
         limited: false,
         headers: new Headers({
           'Cache-Control': 'no-store',
+          'X-RateLimit-Limit': routeKey === 'auth:login:credential' ? '5' : '30',
         }),
       }),
       login: async () => ({

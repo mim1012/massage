@@ -5,9 +5,11 @@ import { getBaselineSecurityHeaders, sessionJsonResponse } from '@/lib/security/
 import {
   applyRateLimitHeaders,
   buildAuthRateLimitKey,
+  checkAuthRateLimit,
   createMemoryRateLimiter,
   getClientIp,
 } from '@/lib/security/rate-limit';
+
 
 test('/api/auth/me responses carry private no-store cache headers', async () => {
   const response = sessionJsonResponse({ user: { id: 'user-1' } });
@@ -106,6 +108,36 @@ test('login rate limit keys normalize credentials and isolate accounts behind th
   assert.equal(blocked.limited, true);
 
   assert.equal(limiter.check(differentAccountKey).limited, false);
+});
+
+test('login rate limiting applies separate credential and IP ceilings', async () => {
+  const request = new Request('https://example.com/api/auth/login', {
+    headers: {
+      'x-forwarded-for': '203.0.113.10',
+    },
+  });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    assert.equal(checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' }).limited, false);
+  }
+
+  const credentialBlocked = checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' });
+  assert.equal(credentialBlocked.limited, true);
+  if (!credentialBlocked.limited) {
+    assert.fail('expected the sixth credential attempt to be rate limited');
+  }
+  assert.equal(credentialBlocked.response.headers.get('X-RateLimit-Limit'), '5');
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    assert.equal(checkAuthRateLimit(request, 'auth:login:ip').limited, false);
+  }
+
+  const ipBlocked = checkAuthRateLimit(request, 'auth:login:ip');
+  assert.equal(ipBlocked.limited, true);
+  if (!ipBlocked.limited) {
+    assert.fail('expected the thirty-first IP attempt to be rate limited');
+  }
+  assert.equal(ipBlocked.response.headers.get('X-RateLimit-Limit'), '30');
 });
 
 test('applyRateLimitHeaders preserves the response body while merging auth rate-limit headers', async () => {

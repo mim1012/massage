@@ -25,10 +25,12 @@ test('prewarm-directory cron fails closed when CRON_SECRET is not configured', a
   const response = await GET(new Request('https://example.com/api/cron/prewarm-directory'));
   const body = await response.json();
 
-  assert.equal(response.status, 401);
-  assert.deepEqual(body, { error: 'Unauthorized' });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(body, { error: 'CRON_SECRET is not configured.' });
   assert.equal(fetchCalls, 0);
 });
+
 
 test('prewarm-directory cron requires the configured bearer token', async (t) => {
   const originalSecret = process.env.CRON_SECRET;
@@ -53,6 +55,7 @@ test('prewarm-directory cron requires the configured bearer token', async (t) =>
   const unauthorized = await GET(new Request('https://example.com/api/cron/prewarm-directory'));
   assert.equal(unauthorized.status, 401);
   assert.equal(fetchCalls, 0);
+  assert.equal(unauthorized.headers.get('Cache-Control'), 'no-store');
 
   const authorized = await GET(new Request('https://example.com/api/cron/prewarm-directory', {
     headers: { authorization: 'Bearer secret-token' },

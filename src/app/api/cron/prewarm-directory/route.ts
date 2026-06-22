@@ -12,18 +12,43 @@ const PREWARM_PATHS = [
 export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
-function isAuthorized(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
+type AuthorizationResult =
+  | { ok: true }
+  | { ok: false; status: number; error: string };
+
+function authorize(request: Request): AuthorizationResult {
+  const cronSecret = process.env.CRON_SECRET?.trim();
   if (!cronSecret) {
-    return false;
+    return {
+      ok: false,
+      status: 503,
+      error: 'CRON_SECRET is not configured.',
+    };
   }
 
-  return request.headers.get('authorization') === `Bearer ${cronSecret}`;
+  if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Unauthorized',
+    };
+  }
+
+  return { ok: true };
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const authorization = authorize(request);
+  if (!authorization.ok) {
+    return Response.json(
+      { error: authorization.error },
+      {
+        status: authorization.status,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    );
   }
 
   const origin = new URL(request.url).origin;
