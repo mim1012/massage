@@ -541,6 +541,20 @@ function buildShopCourses(courses: Shop['courses']) {
   }));
 }
 
+function buildShopSearchText(input: Pick<Shop, 'name' | 'regionLabel' | 'subRegionLabel' | 'themeLabel' | 'tagline' | 'description' | 'tags'>) {
+  return [
+    input.name.trim(),
+    input.regionLabel.trim(),
+    input.subRegionLabel?.trim() ?? '',
+    input.themeLabel.trim(),
+    input.tagline.trim(),
+    input.description.trim(),
+    ...input.tags.map((tag) => tag.trim()).filter(Boolean),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 function buildShopPayload(input: Shop, slug = input.slug) {
   return {
     name: input.name.trim(),
@@ -562,6 +576,7 @@ function buildShopPayload(input: Shop, slug = input.slug) {
     thumbnailUrl: input.thumbnailUrl.trim() || null,
     bannerUrl: input.bannerUrl.trim() || null,
     ownerId: input.ownerId?.trim() ? input.ownerId.trim() : null,
+    searchText: buildShopSearchText(input),
     tags: input.tags,
   };
 }

@@ -121,14 +121,18 @@ test('seeded shop image assets exist for every generated public sample', async (
 test('public directory performance indexes and theme cache are kept in sync', async () => {
   const schemaSource = await readProjectFile('prisma/schema.prisma');
   const migrationSource = await readProjectFile('prisma/migrations/0011_public_directory_filter_indexes/migration.sql');
+  const searchMigrationSource = await readProjectFile('prisma/migrations/0013_shop_search_text_index/migration.sql');
   const themeStoreSource = await readProjectFile('src/lib/server/theme-store.ts');
 
   assert.equal(schemaSource.includes('@@index([isVisible, region, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
   assert.equal(schemaSource.includes('@@index([isVisible, region, subRegion, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
   assert.equal(schemaSource.includes('@@index([isVisible, theme, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
+  assert.equal(schemaSource.includes('searchText     String          @default("") @map("search_text")'), true);
   assert.equal(migrationSource.includes('shops_visible_region_premium_order_idx'), true);
   assert.equal(migrationSource.includes('shops_visible_region_sub_region_premium_order_idx'), true);
   assert.equal(migrationSource.includes('shops_visible_theme_premium_order_idx'), true);
+  assert.equal(searchMigrationSource.includes('shops_search_text_trgm_idx'), true);
+  assert.equal(searchMigrationSource.includes('ADD COLUMN "search_text" TEXT NOT NULL DEFAULT'), true);
   assert.equal(themeStoreSource.includes('unstable_cache'), true);
   assert.equal(themeStoreSource.includes('revalidate: 300'), true);
   assert.equal(themeStoreSource.includes('invalidateThemeCache();'), true);

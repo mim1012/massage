@@ -434,15 +434,7 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
     ...(filters.theme && filters.theme !== 'all' ? { theme: filters.theme } : {}),
     ...(filters.query
       ? {
-          OR: [
-            { name: { contains: filters.query, mode: 'insensitive' } },
-            { regionLabel: { contains: filters.query, mode: 'insensitive' } },
-            { subRegionLabel: { contains: filters.query, mode: 'insensitive' } },
-            { themeLabel: { contains: filters.query, mode: 'insensitive' } },
-            { tagline: { contains: filters.query, mode: 'insensitive' } },
-            { description: { contains: filters.query, mode: 'insensitive' } },
-            { tags: { has: filters.query } },
-          ],
+          OR: [{ searchText: { contains: filters.query, mode: 'insensitive' } }],
         }
       : {}),
   };
@@ -513,13 +505,7 @@ function buildTopShopWhereSql(filters: ShopFilters) {
   if (trimmedQuery) {
     const searchTerm = `%${trimmedQuery}%`;
     conditions.push(Prisma.sql`(
-      s."name" ILIKE ${searchTerm}
-      OR s."region_label" ILIKE ${searchTerm}
-      OR s."sub_region_label" ILIKE ${searchTerm}
-      OR s."theme_label" ILIKE ${searchTerm}
-      OR s."tagline" ILIKE ${searchTerm}
-      OR s."description" ILIKE ${searchTerm}
-      OR s."tags" @> ARRAY[${trimmedQuery}]::text[]
+      s."search_text" ILIKE ${searchTerm}
     )`);
   }
 
