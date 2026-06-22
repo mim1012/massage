@@ -1,11 +1,16 @@
 const TRANSIENT_DATABASE_ERROR_PATTERNS = [
   'EMAXCONNSESSION',
   'max clients reached',
+  'too many clients already',
+  'remaining connection slots are reserved',
   'timeout exceeded when trying to connect',
   'Connection terminated unexpectedly',
+  'Connection closed',
+  'Connection error',
   'ECONNRESET',
   'ECONNREFUSED',
   'ETIMEDOUT',
+  'fetch failed',
   'P1001',
   'Can\'t reach database server',
 ] as const;

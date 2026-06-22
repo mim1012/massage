@@ -46,13 +46,17 @@ test('shop review form preserves login redirect including current pathname and q
   assert.equal(source.includes('onRequireLogin();'), true);
 });
 
-test('shop review form keeps auth-loading guard and refreshes page after successful submit', async () => {
+test('shop review form avoids a blocking auth-loading banner and refreshes page after successful submit', async () => {
   const source = await readProjectFile('src/components/public/ShopReviewForm.tsx');
+  const authSessionSource = await readProjectFile('src/lib/use-auth-session.ts');
 
-  assert.equal(source.includes('const [isAuthResolved, setIsAuthResolved] = useState(false);'), true);
-  assert.equal(source.includes("fetch('/api/auth/me', { cache: 'no-store' })"), true);
-  assert.equal(source.includes('로그인 상태를 확인하는 중입니다.'), true);
+  assert.equal(source.includes('useAuthSession'), true);
+  assert.equal(source.includes('const { user, authChecked } = useAuthSession();'), true);
+  assert.equal(source.includes('const showGuestPrompt = authChecked ? !user : true;'), true);
+  assert.equal(source.includes('로그인 상태를 확인하는 중입니다.'), false);
+  assert.equal(source.includes('후기 작성 영역을 준비하고 있습니다.'), true);
   assert.equal(source.includes("const response = await fetch('/api/board/reviews', {"), true);
   assert.equal(source.includes('setIsExpanded(false);'), true);
   assert.equal(source.includes('router.refresh();'), true);
+  assert.equal(authSessionSource.includes('window.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)'), true);
 });

@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader2, PenLine, Star } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { User } from '@/lib/types';
-
-type SessionResponse = {
-  user?: User | null;
-};
+import { useAuthSession } from '@/lib/use-auth-session';
 
 interface ShopReviewFormProps {
   shopId: string;
@@ -19,8 +15,7 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthResolved, setIsAuthResolved] = useState(false);
+  const { user, authChecked } = useAuthSession();
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,38 +27,6 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
     const redirectPath = pathname ? `${pathname}${query ? `?${query}` : ''}` : '/';
     return `/auth/login?redirect=${encodeURIComponent(redirectPath)}`;
   }, [pathname, searchParams]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSession = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { cache: 'no-store' });
-        if (!cancelled) {
-          if (response.ok) {
-            const result = (await response.json()) as SessionResponse;
-            setUser(result.user ?? null);
-          } else {
-            setUser(null);
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setUser(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsAuthResolved(true);
-        }
-      }
-    };
-
-    void loadSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,19 +71,17 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
     }
   }
 
-  if (!isAuthResolved) {
-    return (
-      <div className="mb-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-center text-sm text-gray-400">
-        로그인 상태를 확인하는 중입니다.
-      </div>
-    );
-  }
+  const showGuestPrompt = authChecked ? !user : true;
 
-  if (!user) {
+  if (showGuestPrompt) {
     return (
       <button
         type="button"
         onClick={() => {
+          if (!authChecked) {
+            return;
+          }
+
           if (onRequireLogin) {
             onRequireLogin();
             return;
@@ -128,20 +89,27 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
 
           router.push(loginHref);
         }}
-        className="mb-6 block w-full overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--portal-brand)_14%,white)] bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(255,247,245,0.98))] p-4 text-left shadow-sm transition hover:border-[color-mix(in_srgb,var(--portal-brand)_26%,white)] hover:shadow-md"
+        disabled={!authChecked}
+        className="mb-6 block w-full overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--portal-brand)_14%,white)] bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(255,247,245,0.98))] p-4 text-left shadow-sm transition hover:border-[color-mix(in_srgb,var(--portal-brand)_26%,white)] hover:shadow-md disabled:cursor-default disabled:opacity-80"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]">
-              <PenLine className="h-4 w-4" />
+              {authChecked ? <PenLine className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
             </div>
             <div>
-              <p className="text-sm font-black text-gray-900">로그인 후 후기를 남길 수 있습니다.</p>
-              <p className="mt-1 text-xs leading-5 text-gray-500">작성 시도 시 현재 상세페이지로 다시 돌아오도록 이어집니다.</p>
+              <p className="text-sm font-black text-gray-900">
+                {authChecked ? '로그인 후 후기를 남길 수 있습니다.' : '후기 작성 영역을 준비하고 있습니다.'}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                {authChecked
+                  ? '작성 시도 시 현재 상세페이지로 다시 돌아오도록 이어집니다.'
+                  : '로그인 상태를 조용히 확인한 뒤 바로 작성 화면 또는 로그인 안내로 이어집니다.'}
+              </p>
             </div>
           </div>
           <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[var(--portal-brand)] shadow-sm">
-            회원 전용
+            {authChecked ? '회원 전용' : '준비 중'}
           </span>
         </div>
         <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-white/85 p-3">
@@ -151,7 +119,7 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
                 <Star key={score} className="h-4 w-4 fill-gray-200 text-gray-200" />
               ))}
             </div>
-            <span className="text-[11px] font-semibold text-gray-400">로그인 필요</span>
+            <span className="text-[11px] font-semibold text-gray-400">{authChecked ? '로그인 필요' : '상태 확인 중'}</span>
           </div>
           <div className="mt-3 rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-400">
             {shopName} 방문 후기를 작성해 보세요.
@@ -222,7 +190,14 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
 
           {error ? <p className="mb-3 text-xs text-red-500">{error}</p> : null}
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50"
+            >
+              취소
+            </button>
             <button
               type="submit"
               disabled={isSubmitting || !content.trim()}

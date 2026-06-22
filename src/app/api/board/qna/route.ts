@@ -1,4 +1,4 @@
-import { getSessionUser, requireUser } from '@/lib/auth/guards';
+import { getOptionalSessionUser, requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
 import { createQna, listQna } from '@/lib/server/communityStore';
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const shopId = url.searchParams.get('shopId') ?? undefined;
     const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
-    const viewer = await getSessionUser();
+    const viewer = await getOptionalSessionUser();
 
     return Response.json({
       qna: await listQna({

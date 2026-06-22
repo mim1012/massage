@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import QnaPageClient from '@/components/public/QnaPageClient';
 import { listPublicQnaPage } from '@/lib/server/communityStore';
-import { getSessionUser } from '@/lib/auth/guards';
+import { getOptionalSessionUser } from '@/lib/auth/guards';
 import { normalizePageParam } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export default async function QnAPage({ searchParams }: PageProps) {
   const page = normalizePageParam(pickFirst(resolvedSearchParams?.page));
   const shopId = pickFirst(resolvedSearchParams?.shopId);
   const search = pickFirst(resolvedSearchParams?.q);
-  const viewer = await getSessionUser();
+  const viewer = await getOptionalSessionUser();
   const entryPage = await listPublicQnaPage({
     page,
     shopId,

@@ -2,13 +2,13 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getBoardLandingData } from '@/lib/server/communityStore';
-import { getSessionUser } from '@/lib/auth/guards';
+import { getOptionalSessionUser } from '@/lib/auth/guards';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = { title: '게시판', description: '공지사항, Q&A, 업소 후기' };
 
 export default async function BoardPage() {
-  const user = await getSessionUser();
+  const user = await getOptionalSessionUser();
   const { summary, notices, qnaEntries, reviews } = await getBoardLandingData({ includeReviews: Boolean(user) });
 
   return (

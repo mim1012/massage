@@ -904,16 +904,18 @@ export async function listPublicQnaPage(
 
   try {
     const where = buildQnaWhere(shopId, search, undefined, true);
-    const totalItems = await prisma.qnA.count({ where });
+    const totalItems = await withDatabaseRetry(() => prisma.qnA.count({ where }));
     const totalPages = getTotalPages(totalItems, pageSize);
     const page = clampPage(requestedPage, totalPages);
-    const items = await prisma.qnA.findMany({
-      where,
-      include: qnaInclude,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+    const items = await withDatabaseRetry(() =>
+      prisma.qnA.findMany({
+        where,
+        include: qnaInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    );
 
     return {
       items: items.map((entry) => {
@@ -936,13 +938,15 @@ export async function listPublicQnaPage(
     }
 
     const where = buildLegacyQnaWhere(shopId, search, undefined, true);
-    const totalItems = await prisma.qnA.count({ where });
+    const totalItems = await withDatabaseRetry(() => prisma.qnA.count({ where }));
     const totalPages = getTotalPages(totalItems, pageSize);
     const page = clampPage(requestedPage, totalPages);
-    const items = await loadLegacyQnaRecords(where, {
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+    const items = await withDatabaseRetry(() =>
+      loadLegacyQnaRecords(where, {
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    );
 
     return {
       items: items.map((entry) => {
@@ -970,12 +974,14 @@ export async function listQna(options: string | QnaListOptions = {}) {
   const where = buildQnaWhere(shopId, search, shopOwnerId, normalizedOptions.publicVisibleOnly);
 
   try {
-    const entries = await prisma.qnA.findMany({
-      where,
-      include: qnaInclude,
-      orderBy: { createdAt: 'desc' },
-      ...normalizeManagedPagination(normalizedOptions),
-    });
+    const entries = await withDatabaseRetry(() =>
+      prisma.qnA.findMany({
+        where,
+        include: qnaInclude,
+        orderBy: { createdAt: 'desc' },
+        ...normalizeManagedPagination(normalizedOptions),
+      }),
+    );
 
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
   } catch (error) {
@@ -985,7 +991,9 @@ export async function listQna(options: string | QnaListOptions = {}) {
 
     const legacyWhere = buildLegacyQnaWhere(shopId, search, shopOwnerId, normalizedOptions.publicVisibleOnly);
 
-    const entries = await loadLegacyQnaRecords(legacyWhere, normalizeManagedPagination(normalizedOptions));
+    const entries = await withDatabaseRetry(() =>
+      loadLegacyQnaRecords(legacyWhere, normalizeManagedPagination(normalizedOptions)),
+    );
     return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
   }
 }
@@ -1003,12 +1011,14 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
     listNotices(),
     (async () => {
       try {
-        const entries = await prisma.qnA.findMany({
-          select: boardLandingQnaSelect,
-          where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        });
+        const entries = await withDatabaseRetry(() =>
+          prisma.qnA.findMany({
+            select: boardLandingQnaSelect,
+            where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] },
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+          }),
+        );
 
         return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
       } catch (error) {
@@ -1016,27 +1026,29 @@ export async function getBoardLandingData(options: BoardLandingOptions = {}) {
           throw error;
         }
 
-        const entries = await prisma.qnA.findMany({
-          select: {
-            id: true,
-            userId: true,
-            shopId: true,
-            question: true,
-            authorName: true,
-            status: true,
-            createdAt: true,
-            shop: {
-              select: {
-                ownerId: true,
-                name: true,
-                regionLabel: true,
+        const entries = await withDatabaseRetry(() =>
+          prisma.qnA.findMany({
+            select: {
+              id: true,
+              userId: true,
+              shopId: true,
+              question: true,
+              authorName: true,
+              status: true,
+              createdAt: true,
+              shop: {
+                select: {
+                  ownerId: true,
+                  name: true,
+                  regionLabel: true,
+                },
               },
             },
-          },
-          where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        });
+            where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] },
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+          }),
+        );
 
         return entries.map((entry) => mapBoardLandingQna(entry, options.viewer));
       }
@@ -1319,16 +1331,18 @@ export async function listPublicReviewPage(
   const searchType = options.searchType ?? 'all';
   const { pageSize, requestedPage } = normalizePagination(options);
   const where = buildReviewWhere(shopId, search, region, searchType);
-  const totalItems = await prisma.review.count({ where });
+  const totalItems = await withDatabaseRetry(() => prisma.review.count({ where }));
   const totalPages = getTotalPages(totalItems, pageSize);
   const page = clampPage(requestedPage, totalPages);
-  const items = await prisma.review.findMany({
-    where,
-    include: { shop: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-  });
+  const items = await withDatabaseRetry(() =>
+    prisma.review.findMany({
+      where,
+      include: { shop: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  );
 
   return {
     items: items.map((review) => mapPublicReview(mapReview(review), options.viewer)),
@@ -1403,12 +1417,14 @@ export async function listManagedReviews(user: { id: string; role: UserRole }, s
             : {}),
         };
 
-  const reviews = await prisma.review.findMany({
-    where: reviewWhere,
-    include: { shop: { select: { name: true, regionLabel: true } } },
-    orderBy: { createdAt: 'desc' },
-    ...normalizeManagedPagination(pagination),
-  });
+  const reviews = await withDatabaseRetry(() =>
+    prisma.review.findMany({
+      where: reviewWhere,
+      include: { shop: { select: { name: true, regionLabel: true } } },
+      orderBy: { createdAt: 'desc' },
+      ...normalizeManagedPagination(pagination),
+    }),
+  );
 
   return reviews.map((review) => ({
     ...mapReview(review),

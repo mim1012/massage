@@ -16,6 +16,18 @@ export async function getSessionUser() {
   return await getUserBySessionToken(token);
 }
 
+export async function getOptionalSessionUser() {
+  try {
+    return await getSessionUser();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'DATABASE_ERROR') {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 export async function requireUser() {
   const user = await getSessionUser();
   if (!user) {

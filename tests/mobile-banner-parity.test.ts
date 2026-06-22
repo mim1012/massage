@@ -239,25 +239,23 @@ test('shop detail routes stay near the production database with a loading shell,
   assert.equal(shopStoreSource.includes('invalidatePublicShopDetailCache();'), true);
 })
 
-test('shop editors do not expose manual slug input', async () => {
+test('shop editors do not expose manual slug input and admin route reuses the shared editor', async () => {
   const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
   const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
 
-  for (const editorSource of [sharedEditorSource, adminEditorSource]) {
-    assert.equal(editorSource.includes('슬러그 (URL 영문)'), false);
-    assert.equal(editorSource.includes('value={form.slug}'), false);
-    assert.equal(editorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
-  }
+  assert.equal(sharedEditorSource.includes('슬러그 (URL 영문)'), false);
+  assert.equal(sharedEditorSource.includes('value={form.slug}'), false);
+  assert.equal(sharedEditorSource.includes('저장 시 업소명 기준으로 상세 페이지 주소가 자동 생성됩니다.'), true);
+  assert.equal(adminEditorSource.includes("import ShopEditorPage from '@/components/admin/ShopEditorPage';"), true);
+  assert.equal(adminEditorSource.includes('routeBase="/admin/shops"'), true);
 });
+
 test('shop editor course rows keep stable keys while typing', async () => {
   const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
-  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
 
-  for (const editorSource of [sharedEditorSource, adminEditorSource]) {
-    assert.equal(editorSource.includes("key={`${course.name}-${index}`}"), false);
-    assert.equal(editorSource.includes("key={`course-${"), true);
-    assert.equal(editorSource.includes('current.map((course, courseIndex)'), true);
-  }
+  assert.equal(sharedEditorSource.includes("key={`${course.name}-${index}`}"), false);
+  assert.equal(sharedEditorSource.includes("key={`course-${"), true);
+  assert.equal(sharedEditorSource.includes('current.map((course, courseIndex)'), true);
 });
 test('shop card thumbnails preserve full scraped images without backdrop artifacts', async () => {
   const shopCardSource = await readProjectFile('src/components/ShopCard.tsx');
@@ -340,8 +338,7 @@ test('shop image uploads are resized before persisting previews', async () => {
   assert.equal(resizeSource.includes("mode === 'cover'"), true);
   assert.equal(sharedEditorSource.includes('readThumbnailFileAsDataUrl'), true);
   assert.equal(sharedEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
-  assert.equal(adminEditorSource.includes('readThumbnailFile'), true);
-  assert.equal(adminEditorSource.includes("width: 800, height: 800, mode: 'cover'"), true);
+  assert.equal(adminEditorSource.includes('routeBase="/admin/shops"'), true);
 });
 
 test('shop editor preview card mirrors the actual list thumbnail fallback instead of drifting to banner-only state', async () => {
@@ -352,25 +349,19 @@ test('shop editor preview card mirrors the actual list thumbnail fallback instea
   assert.equal(sharedEditorSource.includes('setThumbPreview(shopResult.shop.thumbnailUrl);'), true);
   assert.equal(sharedEditorSource.includes('setThumbPreview(shopResult.shop.thumbnailUrl || shopResult.shop.bannerUrl);'), false);
   assert.equal(sharedEditorSource.includes('src={effectiveCardThumbnailPreview}'), true);
-  assert.equal(adminEditorSource.includes("const effectiveCardThumbnailPreview = thumbPreview || galleryPreviews[0] || '';"), true);
-  assert.equal(adminEditorSource.includes('src={effectiveCardThumbnailPreview}'), true);
+  assert.equal(adminEditorSource.includes('routeBase="/admin/shops"'), true);
 });
 
-test('admin new shop editor waits for auth before initializing form state', async () => {
-  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
-
-  assert.equal(adminEditorSource.includes('const [loading, setLoading] = useState(true);'), true);
-  assert.equal(adminEditorSource.includes('setLoading(false);'), true);
-  assert.equal(adminEditorSource.includes('initializedFormRef.current'), true);
-});
 test('shared shop editor waits for authenticated user data before initializing owner forms', async () => {
   const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+  const adminEditorSource = await readProjectFile('src/app/admin/shops/[id]/page.tsx');
 
   assert.equal(sharedEditorSource.includes("const nextUser = meResult.user ?? DEFAULT_ADMIN;"), false);
   assert.equal(sharedEditorSource.includes("if (!meResponse.ok) {"), true);
   assert.equal(sharedEditorSource.includes("if (!meResult.user) {"), true);
   assert.equal(sharedEditorSource.includes("const nextUser = meResult.user;"), true);
   assert.equal(sharedEditorSource.includes("인증 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."), true);
+  assert.equal(adminEditorSource.includes('routeBase="/admin/shops"'), true);
 });
 
 test('home route avoids global smooth-scroll drift and external font blocking on first paint', async () => {
