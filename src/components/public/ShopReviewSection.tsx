@@ -16,13 +16,14 @@ type ShopReviewSectionProps = {
   initialReviewCount: number;
 };
 
-type ShopDetailResponse = {
+type ShopReviewsResponse = {
   reviews?: Review[];
 };
 
 type ReviewGateIntent = 'view' | 'write';
 
 const PLACEHOLDER_LINE_WIDTHS = ['w-full', 'w-11/12', 'w-4/5'] as const;
+const MEMBER_LOADING_PLACEHOLDER_COUNT = 2;
 
 export default function ShopReviewSection({ slug, shopId, shopName, initialReviewCount }: ShopReviewSectionProps) {
   const router = useRouter();
@@ -74,14 +75,22 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
       return;
     }
 
+    if (initialReviewCount === 0) {
+      setReviews([]);
+      setIsLoadingReviews(false);
+      return;
+    }
+
+    const controller = new AbortController();
     let cancelled = false;
     setIsLoadingReviews(true);
 
     void (async () => {
       try {
-        const response = await fetch(`/api/shops/${encodeURIComponent(slug)}`, {
+        const response = await fetch(`/api/shops/${encodeURIComponent(slug)}/reviews`, {
           cache: 'no-store',
           credentials: 'include',
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -91,12 +100,12 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
           return;
         }
 
-        const result = (await response.json()) as ShopDetailResponse;
+        const result = (await response.json()) as ShopReviewsResponse;
         if (!cancelled) {
           setReviews(result.reviews ?? []);
         }
-      } catch {
-        if (!cancelled) {
+      } catch (error) {
+        if (!cancelled && (!(error instanceof DOMException) || error.name !== 'AbortError')) {
           setReviews([]);
         }
       } finally {
@@ -108,8 +117,9 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [authChecked, slug, user]);
+  }, [authChecked, initialReviewCount, slug, user]);
 
 const visibleReviewCount = user ? (reviews?.length ?? initialReviewCount) : initialReviewCount;
 
@@ -160,7 +170,29 @@ if (!authChecked) {
       </div>
     );
 } else if (isLoadingReviews) {
-  reviewBody = <p className="py-6 text-center text-sm text-gray-400">후기를 불러오는 중입니다.</p>;
+  reviewBody = (
+    <div className="divide-y divide-gray-100">
+      {Array.from({ length: MEMBER_LOADING_PLACEHOLDER_COUNT }, (_, index) => (
+        <div key={`member-review-loading-${index}`} className="animate-pulse space-y-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="h-4 w-20 rounded bg-gray-200" />
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <Star key={value} className="h-3 w-3 text-gray-200" />
+                ))}
+              </div>
+            </div>
+            <span className="h-3 w-16 rounded bg-gray-200" />
+          </div>
+          <div className="space-y-2">
+            <div className={`h-3 rounded bg-gray-200 ${PLACEHOLDER_LINE_WIDTHS[index % PLACEHOLDER_LINE_WIDTHS.length]}`} />
+            <div className={`h-3 rounded bg-gray-200 ${PLACEHOLDER_LINE_WIDTHS[(index + 1) % PLACEHOLDER_LINE_WIDTHS.length]}`} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 } else if (!reviews || reviews.length === 0) {
   reviewBody = <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>;
 } else {

@@ -14,6 +14,7 @@ async function readProjectFile(relativePath: string) {
 test('shop detail page delegates review loading to a client section after the shell paints', async () => {
   const pageSource = await readProjectFile('src/app/shop/[slug]/page.tsx');
   const sectionSource = await readProjectFile('src/components/public/ShopReviewSection.tsx');
+  const reviewsRouteSource = await readProjectFile('src/app/api/shops/[slug]/reviews/route.ts');
 
   assert.equal(pageSource.includes("import ShopReviewSection from '@/components/public/ShopReviewSection';"), true);
   assert.equal(pageSource.includes('<ShopReviewSection'), true);
@@ -22,7 +23,11 @@ test('shop detail page delegates review loading to a client section after the sh
   assert.equal(sectionSource.includes("<ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} />"), true);
   assert.equal(sectionSource.includes('let reviewBody: React.ReactNode;'), true);
   assert.equal(sectionSource.includes('useAuthSession'), true);
-  assert.equal(sectionSource.includes("fetch(`/api/shops/${encodeURIComponent(slug)}`"), true);
+  assert.equal(sectionSource.includes("fetch(`/api/shops/${encodeURIComponent(slug)}/reviews`"), true);
+  assert.equal(sectionSource.includes('const MEMBER_LOADING_PLACEHOLDER_COUNT = 2;'), true);
+  assert.equal(sectionSource.includes('member-review-loading-'), true);
+  assert.equal(sectionSource.includes('initialReviewCount === 0'), true);
+  assert.equal(sectionSource.includes('controller.abort();'), true);
   assert.equal(sectionSource.includes('usePathname'), true);
   assert.equal(sectionSource.includes('useSearchParams'), true);
   assert.equal(sectionSource.includes("type ReviewGateIntent = 'view' | 'write';"), true);
@@ -30,6 +35,9 @@ test('shop detail page delegates review loading to a client section after the sh
   assert.equal(sectionSource.includes('후기 작성은 회원만 가능합니다.'), true);
   assert.equal(sectionSource.includes("onClick={() => setGateIntent('view')"), true);
   assert.equal(sectionSource.includes('locked-review-'), true);
+  assert.equal(reviewsRouteSource.includes('getShopReviewsBySlug'), true);
+  assert.equal(reviewsRouteSource.includes('sessionJsonResponse({ reviews'), true);
+  assert.equal(reviewsRouteSource.includes('status: 401'), true);
 });
 
 test('shop review form preserves login redirect including current pathname and query', async () => {
