@@ -363,6 +363,15 @@ test('admin new shop editor waits for auth before initializing form state', asyn
   assert.equal(adminEditorSource.includes('setLoading(false);'), true);
   assert.equal(adminEditorSource.includes('initializedFormRef.current'), true);
 });
+test('shared shop editor waits for authenticated user data before initializing owner forms', async () => {
+  const sharedEditorSource = await readProjectFile('src/components/admin/ShopEditorPage.tsx');
+
+  assert.equal(sharedEditorSource.includes("const nextUser = meResult.user ?? DEFAULT_ADMIN;"), false);
+  assert.equal(sharedEditorSource.includes("if (!meResponse.ok) {"), true);
+  assert.equal(sharedEditorSource.includes("if (!meResult.user) {"), true);
+  assert.equal(sharedEditorSource.includes("const nextUser = meResult.user;"), true);
+  assert.equal(sharedEditorSource.includes("인증 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."), true);
+});
 
 test('home route avoids global smooth-scroll drift and external font blocking on first paint', async () => {
   const appLayoutSource = await readProjectFile('src/app/layout.tsx');

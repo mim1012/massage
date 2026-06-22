@@ -125,13 +125,21 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
       setSaveError('');
 
       try {
-        const [meResponse, shopResponse] = await Promise.all([
-          fetch('/api/auth/me', { cache: 'no-store' }),
-          isNew ? Promise.resolve(null) : fetch(`/api/admin/shops/${id}`, { cache: 'no-store' }),
-        ]);
+        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!meResponse.ok) {
+          setSaveError('인증 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          setForm(null);
+          return;
+        }
 
         const meResult = (await meResponse.json()) as { user?: User | null };
-        const nextUser = meResult.user ?? DEFAULT_ADMIN;
+        if (!meResult.user) {
+          setSaveError('로그인 정보를 확인한 뒤 다시 시도해 주세요.');
+          setForm(null);
+          return;
+        }
+
+        const nextUser = meResult.user;
         setCurrentUser(nextUser);
 
         if (isNew) {
@@ -144,12 +152,8 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           return;
         }
 
-        if (!shopResponse) {
-          setForm(null);
-          return;
-        }
-
-        const shopResult = (await shopResponse.json()) as { shop?: Shop };
+        const shopResponse = await fetch(`/api/admin/shops/${id}`, { cache: 'no-store' });
+        const shopResult = (await shopResponse.json()) as { shop?: Shop; error?: string };
         if (shopResponse.ok && shopResult.shop) {
           setForm(shopResult.shop);
           setCourses(shopResult.shop.courses);
@@ -157,9 +161,11 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           setThumbPreview(shopResult.shop.thumbnailUrl);
           setGalleryPreviews(shopResult.shop.images);
         } else {
+          setSaveError(shopResult.error ?? '업소 정보를 불러오지 못했습니다.');
           setForm(null);
         }
       } catch {
+        setSaveError('업소 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
         setForm(null);
       } finally {
         setIsLoading(false);
@@ -207,7 +213,7 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
   }
 
   if (!form) {
-    return <div className="p-10 text-center text-gray-500">업소 정보를 찾을 수 없습니다.</div>;
+    return <div className="p-10 text-center text-gray-500">{saveError || '업소 정보를 찾을 수 없습니다.'}</div>;
   }
 
   if (!isNew && currentUser.role === 'OWNER' && form.ownerId !== currentUser.id) {

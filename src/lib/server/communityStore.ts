@@ -23,6 +23,7 @@ import type {
 } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { clampPage, getTotalPages } from '@/lib/pagination';
 import {
   normalizeHomeSeo,
@@ -592,11 +593,13 @@ export async function listManagedShops(
       ];
     }
 
-    const shops = await prisma.shop.findMany({
-      where,
-      select: managedShopListSelect,
-      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-    });
+    const shops = await withDatabaseRetry(() =>
+      prisma.shop.findMany({
+        where,
+        select: managedShopListSelect,
+        orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+      }),
+    );
 
     return shops.map(mapManagedShopRecordForAdmin);
   } catch (error) {
@@ -1709,10 +1712,12 @@ export async function deleteManagedQna(user: { id: string; role: UserRole }, qna
 }
 
 export async function getAdminShopById(id: string) {
-  const shop = await prisma.shop.findUnique({
-    where: { id },
-    include: shopInclude,
-  });
+  const shop = await withDatabaseRetry(() =>
+    prisma.shop.findUnique({
+      where: { id },
+      include: shopInclude,
+    }),
+  );
 
   return shop ? mapShop(shop) : null;
 }
@@ -1741,18 +1746,20 @@ export async function getQnaShopOwnerId(id: string) {
 
 export async function createAdminShop(input: Shop) {
   const slug = await createUniqueShopSlug(input);
-  const shop = await prisma.shop.create({
-    data: {
-      ...buildShopPayload(input, slug),
-      images: {
-        create: buildShopImages(input.images),
+  const shop = await withDatabaseRetry(() =>
+    prisma.shop.create({
+      data: {
+        ...buildShopPayload(input, slug),
+        images: {
+          create: buildShopImages(input.images),
+        },
+        courses: {
+          create: buildShopCourses(input.courses),
+        },
       },
-      courses: {
-        create: buildShopCourses(input.courses),
-      },
-    },
-    include: shopInclude,
-  });
+      include: shopInclude,
+    }),
+  );
 
   invalidatePublicShopCaches();
 
@@ -1761,52 +1768,54 @@ export async function createAdminShop(input: Shop) {
 
 export async function updateAdminShop(id: string, input: Shop, access?: { ownerId?: string }) {
   try {
-    const shop = access?.ownerId
-      ? await prisma.$transaction(async (tx) => {
-          const updated = await tx.shop.updateMany({
-            where: { id, ownerId: access.ownerId },
-            data: buildOwnerShopPayload(input),
-          });
-
-          if (updated.count === 0) {
-            return null;
-          }
-
-          await tx.shopImage.deleteMany({ where: { shopId: id } });
-          await tx.shopCourse.deleteMany({ where: { shopId: id } });
-
-          if (input.images.length > 0) {
-            await tx.shopImage.createMany({
-              data: buildShopImages(input.images).map((image) => ({ ...image, shopId: id })),
+    const shop = await withDatabaseRetry(() =>
+      access?.ownerId
+        ? prisma.$transaction(async (tx) => {
+            const updated = await tx.shop.updateMany({
+              where: { id, ownerId: access.ownerId },
+              data: buildOwnerShopPayload(input),
             });
-          }
 
-          if (input.courses.length > 0) {
-            await tx.shopCourse.createMany({
-              data: buildShopCourses(input.courses).map((course) => ({ ...course, shopId: id })),
+            if (updated.count === 0) {
+              return null;
+            }
+
+            await tx.shopImage.deleteMany({ where: { shopId: id } });
+            await tx.shopCourse.deleteMany({ where: { shopId: id } });
+
+            if (input.images.length > 0) {
+              await tx.shopImage.createMany({
+                data: buildShopImages(input.images).map((image) => ({ ...image, shopId: id })),
+              });
+            }
+
+            if (input.courses.length > 0) {
+              await tx.shopCourse.createMany({
+                data: buildShopCourses(input.courses).map((course) => ({ ...course, shopId: id })),
+              });
+            }
+
+            return tx.shop.findUnique({
+              where: { id },
+              include: shopInclude,
             });
-          }
-
-          return tx.shop.findUnique({
+          })
+        : prisma.shop.update({
             where: { id },
+            data: {
+              ...buildShopPayload(input),
+              images: {
+                deleteMany: {},
+                create: buildShopImages(input.images),
+              },
+              courses: {
+                deleteMany: {},
+                create: buildShopCourses(input.courses),
+              },
+            },
             include: shopInclude,
-          });
-        })
-      : await prisma.shop.update({
-          where: { id },
-          data: {
-            ...buildShopPayload(input),
-            images: {
-              deleteMany: {},
-              create: buildShopImages(input.images),
-            },
-            courses: {
-              deleteMany: {},
-              create: buildShopCourses(input.courses),
-            },
-          },
-          include: shopInclude,
-        });
+          }),
+    );
 
     if (!shop) {
       return null;
