@@ -478,3 +478,12 @@ test('authenticated member and owner routes bypass the public age gate while the
   assert.equal(barrierSource.includes("const isVerified = isCookieVerified === 'true' || isStorageVerified === 'true';"), true);
   assert.equal(barrierSource.includes("window.localStorage.setItem(STORAGE_KEY, 'true');"), true);
 });
+
+test('public shop filters accept both current region codes and legacy grouped region values', async () => {
+  const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
+
+  assert.equal(shopStoreSource.includes('function getRegionVariants(region?: string) {'), true);
+  assert.equal(shopStoreSource.includes('return mappedRegion === region ? [region] : [region, mappedRegion];'), true);
+  assert.equal(shopStoreSource.includes('? { region: { in: regionVariants } }'), true);
+  assert.equal(shopStoreSource.includes('conditions.push(Prisma.sql`s."region" IN (${Prisma.join(regionVariants)})`)'), true);
+});

@@ -182,6 +182,16 @@ function normalizeTopShopListFilters(filters: ShopFilters, limit: number) {
   };
 }
 
+function getRegionVariants(region?: string) {
+  if (!region || region === 'all') {
+    return [];
+  }
+
+  const mappedRegion = REGION_MAP[region] ?? region;
+  return mappedRegion === region ? [region] : [region, mappedRegion];
+}
+
+
 function normalizeTopShopListCacheKey(filters: ShopFilters, limit: number) {
   return JSON.stringify(normalizeTopShopListFilters(filters, limit));
 }
@@ -427,11 +437,15 @@ export async function getShopGalleryImageBySlug(slug: string, index: number) {
 }
 
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
-  const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
+  const regionVariants = getRegionVariants(filters.region);
 
   return {
     isVisible: true,
-    ...(mappedRegion ? { region: mappedRegion } : {}),
+    ...(regionVariants.length === 1
+      ? { region: regionVariants[0] }
+      : regionVariants.length > 1
+        ? { region: { in: regionVariants } }
+        : {}),
     ...(filters.subRegion && filters.subRegion !== 'all' ? { subRegion: filters.subRegion } : {}),
     ...(filters.theme && filters.theme !== 'all' ? { theme: filters.theme } : {}),
     ...(filters.query
@@ -488,12 +502,14 @@ function getRegularOrderBy(sort?: string): Prisma.ShopOrderByWithRelationInput[]
 }
 
 function buildTopShopWhereSql(filters: ShopFilters) {
-  const mappedRegion = filters.region && filters.region !== 'all' ? (REGION_MAP[filters.region] ?? filters.region) : undefined;
+  const regionVariants = getRegionVariants(filters.region);
   const trimmedQuery = filters.query?.trim();
   const conditions: Prisma.Sql[] = [Prisma.sql`s."is_visible" = true`];
 
-  if (mappedRegion) {
-    conditions.push(Prisma.sql`s."region" = ${mappedRegion}`);
+  if (regionVariants.length === 1) {
+    conditions.push(Prisma.sql`s."region" = ${regionVariants[0]}`);
+  } else if (regionVariants.length > 1) {
+    conditions.push(Prisma.sql`s."region" IN (${Prisma.join(regionVariants)})`);
   }
 
   if (filters.subRegion && filters.subRegion !== 'all') {

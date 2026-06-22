@@ -56,7 +56,9 @@ test('listTopShops uses a limited ranking query and preserves ranked ids when hy
     assert.ok(capturedSql, 'expected listTopShops to issue a ranking query');
     assert.ok(capturedSql.strings.join('').includes('LIMIT '));
     assert.ok(capturedSql.strings.join('').includes('s."review_count" DESC'));
-    assert.equal(capturedSql.values[0], 'gyeongsang');
+    assert.ok(capturedSql.strings.join('').includes('s."region" IN ('));
+    assert.equal(capturedSql.values[0], 'busan');
+    assert.equal(capturedSql.values[1], 'gyeongsang');
     assert.equal(capturedSql.values.at(-1), 2);
     assert.equal(capturedSql.values.filter((value) => value === `%${uniqueQuery}%`).length, 1);
     assert.equal(capturedSql.values.includes(uniqueQuery), false);
