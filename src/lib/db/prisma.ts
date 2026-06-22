@@ -2,53 +2,127 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool, type PoolConfig } from 'pg';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  'postgresql://postgres:postgres@localhost:5432/massage_directory?schema=public';
+const DEFAULT_LOCAL_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/massage_directory?schema=public';
+const DEFAULT_DEVELOPMENT_POOL_MAX = 10;
+const DEFAULT_PRODUCTION_POOL_MAX = 5;
+const DEFAULT_SUPABASE_POOL_MAX = 1;
+const DEFAULT_PRODUCTION_MAX_LIFETIME_SECONDS = 60;
 
 const globalForPrisma = globalThis as typeof globalThis & {
   __massagePgPool?: Pool;
   prisma?: PrismaClient;
 };
 
-function resolvePoolMax(url: URL) {
-  const configuredMax =
-    process.env.PGPOOL_MAX ??
-    url.searchParams.get('pool_max') ??
-    url.searchParams.get('connection_limit') ??
-    url.searchParams.get('pool_size');
+function isSupabaseHost(hostname: string) {
+  return hostname === 'supabase.co' || hostname.endsWith('.supabase.co') || hostname.endsWith('.supabase.com');
+}
 
-  const parsed = configuredMax ? Number(configuredMax) : Number.NaN;
-  if (Number.isFinite(parsed) && parsed > 0) {
+function isStrictProductionEnv(env: NodeJS.ProcessEnv) {
+  return env.VERCEL === '1' || env.VERCEL_ENV === 'production';
+}
+
+function parsePositiveNumber(value: string | null | undefined) {
+  const parsed = value ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env) {
+  const configured = env.DATABASE_URL?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (isStrictProductionEnv(env)) {
+    throw new Error('DATABASE_URL must be set in production deploy environments.');
+  }
+
+  return DEFAULT_LOCAL_DATABASE_URL;
+}
+
+export function resolvePoolMax(url: URL, env: NodeJS.ProcessEnv = process.env) {
+  const configuredMax =
+    env.PGPOOL_MAX ?? url.searchParams.get('pool_max') ?? url.searchParams.get('connection_limit') ?? url.searchParams.get('pool_size');
+  const parsed = parsePositiveNumber(configuredMax);
+  if (parsed) {
     return parsed;
   }
 
-  return process.env.NODE_ENV === 'production' ? 1 : 10;
+  if (env.NODE_ENV === 'production') {
+    return isSupabaseHost(url.hostname) ? DEFAULT_SUPABASE_POOL_MAX : DEFAULT_PRODUCTION_POOL_MAX;
+  }
+
+  return DEFAULT_DEVELOPMENT_POOL_MAX;
 }
 
-function createPoolConfig(connectionString: string): PoolConfig {
-  const url = new URL(connectionString);
-  const sslMode = url.searchParams.get('sslmode');
-  const useSsl = sslMode === 'require' || url.hostname.endsWith('supabase.co');
+function resolveMaxLifetimeSeconds(env: NodeJS.ProcessEnv) {
+  const configured = parsePositiveNumber(env.PG_MAX_LIFETIME_SECONDS ?? null);
+  if (configured) {
+    return configured;
+  }
 
-  return {
+  return env.NODE_ENV === 'production' ? DEFAULT_PRODUCTION_MAX_LIFETIME_SECONDS : 0;
+}
+
+function shouldUseSsl(url: URL) {
+  const sslMode = url.searchParams.get('sslmode')?.toLowerCase();
+  return sslMode === 'require' || sslMode === 'verify-ca' || sslMode === 'verify-full' || sslMode === 'no-verify' || isSupabaseHost(url.hostname);
+}
+
+function shouldRejectUnauthorized(url: URL, env: NodeJS.ProcessEnv) {
+  const sslMode = url.searchParams.get('sslmode')?.toLowerCase();
+  if (sslMode === 'no-verify') {
+    return false;
+  }
+
+  const override = env.PG_SSL_REJECT_UNAUTHORIZED?.trim().toLowerCase();
+  if (override === 'false') {
+    return false;
+  }
+
+  if (override === 'true') {
+    return true;
+  }
+
+  if (sslMode === 'verify-ca' || sslMode === 'verify-full') {
+    return true;
+  }
+
+  if (isSupabaseHost(url.hostname)) {
+    return false;
+  }
+
+  return true;
+}
+
+export function createPoolConfig(connectionString: string, env: NodeJS.ProcessEnv = process.env): PoolConfig {
+  const url = new URL(connectionString);
+  const maxLifetimeSeconds = resolveMaxLifetimeSeconds(env);
+  const baseConfig: PoolConfig = {
     connectionString,
-    max: resolvePoolMax(url),
+    max: resolvePoolMax(url, env),
     idleTimeoutMillis: 5_000,
     connectionTimeoutMillis: 10_000,
-    ...(useSsl
-      ? {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        }
-      : {}),
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 1_000,
+    allowExitOnIdle: env.NODE_ENV !== 'production',
+    ...(maxLifetimeSeconds > 0 ? { maxLifetimeSeconds } : {}),
+  };
+
+  if (!shouldUseSsl(url)) {
+    return baseConfig;
+  }
+
+  return {
+    ...baseConfig,
+    ssl: {
+      rejectUnauthorized: shouldRejectUnauthorized(url, env),
+    },
   };
 }
 
 export function getPgPool() {
   if (!globalForPrisma.__massagePgPool) {
-    globalForPrisma.__massagePgPool = new Pool(createPoolConfig(DATABASE_URL));
+    globalForPrisma.__massagePgPool = new Pool(createPoolConfig(resolveDatabaseUrl()));
   }
 
   return globalForPrisma.__massagePgPool;
@@ -58,7 +132,7 @@ export function createPrismaClient() {
   const adapter = new PrismaPg(getPgPool());
   return new PrismaClient({
     adapter,
-    log: [], // Silenced to prevent noise during DB outages
+    log: [],
   });
 }
 
