@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, ShieldCheck } from 'lucide-react';
 
+const STORAGE_KEY = 'massage-adult-confirmed';
+
 const COOKIE_NAME = 'massage_adult_verified';
 
 export default function AdultVerificationBarrier() {
@@ -11,12 +13,20 @@ export default function AdultVerificationBarrier() {
   const router = useRouter();
 
   useEffect(() => {
-    const isVerified = document.cookie
+    const isCookieVerified = document.cookie
       .split('; ')
       .find((row) => row.startsWith(`${COOKIE_NAME}=`))
       ?.split('=')[1];
+    const isStorageVerified = (() => {
+      try {
+        return window.localStorage.getItem(STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    })();
+    const isVerified = isCookieVerified === 'true' || isStorageVerified === 'true';
 
-    if (isVerified !== 'true' || process.env.NODE_ENV === 'development') {
+    if (!isVerified || process.env.NODE_ENV === 'development') {
       queueMicrotask(() => setShowModal(true));
       document.body.style.overflow = 'hidden';
     }
@@ -30,6 +40,12 @@ export default function AdultVerificationBarrier() {
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
     document.cookie = `${COOKIE_NAME}=true; path=/; expires=${expiry.toUTCString()}; SameSite=Lax`;
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, 'true');
+    } catch {
+      // Ignore storage failures and still unblock the current session.
+    }
 
     setShowModal(false);
     document.body.style.overflow = 'unset';

@@ -467,3 +467,14 @@ test('directory cache prewarm cron covers common public list routes', async () =
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);
 });
+
+test('authenticated member and owner routes bypass the public age gate while the verifier syncs cookie and local storage', async () => {
+  const globalLayoutSource = await readProjectFile('src/components/GlobalLayout.tsx');
+  const barrierSource = await readProjectFile('src/components/public/AdultVerificationBarrier.tsx');
+
+  assert.equal(globalLayoutSource.includes("['/auth', '/youth', '/privacy', '/terms', '/mobile', '/owner', '/my']"), true);
+  assert.equal(barrierSource.includes("const STORAGE_KEY = 'massage-adult-confirmed';"), true);
+  assert.equal(barrierSource.includes("window.localStorage.getItem(STORAGE_KEY)"), true);
+  assert.equal(barrierSource.includes("const isVerified = isCookieVerified === 'true' || isStorageVerified === 'true';"), true);
+  assert.equal(barrierSource.includes("window.localStorage.setItem(STORAGE_KEY, 'true');"), true);
+});

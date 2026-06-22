@@ -18,7 +18,7 @@ export default function GlobalLayout({
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const bypassAgeGate = pathname
-    ? ['/auth', '/youth', '/privacy', '/terms', '/mobile'].some((route) =>
+    ? ['/auth', '/youth', '/privacy', '/terms', '/mobile', '/owner', '/my'].some((route) =>
         pathname.startsWith(route),
       )
     : false;
