@@ -27,6 +27,7 @@ export default function Header() {
   const directoryMode = getDirectoryMode(searchParams.get('view'));
   const themeEntryRegion = currentRegion ?? 'seoul';
   const basePath = pathname === '/' || pathname === '/top100' ? pathname : '/';
+  const searchParamString = searchParams.toString();
   const mobileRegionNavigatorCode = selectedRegion !== 'all' ? selectedRegion : currentRegion ?? 'all';
   const mobileDistricts =
     mobileRegionNavigatorCode !== 'all'
@@ -100,6 +101,10 @@ export default function Header() {
     setSearchQuery(searchParams.get('q') || '');
     setSelectedRegion(searchParams.get('region') || 'all');
   }, [searchParams]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname, searchParamString]);
 
 
   const handleLogout = async () => {

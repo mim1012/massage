@@ -192,6 +192,8 @@ test('mobile header menu exposes region to district navigation and the same top-
   assert.equal(headerSource.includes('mobile-inline-'), true);
   assert.equal(headerSource.includes('key={`mobile-region-${region.code}`}'), true);
   assert.equal(headerSource.includes('key={`mobile-theme-${theme.code}`}'), true);
+  assert.equal(headerSource.includes('const searchParamString = searchParams.toString();'), true);
+  assert.equal(headerSource.includes('}, [pathname, searchParamString]);'), true);
   assert.equal(headerSource.includes("label: '지역별업소'"), true);
   assert.equal(headerSource.includes("label: '테마별업소'"), true);
   assert.equal(headerSource.includes("label: '인기순위'"), true);
