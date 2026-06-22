@@ -47,31 +47,37 @@ export default function Header() {
       href: '/?view=list',
       label: '지역별업소',
       className: 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]',
+      navClassName: directoryMode === 'region' ? 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]' : '',
     },
     {
       href: desktopThemeBrowseHref,
       label: '테마별업소',
       className: 'border-violet-200 bg-violet-50 text-violet-700',
+      navClassName: directoryMode === 'theme' ? 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]' : '',
     },
     {
       href: '/top100',
       label: '인기순위',
       className: 'border-sky-200 bg-sky-50 text-sky-700',
+      navClassName: pathname === '/top100' ? 'bg-[var(--portal-gnb-hover)] text-sky-300' : 'text-sky-300',
     },
     {
       href: '/board',
       label: '커뮤니티',
       className: 'border-gray-200 bg-gray-50 text-gray-700',
+      navClassName: pathname === '/board' ? 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]' : '',
     },
     {
       href: '/ad',
       label: '광고안내',
       className: 'border-amber-200 bg-amber-50 text-amber-700',
+      navClassName: pathname === '/ad' ? 'bg-[var(--portal-gnb-hover)] text-amber-300' : 'text-amber-300',
     },
     {
       href: '/board/qna',
       label: '고객센터',
       className: 'border-blue-200 bg-blue-50 text-blue-700',
+      navClassName: pathname === '/board/qna' ? 'bg-[var(--portal-gnb-hover)] text-[var(--portal-brand-soft)]' : '',
     },
   ];
 
@@ -234,6 +240,67 @@ export default function Header() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="border-t border-[var(--portal-gnb-hover)] bg-[var(--portal-gnb)] shadow-md md:hidden">
+        <div className="scrollbar-hide mx-auto flex max-w-[1400px] items-center overflow-x-auto px-3 text-sm font-bold text-white">
+          {mobilePrimaryLinks.map((item) => (
+            <SmartPrefetchLink
+              key={`mobile-inline-${item.label}`}
+              href={item.href}
+              prefetch={false}
+              onClick={() => setMobileMenuOpen(false)}
+              className={clsx(
+                'shrink-0 px-4 py-3 transition-colors hover:bg-[var(--portal-gnb-hover)] hover:text-[var(--portal-brand-soft)]',
+                item.navClassName,
+              )}
+            >
+              {item.label}
+            </SmartPrefetchLink>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-[1400px] mx-auto px-3 md:hidden">
+        <nav className="scrollbar-hide -mx-3 flex items-center overflow-x-auto border-t border-gray-200 bg-white px-3">
+          {REGIONS.filter((region) => region.code !== 'all').map((region) => (
+            <SmartPrefetchLink
+              key={`mobile-region-${region.code}`}
+              href={buildBrowseHref({ mode: directoryMode, region: region.code, theme: currentTheme })}
+              prefetch={false}
+              className={clsx(
+                'shrink-0 border-b-2 px-3 py-2 text-xs font-medium text-gray-700 transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                currentRegion === region.code ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]' : 'border-transparent',
+              )}
+            >
+              {region.label}
+            </SmartPrefetchLink>
+          ))}
+          <div className="mx-1 h-4 w-px shrink-0 self-center bg-gray-300" />
+          {themes
+            .filter((theme) => theme.code !== 'all')
+            .slice(0, 5)
+            .map((theme) => (
+              <SmartPrefetchLink
+                key={`mobile-theme-${theme.code}`}
+                href={buildBrowseHref({
+                  mode: 'theme',
+                  region: themeEntryRegion,
+                  subRegion: currentRegion ? currentSubRegion : undefined,
+                  theme: theme.code,
+                })}
+                prefetch={false}
+                className={clsx(
+                  'shrink-0 border-b-2 px-3 py-2 text-xs transition-all hover:bg-[var(--portal-brand-soft)] hover:text-[var(--portal-brand)]',
+                  currentTheme === theme.code
+                    ? 'border-[var(--portal-brand)] bg-[var(--portal-brand-soft)] text-[var(--portal-brand)]'
+                    : 'border-transparent text-gray-500',
+                )}
+              >
+                {theme.label}
+              </SmartPrefetchLink>
+            ))}
+        </nav>
       </div>
 
       <div className="hidden border-t border-[var(--portal-gnb-hover)] bg-[var(--portal-gnb)] shadow-md md:block">
