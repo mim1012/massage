@@ -35,7 +35,7 @@ export default function Header() {
   const mobileNavigatorRegionLabel =
     REGIONS.find((region) => region.code === mobileRegionNavigatorCode)?.label ?? '전체';
   const { siteSettings } = useSiteContent();
-  const { user, authChecked, refetch, clearSession } = useAuthSession({ defer: true });
+  const { user, authChecked, refetch, clearSession } = useAuthSession();
   const themes = useThemes();
 
   const myHref = getMyHref(user?.role);

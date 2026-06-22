@@ -325,7 +325,7 @@ test('top-level navigation links prefetch on intent for faster page changes', as
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
   assert.equal(smartLinkSource.includes('router.push(targetHref, { scroll: true });'), true);
-  assert.equal(headerSource.includes('useAuthSession({ defer: true })'), true);
+  assert.equal(headerSource.includes('useAuthSession()'), true);
   assert.equal(headerSource.includes('router.prefetch(href)'), false);
   assert.equal(themesSource.includes('requestIdleCallback'), true);
   assert.equal(themesSource.includes("fetch('/api/themes', { cache: 'force-cache' })"), true);
