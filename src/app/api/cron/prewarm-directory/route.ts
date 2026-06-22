@@ -1,3 +1,5 @@
+import { runWithConcurrencyLimit } from '@/lib/async/run-with-concurrency-limit';
+
 const PREWARM_PATHS = [
   '/api/shops?regularOffset=0&regularLimit=30',
   '/api/shops?region=seoul&regularOffset=0&regularLimit=30',
@@ -8,6 +10,8 @@ const PREWARM_PATHS = [
   '/api/shops?view=theme&theme=thai&regularOffset=0&regularLimit=30',
   '/api/themes',
 ];
+const PREWARM_FETCH_CONCURRENCY = 2;
+
 
 export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
@@ -53,8 +57,8 @@ export async function GET(request: Request) {
 
   const origin = new URL(request.url).origin;
   const startedAt = Date.now();
-  const results = await Promise.all(
-    PREWARM_PATHS.map(async (path) => {
+  const results = await runWithConcurrencyLimit(
+    PREWARM_PATHS.map((path) => async () => {
       const started = Date.now();
       try {
         const response = await fetch(`${origin}${path}`);
@@ -75,6 +79,7 @@ export async function GET(request: Request) {
         };
       }
     }),
+    PREWARM_FETCH_CONCURRENCY,
   );
 
   return Response.json(

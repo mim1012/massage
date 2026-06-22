@@ -57,7 +57,10 @@ test('home page and directory api both schedule limited post-response detail cac
   assert.equal(shopsApiSource.includes("import { after } from 'next/server';"), true);
   assert.equal(shopsApiSource.includes('warmPublicShopDetailCaches(detailWarmupSlugs);'), true);
   assert.equal(shopStoreSource.includes('export async function warmPublicShopDetailCaches(slugs: string[]) {'), true);
+  assert.equal(shopStoreSource.includes('const SHOP_DETAIL_WARM_CONCURRENCY = 2;'), true);
+  assert.equal(shopStoreSource.includes('runWithConcurrencyLimit('), true);
 })
+
 
 
 test('top100 page server composition keeps canonical redirect + data loading intact', async () => {
@@ -458,6 +461,8 @@ test('directory cache prewarm cron covers common public list routes', async () =
   assert.equal(prewarmRoute.includes('/api/shops?view=theme&theme=swedish&regularOffset=0&regularLimit=30'), true);
   assert.equal(prewarmRoute.includes('/api/themes'), true);
   assert.equal(prewarmRoute.includes("export const preferredRegion = 'sin1'"), true);
+  assert.equal(prewarmRoute.includes('const PREWARM_FETCH_CONCURRENCY = 2;'), true);
+  assert.equal(prewarmRoute.includes('runWithConcurrencyLimit('), true);
 });
 test('prod no longer ships the extra mobile promo banner component that the template never had', async () => {
   await assert.rejects(() => fs.access(path.join(projectRoot, 'src/components/public/MobilePromoBanners.tsx')), /ENOENT/);

@@ -5,6 +5,8 @@ import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
+import { runWithConcurrencyLimit } from '@/lib/async/run-with-concurrency-limit';
+
 import type { ShopMediaVariant } from '@/lib/server/shop-media';
 
 function getShopMediaVersion(updatedAt: Date) {
@@ -794,17 +796,24 @@ export async function listVisibleShopSlugs() {
     throw error;
   }
 }
+const SHOP_DETAIL_WARM_CONCURRENCY = 2;
+
 
 export async function warmPublicShopDetailCaches(slugs: string[]) {
   const normalizedSlugs = Array.from(
     new Set(slugs.map((slug) => normalizePublicShopSlugCacheKey(slug)).filter(Boolean)),
   );
 
-  await Promise.all(
+  await runWithConcurrencyLimit(
     normalizedSlugs.flatMap((slug) => [
-      getShopBySlug(slug),
-      getShopMetadataBySlug(slug),
+      async () => {
+        await getShopBySlug(slug);
+      },
+      async () => {
+        await getShopMetadataBySlug(slug);
+      },
     ]),
+    SHOP_DETAIL_WARM_CONCURRENCY,
   );
 }
 export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
