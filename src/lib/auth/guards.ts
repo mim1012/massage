@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { type User, type UserRole } from '@/lib/types';
 import { getSessionCookie } from '@/lib/auth/session';
 import { getUserBySessionToken } from '@/lib/server/auth-store';
@@ -11,9 +12,11 @@ export class AuthError extends Error {
   }
 }
 
+const getCachedUserBySessionToken = cache(async (token: string | undefined) => getUserBySessionToken(token));
+
 export async function getSessionUser() {
   const token = await getSessionCookie();
-  return await getUserBySessionToken(token);
+  return await getCachedUserBySessionToken(token ?? undefined);
 }
 
 export async function getOptionalSessionUser() {
