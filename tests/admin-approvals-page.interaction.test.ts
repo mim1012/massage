@@ -4,7 +4,7 @@ import React from 'react';
 import { JSDOM } from 'jsdom';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import ApprovalsPage from '@/app/admin/approvals/page';
+import ApprovalsPageClient from '@/components/admin/ApprovalsPageClient';
 import type { User } from '@/lib/types';
 
 const basePendingUser: User = {
@@ -29,6 +29,7 @@ function buildPendingUser(overrides: Partial<User>): User {
 
 async function renderHarness(options?: {
   pendingUsers?: User[];
+  processedUsers?: User[];
   fetchImpl?: typeof fetch;
 }) {
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', {
@@ -57,15 +58,10 @@ async function renderHarness(options?: {
   });
 
   const pendingUsers = options?.pendingUsers ?? [basePendingUser];
+  const processedUsers = options?.processedUsers ?? [];
   const fetchCalls: Array<{ url: string; method: string }> = [];
   const fetchImpl = options?.fetchImpl ?? (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    const method = init?.method ?? 'GET';
-
-    if (url.endsWith('/api/admin/approvals') && method === 'GET') {
-      return Response.json({ pendingUsers, processedUsers: [] }, { status: 200 });
-    }
-
     const userId = url.includes('/owner-2/') ? 'owner-2' : 'owner-1';
     const status = url.endsWith('/approve') ? 'approved' : 'rejected';
 
@@ -84,7 +80,7 @@ async function renderHarness(options?: {
   const root = createRoot(container);
 
   await act(async () => {
-    root.render(React.createElement(ApprovalsPage));
+    root.render(React.createElement(ApprovalsPageClient, { initialData: { pendingUsers, processedUsers } }));
   });
 
   await act(async () => {
@@ -118,11 +114,26 @@ async function renderHarness(options?: {
   };
 }
 
+test('renders initial approvals without issuing a list fetch after mount', async () => {
+  const harness = await renderHarness({
+    fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      throw new Error(`unexpected fetch ${(init?.method ?? 'GET')} ${String(input)}`);
+    }) as typeof fetch,
+  });
+
+  try {
+    assert.match(harness.dom.window.document.body.textContent ?? '', /테스트 업소 1/);
+    assert.equal(harness.fetchCalls.filter((call) => call.method === 'GET').length, 0);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 test('rapid duplicate approval clicks trigger only one approve request for the same row', async () => {
   const harness = await renderHarness();
 
   try {
-    const approveButton = harness.getButtonsByText('등록승인')[0];
+    const approveButton = harness.getButtonsByText('가입승인')[0];
     assert.ok(approveButton);
 
     await act(async () => {
@@ -144,16 +155,8 @@ test('while one approval row is pending another row can still be rejected indepe
 
   const harness = await renderHarness({
     pendingUsers: [buildPendingUser({ id: 'owner-1' }), buildPendingUser({ id: 'owner-2', businessName: '테스트 업소 2', email: 'owner2@example.com' })],
-    fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
+    fetchImpl: (async (input: RequestInfo | URL) => {
       const url = String(input);
-      const method = init?.method ?? 'GET';
-      if (url.endsWith('/api/admin/approvals') && method === 'GET') {
-        return Response.json({
-          pendingUsers: [buildPendingUser({ id: 'owner-1' }), buildPendingUser({ id: 'owner-2', businessName: '테스트 업소 2', email: 'owner2@example.com' })],
-          processedUsers: [],
-        }, { status: 200 });
-      }
-
       if (url.endsWith('/owner-1/approve')) {
         await new Promise<void>((resolve) => {
           resolveApprove = resolve;
@@ -168,12 +171,12 @@ test('while one approval row is pending another row can still be rejected indepe
         return Response.json({ user: buildPendingUser({ id: 'owner-2', status: 'rejected' }) }, { status: 200 });
       }
 
-      throw new Error(`unexpected fetch ${method} ${url}`);
+      throw new Error(`unexpected fetch PATCH ${url}`);
     }) as typeof fetch,
   });
 
   try {
-    const approveButtons = harness.getButtonsByText('등록승인');
+    const approveButtons = harness.getButtonsByText('가입승인');
     const rejectButtons = harness.getButtonsByText('반려');
     assert.equal(approveButtons.length, 2);
     assert.equal(rejectButtons.length, 2);
