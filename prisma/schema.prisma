@@ -96,6 +96,7 @@ model Shop {
   subRegionLabel String?         @map("sub_region_label")
   themeLabel     String          @map("theme_label")
   rating         Float           @default(0)
+  reviewCount    Int             @default(0) @map("review_count")
   tags           String[]
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")

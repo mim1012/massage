@@ -77,6 +77,7 @@ const shopDetailSelect = {
   phone: true,
   hours: true,
   rating: true,
+  reviewCount: true,
   tags: true,
   isVisible: true,
   ownerId: true,
@@ -99,15 +100,6 @@ const shopDetailSelect = {
       sortOrder: true,
     },
   },
-  _count: {
-    select: {
-      reviews: {
-        where: {
-          isHidden: false,
-        },
-      },
-    },
-  },
 } satisfies Prisma.ShopSelect;
 
 const shopListSelect = {
@@ -126,6 +118,7 @@ const shopListSelect = {
   bannerUrl: true,
   tagline: true,
   rating: true,
+  reviewCount: true,
   tags: true,
   createdAt: true,
   updatedAt: true,
@@ -141,15 +134,6 @@ const shopListSelect = {
     take: 1,
     select: {
       price: true,
-    },
-  },
-  _count: {
-    select: {
-      reviews: {
-        where: {
-          isHidden: false,
-        },
-      },
     },
   },
 } satisfies Prisma.ShopSelect;
@@ -233,8 +217,6 @@ export function invalidatePublicShopCaches() {
 }
 
 export function mapShop(record: ShopRecord): Shop {
-  const visibleReviews = record.reviews.filter((review) => !review.isHidden);
-
   return {
     id: record.id,
     name: record.name,
@@ -258,7 +240,7 @@ export function mapShop(record: ShopRecord): Shop {
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount: visibleReviews.length,
+    reviewCount: record.reviewCount,
     courses: [...record.courses]
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((course) => ({
@@ -311,7 +293,7 @@ function mapShopDetail(record: ShopDetailRecord): Shop {
     phone: record.phone,
     hours: record.hours,
     rating: record.rating,
-    reviewCount: record._count.reviews,
+    reviewCount: record.reviewCount,
     courses: record.courses.map((course) => ({
       name: course.name,
       duration: `${course.durationMinutes}분`,
@@ -361,7 +343,7 @@ function mapShopList(record: ShopListRecord): ShopListItem {
     detailImageUrl,
     tagline: record.tagline,
     rating: record.rating,
-    reviewCount: record._count.reviews,
+    reviewCount: record.reviewCount,
     courses: record.courses.map((course) => ({
       name: '',
       duration: '',
@@ -549,12 +531,8 @@ async function listTopShopsUncached(filters: ShopFilters = {}, limit = 100): Pro
   const topShopIds = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT s."id"
     FROM "shops" AS s
-    LEFT JOIN "reviews" AS r
-      ON r."shop_id" = s."id"
-     AND r."is_hidden" = false
     WHERE ${buildTopShopWhereSql(filters)}
-    GROUP BY s."id"
-    ORDER BY COUNT(r."id") DESC, s."rating" DESC, s."created_at" DESC
+    ORDER BY s."review_count" DESC, s."rating" DESC, s."created_at" DESC
     LIMIT ${normalizedLimit}
   `);
 

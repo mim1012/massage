@@ -1281,11 +1281,15 @@ async function refreshShopReviewRating(
   const aggregate = await client.review.aggregate({
     where: { shopId, isHidden: false },
     _avg: { rating: true },
+    _count: { _all: true },
   });
 
   await client.shop.update({
     where: { id: shopId },
-    data: { rating: aggregate._avg.rating ?? 0 },
+    data: {
+      rating: aggregate._avg.rating ?? 0,
+      reviewCount: aggregate._count._all,
+    },
   });
 }
 
@@ -2095,13 +2099,9 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
         id: true,
         name: true,
         regionLabel: true,
-        _count: {
-          select: {
-            reviews: true,
-          },
-        },
+        reviewCount: true,
       },
-      orderBy: [{ reviews: { _count: 'desc' } }, { name: 'asc' }],
+      orderBy: [{ reviewCount: 'desc' }, { name: 'asc' }],
       take: 5,
     }),
   ]);
@@ -2117,7 +2117,7 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
       id: shop.id,
       name: shop.name,
       regionLabel: shop.regionLabel,
-      viewCount: shop._count.reviews,
+      viewCount: shop.reviewCount,
     })),
   };
 }

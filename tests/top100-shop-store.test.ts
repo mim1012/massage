@@ -21,10 +21,12 @@ function makeShopListRecord(partial: Partial<ShopListRecord> & Pick<ShopListReco
     bannerUrl: partial.bannerUrl ?? '/banner.jpg',
     tagline: partial.tagline ?? 'tagline',
     rating: partial.rating ?? 4.5,
+    reviewCount: partial.reviewCount ?? 1,
     tags: partial.tags ?? ['힐링'],
     createdAt: partial.createdAt ?? new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: partial.updatedAt ?? new Date('2026-01-01T00:00:00.000Z'),
+    images: partial.images ?? [{ imageUrl: '/gallery.jpg' }],
     courses: partial.courses ?? [{ price: 100000 }],
-    _count: partial._count ?? { reviews: 1 },
   };
 }
 
@@ -43,8 +45,8 @@ test('listTopShops uses a limited ranking query and preserves ranked ids when hy
   prisma.shop.findMany = (async (args) => {
     capturedFindManyArgs = args;
     return [
-      makeShopListRecord({ id: 'shop-a', slug: 'shop-a', name: 'Shop A', rating: 4.1, _count: { reviews: 3 } }),
-      makeShopListRecord({ id: 'shop-b', slug: 'shop-b', name: 'Shop B', rating: 4.9, _count: { reviews: 5 } }),
+      makeShopListRecord({ id: 'shop-a', slug: 'shop-a', name: 'Shop A', rating: 4.1, reviewCount: 3 }),
+      makeShopListRecord({ id: 'shop-b', slug: 'shop-b', name: 'Shop B', rating: 4.9, reviewCount: 5 }),
     ];
   }) as typeof prisma.shop.findMany;
 
@@ -53,7 +55,7 @@ test('listTopShops uses a limited ranking query and preserves ranked ids when hy
 
     assert.ok(capturedSql, 'expected listTopShops to issue a ranking query');
     assert.ok(capturedSql.strings.join('').includes('LIMIT '));
-    assert.ok(capturedSql.strings.join('').includes('COUNT(r."id") DESC'));
+    assert.ok(capturedSql.strings.join('').includes('s."review_count" DESC'));
     assert.equal(capturedSql.values[0], 'gyeongsang');
     assert.equal(capturedSql.values.at(-2), uniqueQuery);
     assert.equal(capturedSql.values.at(-1), 2);
