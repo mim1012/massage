@@ -587,26 +587,25 @@ function buildOwnerShopPayload(input: Shop) {
 }
 
 export async function listManagedShops(
-  user: { id: string; role: UserRole },
+  user: { id: string; role: UserRole; managedShopId?: string },
   filters: { region?: string; q?: string } = {},
 ) {
   try {
-    const where: Prisma.ShopWhereInput = {};
+    const and: Prisma.ShopWhereInput[] = [];
 
     if (user.role === 'OWNER') {
-      where.ownerId = user.id;
+      and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
     }
 
     if (filters.region && filters.region !== 'all') {
-      where.region = filters.region;
+      and.push({ region: filters.region });
     }
 
     if (filters.q) {
-      where.OR = [
-        { name: { contains: filters.q, mode: 'insensitive' } },
-        { phone: { contains: filters.q, mode: 'insensitive' } },
-      ];
+      and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });
     }
+
+    const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
 
     const shops = await withDatabaseRetry(() =>
       prisma.shop.findMany({
@@ -1782,17 +1781,28 @@ export async function getQnaShopOwnerId(id: string) {
 export async function createAdminShop(input: Shop) {
   const slug = await createUniqueShopSlug(input);
   const shop = await withDatabaseRetry(() =>
-    prisma.shop.create({
-      data: {
-        ...buildShopPayload(input, slug),
-        images: {
-          create: buildShopImages(input.images),
+    prisma.$transaction(async (tx) => {
+      const createdShop = await tx.shop.create({
+        data: {
+          ...buildShopPayload(input, slug),
+          images: {
+            create: buildShopImages(input.images),
+          },
+          courses: {
+            create: buildShopCourses(input.courses),
+          },
         },
-        courses: {
-          create: buildShopCourses(input.courses),
-        },
-      },
-      include: shopInclude,
+        include: shopInclude,
+      });
+
+      if (input.ownerId) {
+        await tx.user.updateMany({
+          where: { id: input.ownerId, managedShopId: null },
+          data: { managedShopId: createdShop.id },
+        });
+      }
+
+      return createdShop;
     }),
   );
 

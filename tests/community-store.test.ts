@@ -396,6 +396,33 @@ dbTest('createAdminShop and updateAdminShop persist and replace nested shop data
   ]);
 });
 
+dbTest('createAdminShop backfills managedShopId and owner managed list falls back to legacy managed shop linkage', async (t: TestContext) => {
+  const owner = await getSeedOwner();
+  const originalManagedShopId = owner.managedShopId;
+  const legacyFallbackShop = await createTempShop({ ownerId: null, name: `Legacy Fallback ${uniqueSuffix()}` });
+
+  await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: null } });
+  const createdShop = await createAdminShop(buildShopInput({ ownerId: owner.id }));
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({ where: { id: { in: [createdShop.id, legacyFallbackShop.id] } } });
+    await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: originalManagedShopId } });
+  });
+
+  const refreshedOwner = await prisma.user.findUnique({
+    where: { id: owner.id },
+    select: { managedShopId: true },
+  });
+
+  assert.equal(refreshedOwner?.managedShopId, createdShop.id);
+
+  await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: legacyFallbackShop.id } });
+
+  const managedShops = await listManagedShops({ id: owner.id, role: 'OWNER', managedShopId: legacyFallbackShop.id });
+  assert.equal(managedShops.some((shop) => shop.id === legacyFallbackShop.id), true);
+  assert.equal(managedShops.some((shop) => shop.id === createdShop.id), true);
+});
+
 dbTest('public site content reads normalize legacy values without writing during requests', async () => {
   const seeded = await prisma.siteSettings.findUnique({
     where: { id: 'default' },
