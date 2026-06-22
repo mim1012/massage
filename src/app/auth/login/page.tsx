@@ -7,12 +7,11 @@ import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 import { getPostLoginRedirect } from '@/lib/auth/redirects';
 import { getLoginNotice } from '@/lib/auth/login-notice';
-import { useAuthSession } from '@/lib/use-auth-session';
+import { storeSessionUser, useAuthSession } from '@/lib/use-auth-session';
+import type { User as SessionUser } from '@/lib/types';
 
 type LoginResult = {
-  user?: {
-    role: 'ADMIN' | 'OWNER' | 'USER';
-  };
+  user?: SessionUser;
   error?: string;
 };
 
@@ -78,6 +77,7 @@ function LoginContent() {
         return;
       }
 
+      storeSessionUser(result.user);
       setRedirecting(true);
       window.location.assign(getPostLoginRedirect(result.user.role, redirectTo));
     } finally {

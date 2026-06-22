@@ -4,7 +4,7 @@ import React from 'react';
 import { JSDOM } from 'jsdom';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import { useAuthSession } from '@/lib/use-auth-session';
+import { AUTH_SESSION_STORAGE_KEY, useAuthSession } from '@/lib/use-auth-session';
 
 function SessionHarness() {
   const { user, authChecked, refetch } = useAuthSession();
@@ -21,10 +21,19 @@ function SessionHarness() {
   );
 }
 
-async function renderHarness(fetchImpl: typeof fetch) {
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+async function renderHarness(fetchImpl: typeof fetch, setupWindow?: (window: Window) => void) {
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', {
     url: 'https://example.com/',
   });
+
+  setupWindow?.(dom.window as unknown as Window);
 
   const previousWindow = globalThis.window;
   const previousDocument = globalThis.document;
@@ -57,10 +66,7 @@ async function renderHarness(fetchImpl: typeof fetch) {
     root.render(React.createElement(SessionHarness));
   });
 
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
+  await flush();
 
   return {
     dom,
@@ -83,6 +89,36 @@ async function renderHarness(fetchImpl: typeof fetch) {
     },
   };
 }
+
+test('useAuthSession hydrates immediately from the stored session snapshot', async () => {
+  let resolveFetch: ((value: Response) => void) | null = null;
+  const fetchCalls: string[] = [];
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    fetchCalls.push(String(input));
+    return await new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+  }) as typeof fetch;
+
+  const harness = await renderHarness(fetchImpl, (window) => {
+    window.sessionStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify({ id: 'user-1', email: 'qa-prod-user@massage.co.kr', name: 'QA', role: 'USER' }),
+    );
+  });
+
+  try {
+    assert.equal(harness.dom.window.document.getElementById('status')?.textContent, 'checked:qa-prod-user@massage.co.kr');
+    assert.equal(fetchCalls.length, 1);
+
+    resolveFetch?.(Response.json({ user: { id: 'user-1', email: 'qa-prod-user@massage.co.kr', name: 'QA', role: 'USER' } }, { status: 200 }));
+    await flush();
+
+    assert.equal(harness.dom.window.document.getElementById('status')?.textContent, 'checked:qa-prod-user@massage.co.kr');
+  } finally {
+    await harness.cleanup();
+  }
+});
 
 test('useAuthSession preserves the current user when a refetch hits a transient server error', async () => {
   let callCount = 0;

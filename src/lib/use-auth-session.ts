@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import type { User } from '@/lib/types';
+
+export const AUTH_SESSION_STORAGE_KEY = 'massage.auth.user';
+const AUTH_SESSION_EVENT = 'massage:auth-session-changed';
 
 type SessionResponse = {
   user?: User | null;
@@ -19,6 +22,56 @@ type SessionFetchResult =
   | {
       ok: false;
     };
+
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+function readStoredSessionUser(): User | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as User;
+    return parsed && typeof parsed === 'object' && typeof parsed.id === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistSessionUser(user: User | null) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    if (user) {
+      window.sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(user));
+      return;
+    }
+
+    window.sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  } catch {
+    // Ignore storage quota / privacy mode errors.
+  }
+}
+
+function emitSessionChange() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event(AUTH_SESSION_EVENT));
+}
+
+export function storeSessionUser(user: User | null) {
+  persistSessionUser(user);
+  emitSessionChange();
+}
 
 async function fetchSessionUser(): Promise<SessionFetchResult> {
   try {
@@ -43,6 +96,29 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+  useBrowserLayoutEffect(() => {
+    const storedUser = readStoredSessionUser();
+    if (!storedUser) {
+      return;
+    }
+
+    setUser(storedUser);
+    setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    const applyStoredSession = () => {
+      const storedUser = readStoredSessionUser();
+      setUser(storedUser);
+      setAuthChecked(Boolean(storedUser) || authChecked);
+    };
+
+    window.addEventListener(AUTH_SESSION_EVENT, applyStoredSession);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EVENT, applyStoredSession);
+    };
+  }, [authChecked]);
+
   useEffect(() => {
     let cancelled = false;
     const retryTimers = new Set<number>();
@@ -58,6 +134,7 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
         if (cancelled) return;
 
         if (sessionResult.ok) {
+          persistSessionUser(sessionResult.user);
           setUser(sessionResult.user);
           setAuthChecked(true);
           return;
@@ -111,6 +188,7 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
   const refetch = async () => {
     const sessionResult = await fetchSessionUser();
     if (sessionResult.ok) {
+      persistSessionUser(sessionResult.user);
       setUser(sessionResult.user);
     }
     setAuthChecked(true);
@@ -118,6 +196,8 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
   };
 
   const clearSession = () => {
+    persistSessionUser(null);
+    emitSessionChange();
     setUser(null);
     setAuthChecked(true);
   };
