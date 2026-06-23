@@ -18,6 +18,9 @@ export default function AdminPremiumPage() {
   const [saved, setSaved] = useState(false);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestShopsRef = useRef<AdminShopListItem[]>(premiumShops);
+  latestShopsRef.current = premiumShops;
 
   useEffect(() => {
     fetch('/api/admin/premium')
@@ -39,10 +42,12 @@ export default function AdminPremiumPage() {
 
   const removePremium = (id: string) => {
     setPremiumShops(prev => prev.filter(s => s.id !== id).map((s, i) => ({ ...s, premiumOrder: i + 1 })));
+    scheduleAutosave();
   };
 
   const toggleVisible = (id: string) => {
     setPremiumShops(prev => prev.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s));
+    scheduleAutosave();
   };
 
   const addPremium = (id: string) => {
@@ -53,6 +58,7 @@ export default function AdminPremiumPage() {
       return;
     }
     setPremiumShops(prev => [...prev, { ...shop, isPremium: true, premiumOrder: prev.length + 1 }]);
+    scheduleAutosave();
   };
 
   // 드래그 순서 변경
@@ -67,21 +73,22 @@ export default function AdminPremiumPage() {
     const [moved] = newItems.splice(dragIndex, 1);
     newItems.splice(idx, 0, moved);
     setPremiumShops(newItems.map((s, i) => ({ ...s, premiumOrder: i + 1 })));
+    scheduleAutosave();
     setDragIndex(null);
     setDragOverIndex(null);
   };
   const handleDragEnd = () => { setDragIndex(null); setDragOverIndex(null); };
 
-  const handleSave = async () => {
+  const saveBanners = async (shops: AdminShopListItem[]) => {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      const visibilityById = Object.fromEntries(premiumShops.map((shop) => [shop.id, shop.isVisible]));
+      const visibilityById = Object.fromEntries(shops.map((shop) => [shop.id, shop.isVisible]));
       const res = await fetch('/api/admin/premium', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderedIds: premiumShops.map((shop) => shop.id), visibilityById }),
+        body: JSON.stringify({ orderedIds: shops.map((shop) => shop.id), visibilityById }),
       }).catch(() => null);
       if (res?.ok) {
         const data = (await res.json().catch(() => null)) as PremiumBoardData | null;
@@ -96,6 +103,20 @@ export default function AdminPremiumPage() {
       savingRef.current = false;
       setSaving(false);
     }
+  };
+
+  // 변경 즉시 자동 저장(디바운스). 수동 저장 버튼은 선택적 백업으로 유지.
+  const scheduleAutosave = () => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+    }
+    autosaveTimer.current = setTimeout(() => {
+      void saveBanners(latestShopsRef.current);
+    }, 500);
+  };
+
+  const handleSave = () => {
+    void saveBanners(premiumShops);
   };
 
   const displayPremium = filterRegion === 'all'
