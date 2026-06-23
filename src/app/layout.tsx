@@ -4,6 +4,10 @@ import GlobalLayout from '@/components/GlobalLayout';
 import { MOCK_HOME_SEO, MOCK_SITE_SETTINGS } from '@/lib/mockData';
 import { getPublicSiteContent } from '@/lib/server/communityStore';
 
+// Co-locate every route with the Supabase database (ap-southeast-1) to avoid
+// cross-region DB round trips. Cascades to all nested routes unless overridden.
+export const preferredRegion = 'sin1';
+
 export const metadata: Metadata = {
   title: {
     default: '힐링찾기 - 전국 제휴업소 디렉토리',
