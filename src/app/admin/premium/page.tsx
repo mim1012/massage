@@ -29,9 +29,11 @@ export default function AdminPremiumPage() {
       .catch(() => {});
   }, []);
 
+  const countVisiblePremium = (shops: AdminShopListItem[]) => shops.filter((shop) => shop.isVisible).length;
+
   // 지역별 카운트
   const countByRegion = (region: string) =>
-    premiumShops.filter(s => s.region === region).length;
+    premiumShops.filter((shop) => shop.region === region && shop.isVisible).length;
 
   const canAdd = (region: string) => countByRegion(region) < MAX_PER_REGION;
 
@@ -75,12 +77,18 @@ export default function AdminPremiumPage() {
     savingRef.current = true;
     setSaving(true);
     try {
+      const visibilityById = Object.fromEntries(premiumShops.map((shop) => [shop.id, shop.isVisible]));
       const res = await fetch('/api/admin/premium', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderedIds: premiumShops.map(s => s.id) }),
+        body: JSON.stringify({ orderedIds: premiumShops.map((shop) => shop.id), visibilityById }),
       }).catch(() => null);
       if (res?.ok) {
+        const data = (await res.json().catch(() => null)) as PremiumBoardData | null;
+        if (data) {
+          setPremiumShops((data.premiumShops ?? []).sort((a, b) => (a.premiumOrder ?? 0) - (b.premiumOrder ?? 0)));
+          setAllShops(data.availableShops ?? []);
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       }
@@ -93,6 +101,7 @@ export default function AdminPremiumPage() {
   const displayPremium = filterRegion === 'all'
     ? premiumShops
     : premiumShops.filter(s => s.region === filterRegion);
+  const displayVisibleCount = countVisiblePremium(displayPremium);
 
   const availableToAdd = allShops.filter(s =>
     !premiumShops.find(p => p.id === s.id) &&
@@ -126,7 +135,7 @@ export default function AdminPremiumPage() {
       <div className="flex gap-2 flex-wrap items-center bg-white border border-gray-200 rounded p-3">
         <span className="text-xs font-bold text-gray-600">지역 필터:</span>
         {[{ code: 'all', label: '전체' }, ...REGIONS.filter(r => r.code !== 'all')].map(r => {
-          const cnt = r.code === 'all' ? premiumShops.length : countByRegion(r.code);
+          const cnt = r.code === 'all' ? countVisiblePremium(premiumShops) : countByRegion(r.code);
           const full = r.code !== 'all' && cnt >= MAX_PER_REGION;
           return (
             <button
@@ -151,7 +160,7 @@ export default function AdminPremiumPage() {
       <div className="bg-white border border-gray-200 rounded">
         <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
           <span className="text-xs font-bold text-gray-600">
-            현재 적용된 배너 ({displayPremium.length})
+            현재 적용된 배너 ({displayVisibleCount})
           </span>
           <span className="text-[11px] text-gray-400">드래그하여 순서 변경</span>
         </div>
@@ -159,7 +168,7 @@ export default function AdminPremiumPage() {
           {displayPremium.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">등록된 프리미엄 배너가 없습니다.</div>
           )}
-          {displayPremium.map((shop, idx) => {
+          {displayPremium.map((shop) => {
             const realIdx = premiumShops.findIndex(s => s.id === shop.id);
             return (
               <div

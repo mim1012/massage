@@ -6,12 +6,15 @@ import {
   createQnaComment,
   createAdminShop,
   createNotice,
+  createPartnershipInquiry,
   createQna,
-  deleteNotice,
+  createReview,
   deleteManagedReview,
+  deleteNotice,
   deletePartnershipInquiry,
-  getAdminShopById,
+  deleteReview,
   getAdminDashboardData,
+  getAdminShopById,
   getBoardLandingData,
   getBoardSummary,
   getNoticeById,
@@ -23,15 +26,17 @@ import {
   listNotices,
   listPartnershipInquiries,
   listQna,
-  updateNotice,
-  updateAdminShop,
-  updatePremiumOrder,
-  updatePartnershipInquiryStatus,
-  createPartnershipInquiry,
   listReviews,
   setReviewHiddenState,
+  updateAdminShop,
+  updateNotice,
+  updatePartnershipInquiryStatus,
+  updatePremiumOrder,
+  updateReview,
   upsertSiteContent,
 } from '@/lib/server/communityStore';
+
+
 import type { Shop } from '@/lib/types';
 import { sleep } from './helpers/reset-store';
 
@@ -229,7 +234,7 @@ dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', 
     });
   });
 
-  const premiumBoard = await updatePremiumOrder([tempShopB.id, tempShopA.id]);
+  const premiumBoard = await updatePremiumOrder([tempShopB.id, tempShopA.id], { [tempShopB.id]: false, [tempShopA.id]: true });
 
   assert.deepEqual(
     premiumBoard.premiumShops.map((shop) => [shop.id, shop.premiumOrder]),
@@ -246,6 +251,24 @@ dbTest('updatePremiumOrder reorders premium shops and demotes omitted entries', 
     [
       [tempShopB.id, 1],
       [tempShopA.id, 2],
+    ],
+  );
+
+  const refreshedPremiumBoard = premiumBoard.premiumShops.filter((shop) => shop.id === tempShopB.id || shop.id === tempShopA.id);
+  assert.deepEqual(
+    refreshedPremiumBoard.map((shop) => [shop.id, shop.isVisible]),
+    [
+      [tempShopB.id, false],
+      [tempShopA.id, true],
+    ],
+  );
+
+  const storedPremiumShops = premiumShops.filter((shop) => shop.id === tempShopB.id || shop.id === tempShopA.id);
+  assert.deepEqual(
+    storedPremiumShops.map((shop) => [shop.id, shop.isVisible]),
+    [
+      [tempShopB.id, false],
+      [tempShopA.id, true],
     ],
   );
 });
@@ -514,6 +537,181 @@ dbTest('partnership inquiries can be created, listed, updated, and deleted', asy
   assert.equal(await deletePartnershipInquiry(created.id), true);
 });
 
+dbTest('createReview trims input, refreshes aggregates, and exposes canManage only to the author view', async () => {
+  const userId = 'test-review-create-user';
+  const shopId = 'test-review-create-shop';
+await prisma.review.deleteMany({ where: { shopId } });
+await prisma.shop.deleteMany({ where: { id: shopId } });
+await prisma.user.deleteMany({ where: { id: userId } });
+
+  try {
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: `${userId}@example.com`,
+        passwordHash: 'hash',
+        name: '일반 회원',
+        role: 'USER',
+        status: 'APPROVED',
+      },
+    });
+    await prisma.shop.create({
+      data: {
+        id: shopId,
+        name: '리뷰 생성 테스트샵',
+        slug: 'review-create-test-shop',
+        region: 'seoul',
+        regionLabel: '서울',
+        theme: 'swedish',
+        themeLabel: '스웨디시',
+        tagline: '테스트',
+        description: '테스트 설명',
+        address: '서울',
+        phone: '010-0000-0000',
+        hours: '24시간',
+        rating: 0,
+        reviewCount: 0,
+        tags: [],
+      },
+    });
+
+    const created = await createReview({
+      shopId,
+      userId,
+      authorName: '  일반 회원  ',
+      rating: 5,
+      content: '  정말 좋았습니다.  ',
+    });
+
+    assert.equal(created.authorName, '일반 회원');
+    assert.equal(created.content, '정말 좋았습니다.');
+    assert.equal(created.userId, userId);
+
+    const refreshedShop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    assert.equal(refreshedShop.rating, 5);
+    assert.equal(refreshedShop.reviewCount, 1);
+
+    const publicReviews = await listReviews({ shopId });
+    const authorReviews = await listReviews({ shopId, viewer: { id: userId, role: 'USER' } });
+    const publicReview = publicReviews.find((review) => review.id === created.id);
+    const authorReview = authorReviews.find((review) => review.id === created.id);
+
+    assert.ok(publicReview);
+    assert.ok(authorReview);
+    assert.equal('canManage' in publicReview, false);
+    assert.equal('userId' in publicReview, false);
+    assert.equal(authorReview.canManage, true);
+    assert.equal('userId' in authorReview, false);
+} finally {
+  await prisma.review.deleteMany({ where: { shopId } });
+  await prisma.shop.deleteMany({ where: { id: shopId } });
+  await prisma.user.deleteMany({ where: { id: userId } });
+}
+});
+
+dbTest('updateReview trims fields, preserves author controls, and deleteReview refreshes aggregates to zero', async () => {
+  const firstUserId = 'test-review-update-user-1';
+  const secondUserId = 'test-review-update-user-2';
+  const shopId = 'test-review-update-shop';
+  await prisma.review.deleteMany({ where: { shopId } });
+  await prisma.shop.deleteMany({ where: { id: shopId } });
+  await prisma.user.deleteMany({ where: { id: { in: [firstUserId, secondUserId] } } });
+
+  try {
+    await prisma.user.createMany({
+      data: [
+        {
+          id: firstUserId,
+          email: `${firstUserId}@example.com`,
+          passwordHash: 'hash',
+          name: '첫 번째 회원',
+          role: 'USER',
+          status: 'APPROVED',
+        },
+        {
+          id: secondUserId,
+          email: `${secondUserId}@example.com`,
+          passwordHash: 'hash',
+          name: '두 번째 회원',
+          role: 'USER',
+          status: 'APPROVED',
+        },
+      ],
+    });
+    await prisma.shop.create({
+      data: {
+        id: shopId,
+        name: '리뷰 수정 테스트샵',
+        slug: 'review-update-test-shop',
+        region: 'seoul',
+        regionLabel: '서울',
+        theme: 'swedish',
+        themeLabel: '스웨디시',
+        tagline: '테스트',
+        description: '테스트 설명',
+        address: '서울',
+        phone: '010-0000-0000',
+        hours: '24시간',
+        rating: 0,
+        reviewCount: 0,
+        tags: [],
+      },
+    });
+
+    const firstReview = await createReview({
+      shopId,
+      userId: firstUserId,
+      authorName: '첫 회원',
+      rating: 5,
+      content: '아주 만족했습니다.',
+    });
+    const secondReview = await createReview({
+      shopId,
+      userId: secondUserId,
+      authorName: '둘째 회원',
+      rating: 1,
+      content: '조금 아쉬웠습니다.',
+    });
+
+    assert.equal(await updateReview(secondReview.id, { content: '   ' }), null);
+
+    const updated = await updateReview(secondReview.id, {
+      rating: 4,
+      content: '  다시 방문하고 싶어요.  ',
+      authorName: '  두 번째 회원  ',
+    });
+
+    assert.equal(updated?.rating, 4);
+    assert.equal(updated?.content, '다시 방문하고 싶어요.');
+    assert.equal(updated?.authorName, '두 번째 회원');
+
+    const updatedShop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    assert.equal(updatedShop.rating, 4.5);
+    assert.equal(updatedShop.reviewCount, 2);
+
+    const authorReviews = await listReviews({ shopId, viewer: { id: secondUserId, role: 'USER' } });
+    const authorView = authorReviews.find((review) => review.id === secondReview.id);
+    assert.ok(authorView);
+    assert.equal(authorView.canManage, true);
+    assert.equal('userId' in authorView, false);
+
+    assert.equal(await deleteReview(firstReview.id), true);
+    const singleReviewShop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    assert.equal(singleReviewShop.rating, 4);
+    assert.equal(singleReviewShop.reviewCount, 1);
+
+    assert.equal(await deleteReview(secondReview.id), true);
+    const emptyShop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    assert.equal(emptyShop.rating, 0);
+    assert.equal(emptyShop.reviewCount, 0);
+
+    assert.equal(await deleteReview('missing-review'), false);
+  } finally {
+    await prisma.review.deleteMany({ where: { shopId } });
+    await prisma.shop.deleteMany({ where: { id: shopId } });
+    await prisma.user.deleteMany({ where: { id: { in: [firstUserId, secondUserId] } } });
+  }
+});
 dbTest('hidden reviews stay in admin moderation lists but disappear from public review queries', async () => {
   const admin = await getAdminUser();
   const targetReview = await createTempReview();

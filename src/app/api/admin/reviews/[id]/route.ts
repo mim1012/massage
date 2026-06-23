@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
 import { deleteManagedReview, setReviewHiddenState, updateReview } from '@/lib/server/communityStore';
+import { withDatabaseRetry } from '@/lib/db/retry';
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -11,10 +12,12 @@ export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
-    const existing = await prisma.review.findUnique({
-      where: { id },
-      include: { shop: { select: { ownerId: true } } },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.review.findUnique({
+        where: { id },
+        include: { shop: { select: { ownerId: true } } },
+      }),
+    );
 
     if (!existing) {
       return Response.json({ error: '리뷰를 찾을 수 없습니다.' }, { status: 404 });

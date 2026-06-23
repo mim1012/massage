@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { runWithConcurrencyLimit } from '@/lib/async/run-with-concurrency-limit';
 
 import type { ShopMediaVariant } from '@/lib/server/shop-media';
@@ -226,6 +227,13 @@ export function invalidatePublicShopDetailCache() {
 export function invalidatePublicShopCaches() {
   invalidatePublicShopListCache();
   invalidatePublicShopDetailCache();
+  try {
+    revalidateTag('admin-dashboard', 'max');
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      throw error;
+    }
+  }
 }
 
 export function mapShop(record: ShopRecord): Shop {
@@ -272,16 +280,20 @@ export function mapShop(record: ShopRecord): Shop {
 function mapShopDetail(record: ShopDetailRecord): Shop {
   const firstGalleryImage = record.images[0]?.imageUrl ?? '';
   const thumbnailUrl = record.thumbnailUrl
-    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'hero')
+    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'card')
     : firstGalleryImage
-      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'card')
       : '';
   const bannerUrl = record.bannerUrl
     ? buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')
     : firstGalleryImage
       ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
       : '';
-  const detailImageUrl = thumbnailUrl || bannerUrl;
+  const detailImageUrl = record.thumbnailUrl
+    ? buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'hero')
+    : firstGalleryImage
+      ? buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')
+      : bannerUrl;
 
   return {
     id: record.id,
@@ -366,60 +378,77 @@ function mapShopList(record: ShopListRecord): ShopListItem {
   };
 }
 
-export async function getShopThumbnailBySlug(slug: string) {
-  const shop = await prisma.shop.findUnique({
-    where: { slug },
-    select: {
-      thumbnailUrl: true,
-      updatedAt: true,
-      isVisible: true,
-    },
-  });
+async function getShopThumbnailSource(slug: string) {
+  const shop = await withDatabaseRetry(() =>
+    prisma.shop.findUnique({
+      where: { slug },
+      select: {
+        thumbnailUrl: true,
+        isVisible: true,
+      },
+    }),
+  );
 
   if (!shop?.isVisible || !shop.thumbnailUrl) {
     return null;
   }
 
-  return {
-    thumbnailUrl: shop.thumbnailUrl,
-    updatedAt: shop.updatedAt,
-  };
+  return { thumbnailUrl: shop.thumbnailUrl };
 }
 
-export async function getShopBannerBySlug(slug: string) {
-  const shop = await prisma.shop.findUnique({
-    where: { slug },
-    select: {
-      bannerUrl: true,
-      updatedAt: true,
-      isVisible: true,
-    },
-  });
+const getCachedShopThumbnailSource = unstable_cache(
+  getShopThumbnailSource,
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'thumbnail-source'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function getShopThumbnailBySlug(slug: string) {
+  return getCachedShopThumbnailSource(slug);
+}
+
+async function getShopBannerSource(slug: string) {
+  const shop = await withDatabaseRetry(() =>
+    prisma.shop.findUnique({
+      where: { slug },
+      select: {
+        bannerUrl: true,
+        isVisible: true,
+      },
+    }),
+  );
 
   if (!shop?.isVisible || !shop.bannerUrl) {
     return null;
   }
 
-  return {
-    bannerUrl: shop.bannerUrl,
-    updatedAt: shop.updatedAt,
-  };
+  return { bannerUrl: shop.bannerUrl };
 }
 
-export async function getShopGalleryImageBySlug(slug: string, index: number) {
-  const shop = await prisma.shop.findUnique({
-    where: { slug },
-    select: {
-      updatedAt: true,
-      isVisible: true,
-      images: {
-        orderBy: { sortOrder: 'asc' },
-        select: {
-          imageUrl: true,
+const getCachedShopBannerSource = unstable_cache(
+  getShopBannerSource,
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'banner-source'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function getShopBannerBySlug(slug: string) {
+  return getCachedShopBannerSource(slug);
+}
+
+async function getShopGalleryImageSource(slug: string, index: number) {
+  const shop = await withDatabaseRetry(() =>
+    prisma.shop.findUnique({
+      where: { slug },
+      select: {
+        isVisible: true,
+        images: {
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            imageUrl: true,
+          },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!shop?.isVisible) {
     return null;
@@ -430,10 +459,17 @@ export async function getShopGalleryImageBySlug(slug: string, index: number) {
     return null;
   }
 
-  return {
-    imageUrl: source,
-    updatedAt: shop.updatedAt,
-  };
+  return { imageUrl: source };
+}
+
+const getCachedShopGalleryImageSource = unstable_cache(
+  getShopGalleryImageSource,
+  [PUBLIC_SHOP_DETAIL_CACHE_TAG, 'gallery-source'],
+  { revalidate: 120, tags: [PUBLIC_SHOP_DETAIL_CACHE_TAG] },
+);
+
+export async function getShopGalleryImageBySlug(slug: string, index: number) {
+  return getCachedShopGalleryImageSource(slug, index);
 }
 
 function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
@@ -532,22 +568,26 @@ function buildTopShopWhereSql(filters: ShopFilters) {
 
 async function listTopShopsUncached(filters: ShopFilters = {}, limit = 100): Promise<ShopListItem[]> {
   const normalizedLimit = Math.max(1, limit);
-  const topShopIds = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT s."id"
-    FROM "shops" AS s
-    WHERE ${buildTopShopWhereSql(filters)}
-    ORDER BY s."review_count" DESC, s."rating" DESC, s."created_at" DESC
-    LIMIT ${normalizedLimit}
-  `);
+  const topShopIds = await withDatabaseRetry(() =>
+    prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT s."id"
+      FROM "shops" AS s
+      WHERE ${buildTopShopWhereSql(filters)}
+      ORDER BY s."review_count" DESC, s."rating" DESC, s."created_at" DESC
+      LIMIT ${normalizedLimit}
+    `),
+  );
 
   if (topShopIds.length === 0) {
     return [];
   }
 
-  const records = await prisma.shop.findMany({
-    where: { id: { in: topShopIds.map(({ id }) => id) } },
-    select: shopListSelect,
-  });
+  const records = await withDatabaseRetry(() =>
+    prisma.shop.findMany({
+      where: { id: { in: topShopIds.map(({ id }) => id) } },
+      select: shopListSelect,
+    }),
+  );
   const recordMap = new Map(records.map((record) => [record.id, mapShopList(record)]));
 
   return topShopIds.map(({ id }) => recordMap.get(id)).filter((shop): shop is ShopListItem => Boolean(shop));
@@ -603,20 +643,24 @@ async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): P
 
   const [premiumRecords, regularRecords, regularTotal] = await Promise.all([
     includePremium
-      ? prisma.shop.findMany({
-          where: premiumWhere,
-          select: shopListSelect,
-          orderBy: [{ premiumOrder: 'asc' }, { createdAt: 'desc' }],
-        })
+      ? withDatabaseRetry(() =>
+          prisma.shop.findMany({
+            where: premiumWhere,
+            select: shopListSelect,
+            orderBy: [{ premiumOrder: 'asc' }, { createdAt: 'desc' }],
+          }),
+        )
       : Promise.resolve([] as ShopListRecord[]),
-    prisma.shop.findMany({
-      where: regularWhere,
-      select: shopListSelect,
-      orderBy: getRegularOrderBy(filters.sort),
-      skip: regularOffset,
-      ...(regularLimit ? { take: regularLimit } : {}),
-    }),
-    prisma.shop.count({ where: regularWhere }),
+    withDatabaseRetry(() =>
+      prisma.shop.findMany({
+        where: regularWhere,
+        select: shopListSelect,
+        orderBy: getRegularOrderBy(filters.sort),
+        skip: regularOffset,
+        ...(regularLimit ? { take: regularLimit } : {}),
+      }),
+    ),
+    withDatabaseRetry(() => prisma.shop.count({ where: regularWhere })),
   ]);
 
   const premiumShops = balancePremiumShops(
@@ -676,11 +720,13 @@ export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
   const regularOffset = Math.max(0, filters.regularOffset ?? 0);
   const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
-  const shops = await prisma.shop.findMany({
-    where: buildShopWhere(filters),
-    select: shopListSelect,
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
-  });
+  const shops = await withDatabaseRetry(() =>
+    prisma.shop.findMany({
+      where: buildShopWhere(filters),
+      select: shopListSelect,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
+    }),
+  );
 
   const allShops = shops.map((shop) => mapShopList(shop));
   const sortedShops = [...allShops];
@@ -712,10 +758,12 @@ export async function listShops(filters: ShopFilters = {}) {
 }
 
 const getVisibleShopDetailRecord = cache(async (slug: string) => {
-  return prisma.shop.findFirst({
-    where: { slug, isVisible: true },
-    select: shopDetailSelect,
-  });
+  return withDatabaseRetry(() =>
+    prisma.shop.findFirst({
+      where: { slug, isVisible: true },
+      select: shopDetailSelect,
+    }),
+  );
 });
 
 const getShopBySlugUncached = async (slug: string) => {
@@ -786,11 +834,13 @@ export async function getShopMetadataBySlug(slug: string) {
 }
 
 const getVisibleShopSlugsUncached = async () => {
-  const shops = await prisma.shop.findMany({
-    where: { isVisible: true },
-    select: { slug: true },
-    orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
-  });
+  const shops = await withDatabaseRetry(() =>
+    prisma.shop.findMany({
+      where: { isVisible: true },
+      select: { slug: true },
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
+    }),
+  );
 
   return shops.map((shop) => shop.slug);
 };
@@ -833,29 +883,31 @@ export async function warmPublicShopDetailCaches(slugs: string[]) {
   );
 }
 export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
-  const reviews = await prisma.review.findMany({
-    where: {
-      isHidden: false,
-      shop: {
-        slug,
-        isVisible: true,
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      shopId: true,
-      authorName: true,
-      rating: true,
-      content: true,
-      createdAt: true,
-      shop: {
-        select: {
-          name: true,
+  const reviews = await withDatabaseRetry(() =>
+    prisma.review.findMany({
+      where: {
+        isHidden: false,
+        shop: {
+          slug,
+          isVisible: true,
         },
       },
-    },
-  });
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        shopId: true,
+        authorName: true,
+        rating: true,
+        content: true,
+        createdAt: true,
+        shop: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+  );
 
   return reviews.map((review) => ({
     id: review.id,
@@ -870,11 +922,13 @@ export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
 
 export async function updateShopVisibility(shopId: string, isVisible: boolean) {
   try {
-    const shop = await prisma.shop.update({
-      where: { id: shopId },
-      data: { isVisible },
-      include: shopInclude,
-    });
+    const shop = await withDatabaseRetry(() =>
+      prisma.shop.update({
+        where: { id: shopId },
+        data: { isVisible },
+        include: shopInclude,
+      }),
+    );
     invalidatePublicShopCaches();
     return mapShop(shop);
   } catch {
@@ -884,14 +938,16 @@ export async function updateShopVisibility(shopId: string, isVisible: boolean) {
 
 export async function updateShopPremium(shopId: string, isPremium: boolean, premiumOrder?: number) {
   try {
-    const shop = await prisma.shop.update({
-      where: { id: shopId },
-      data: {
-        isPremium,
-        premiumOrder: isPremium ? premiumOrder ?? 1 : null,
-      },
-      include: shopInclude,
-    });
+    const shop = await withDatabaseRetry(() =>
+      prisma.shop.update({
+        where: { id: shopId },
+        data: {
+          isPremium,
+          premiumOrder: isPremium ? premiumOrder ?? 1 : null,
+        },
+        include: shopInclude,
+      }),
+    );
     invalidatePublicShopCaches();
     return mapShop(shop);
   } catch {

@@ -70,7 +70,8 @@ export default async function ShopDetailPage({ params }: Props) {
 
   const { shop } = data;
   const shopDescriptionHtml = sanitizeShopDescriptionHtml(shop.description);
-  const primaryImage = (shop.thumbnailUrl || shop.bannerUrl).trim();
+  const previewImage = (shop.thumbnailUrl || shop.bannerUrl).trim();
+  const primaryImage = (shop.detailImageUrl || shop.bannerUrl || shop.thumbnailUrl).trim();
   const bgColor = bgColors[Math.abs(parseInt(shop.id.replace(/\D/g, ''), 10) || 0) % bgColors.length];
 
   return (
@@ -114,7 +115,7 @@ export default async function ShopDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {primaryImage ? <ShopMediaSection shopName={shop.name} primaryImage={primaryImage} galleryImages={shop.images} /> : null}
+            {primaryImage ? <ShopMediaSection key={primaryImage} shopName={shop.name} previewImage={previewImage} primaryImage={primaryImage} galleryImages={shop.images} /> : null}
 
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <h2 className="mb-2 border-b border-gray-200 pb-2 text-sm font-black text-gray-800">📝 업소 소개</h2>

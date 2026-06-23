@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { createReview, listManagedReviews } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
@@ -32,10 +33,16 @@ export async function POST(request: Request) {
       return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
     }
 
-    const shop = await prisma.shop.findUnique({
-      where: { id: body.shopId.trim() },
-      select: { ownerId: true },
-    });
+    const shopId = body.shopId.trim();
+    const authorName = body.authorName.trim();
+    const content = body.content.trim();
+
+    const shop = await withDatabaseRetry(() =>
+      prisma.shop.findUnique({
+        where: { id: shopId },
+        select: { ownerId: true },
+      }),
+    );
 
     if (!shop) {
       return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
@@ -46,11 +53,11 @@ export async function POST(request: Request) {
     }
 
     const review = await createReview({
-      shopId: body.shopId.trim(),
+      shopId,
       userId: user.id,
-      authorName: body.authorName.trim(),
+      authorName,
       rating: body.rating,
-      content: body.content,
+      content,
     });
 
     if (!review) {

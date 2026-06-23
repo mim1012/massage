@@ -14,23 +14,24 @@ test('resolveDatabaseUrl fails closed in strict production deploy environments',
   );
 });
 
-test('resolvePoolMax keeps Supabase production pools conservative unless overridden', () => {
+test('resolvePoolMax keeps Supabase pools conservative unless overridden', () => {
   const poolMax = resolvePoolMax(new URL('postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require'), {
-    NODE_ENV: 'production',
+    NODE_ENV: 'development',
   } as NodeJS.ProcessEnv);
 
   assert.equal(poolMax, 1);
 });
 
-test('createPoolConfig keeps local Supabase builds compatible while still recycling connections', () => {
+test('createPoolConfig keeps Supabase builds aggressively recycled to avoid exhausting session-mode poolers', () => {
   const config = createPoolConfig('postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require', {
     NODE_ENV: 'production',
   } as NodeJS.ProcessEnv);
 
   assert.equal(config.keepAlive, true);
   assert.equal(config.keepAliveInitialDelayMillis, 1_000);
+  assert.equal(config.idleTimeoutMillis, 1_000);
   assert.equal(config.allowExitOnIdle, false);
-  assert.equal(config.maxLifetimeSeconds, 60);
+  assert.equal(config.maxLifetimeSeconds, 15);
   assert.deepEqual(config.ssl, { rejectUnauthorized: false });
 });
 

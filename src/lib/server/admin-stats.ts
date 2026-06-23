@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 
+import { withDatabaseRetry } from '@/lib/db/retry';
 export type AdminStatsData = {
   summary: Array<{
     label: string;
@@ -41,11 +42,13 @@ function getKstStartOfMonth(baseDate = new Date()) {
 }
 
 async function countDistinctSessionsSince(startDate: Date) {
-  const [result] = await prisma.$queryRaw<Array<{ count: bigint | number }>>(Prisma.sql`
-    SELECT COUNT(DISTINCT "session_id")::bigint AS "count"
-    FROM "page_view_events"
-    WHERE "created_at" >= ${startDate}
-  `);
+  const [result] = await withDatabaseRetry(() =>
+    prisma.$queryRaw<Array<{ count: bigint | number }>>(Prisma.sql`
+      SELECT COUNT(DISTINCT "session_id")::bigint AS "count"
+      FROM "page_view_events"
+      WHERE "created_at" >= ${startDate}
+    `),
+  );
 
   return Number(result?.count ?? 0);
 }
@@ -54,32 +57,36 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
   const startOfTodayKst = getKstStartOfDay();
   const startOfMonthKst = getKstStartOfMonth();
 
-  const todaySignups = await prisma.user.count({
-    where: {
-      createdAt: { gte: startOfTodayKst },
-    },
-  });
+  const todaySignups = await withDatabaseRetry(() =>
+    prisma.user.count({
+      where: {
+        createdAt: { gte: startOfTodayKst },
+      },
+    }),
+  );
 
   try {
     const [todayVisitors, monthlyVisitors, totalPageViews, topShopViewCounts] = await Promise.all([
       countDistinctSessionsSince(startOfTodayKst),
       countDistinctSessionsSince(startOfMonthKst),
-      prisma.pageViewEvent.count(),
-      prisma.pageViewEvent.groupBy({
-        by: ['shopId'],
-        where: {
-          shopId: { not: null },
-        },
-        _count: {
-          shopId: true,
-        },
-        orderBy: {
-          _count: {
-            shopId: 'desc',
+      withDatabaseRetry(() => prisma.pageViewEvent.count()),
+      withDatabaseRetry(() =>
+        prisma.pageViewEvent.groupBy({
+          by: ['shopId'],
+          where: {
+            shopId: { not: null },
           },
-        },
-        take: 5,
-      }),
+          _count: {
+            shopId: true,
+          },
+          orderBy: {
+            _count: {
+              shopId: 'desc',
+            },
+          },
+          take: 5,
+        }),
+      ),
     ]);
 
     const topShopIds = topShopViewCounts
@@ -88,14 +95,16 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     const topShopMap = new Map(
       (
-        await prisma.shop.findMany({
-          where: { id: { in: topShopIds } },
-          select: {
-            id: true,
-            name: true,
-            regionLabel: true,
-          },
-        })
+        await withDatabaseRetry(() =>
+          prisma.shop.findMany({
+            where: { id: { in: topShopIds } },
+            select: {
+              id: true,
+              name: true,
+              regionLabel: true,
+            },
+          }),
+        )
       ).map((shop) => [shop.id, shop]),
     );
 

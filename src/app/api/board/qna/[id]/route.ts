@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { deletePublicQna, updatePublicQna } from '@/lib/server/communityStore';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { QnaStatus } from '@prisma/client';
 
 type Context = {
@@ -13,10 +14,12 @@ export async function PATCH(request: Request, context: Context) {
     const { id } = await context.params;
     const user = await requireUser();
 
-    const existing = await prisma.qnA.findUnique({
-      where: { id },
-      include: { _count: { select: { comments: true } } },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.qnA.findUnique({
+        where: { id },
+        include: { _count: { select: { comments: true } } },
+      }),
+    );
     if (!existing) {
       return Response.json({ error: 'Q&A를 찾을 수 없습니다.' }, { status: 404 });
     }
@@ -54,10 +57,12 @@ export async function DELETE(_: Request, context: Context) {
     const { id } = await context.params;
     const user = await requireUser();
 
-    const existing = await prisma.qnA.findUnique({
-      where: { id },
-      include: { _count: { select: { comments: true } } },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.qnA.findUnique({
+        where: { id },
+        include: { _count: { select: { comments: true } } },
+      }),
+    );
     if (!existing) {
       return Response.json({ error: 'Q&A를 찾을 수 없습니다.' }, { status: 404 });
     }

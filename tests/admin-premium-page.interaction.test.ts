@@ -75,7 +75,39 @@ async function renderHarness(options?: {
     }
 
     if (url === '/api/admin/premium' && method === 'PATCH') {
-      return Response.json({ ok: true }, { status: 200 });
+      const payload = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
+        orderedIds?: string[];
+        visibilityById?: Record<string, boolean>;
+      };
+      return Response.json({
+        premiumShops: [
+          {
+            id: 'shop-1',
+            name: '프리미엄 업소 1',
+            region: 'seoul',
+            regionLabel: '서울',
+            subRegionLabel: '강남',
+            themeLabel: '스웨디시',
+            isVisible: payload.visibilityById?.['shop-1'] ?? true,
+            isPremium: true,
+            premiumOrder: 1,
+          },
+        ],
+        availableShops: [
+          {
+            id: 'shop-2',
+            name: '일반 업소 2',
+            region: 'seoul',
+            regionLabel: '서울',
+            subRegionLabel: '서초',
+            themeLabel: '아로마',
+            isVisible: true,
+            isPremium: false,
+            premiumOrder: undefined,
+          },
+        ],
+        orderedIds: payload.orderedIds ?? [],
+      }, { status: 200 });
     }
 
     throw new Error(`unexpected fetch ${method} ${url}`);
@@ -107,6 +139,15 @@ async function renderHarness(options?: {
     fetchCalls,
     getSaveButton() {
       return Array.from(dom.window.document.querySelectorAll('button')).find((node) => node.textContent?.includes('배너 설정 저장')) as HTMLButtonElement | undefined;
+    },
+    getVisibleToggleButtons() {
+      return Array.from(dom.window.document.querySelectorAll('button.toggle-switch')) as HTMLButtonElement[];
+    },
+    getRegionButton(label: string) {
+      return Array.from(dom.window.document.querySelectorAll('button')).find((node) => node.textContent?.includes(label)) as HTMLButtonElement | undefined;
+    },
+    getAppliedBannerSummary() {
+      return Array.from(dom.window.document.querySelectorAll('span')).find((node) => node.textContent?.includes('현재 적용된 배너'))?.textContent ?? '';
     },
     async cleanup() {
       await act(async () => {
@@ -184,7 +225,46 @@ test('rapid duplicate save clicks trigger only one premium save sequence', async
 
     assert.equal(saveLoadCalls.length, 0);
     assert.equal(premiumPatchCalls.length, 1);
-    assert.deepEqual(JSON.parse(premiumPatchCalls[0].body ?? '{}'), { orderedIds: ['shop-1'] });
+    assert.deepEqual(JSON.parse(premiumPatchCalls[0].body ?? '{}'), { orderedIds: ['shop-1'], visibilityById: { 'shop-1': true } });
+
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test('hidden premium banners drop out of region counts immediately and stay hidden after save', async () => {
+  const harness = await renderHarness();
+
+  try {
+    const seoulButton = harness.getRegionButton('서울');
+    const toggleButtons = harness.getVisibleToggleButtons();
+    const saveButton = harness.getSaveButton();
+    assert.ok(seoulButton);
+    assert.ok(toggleButtons[0]);
+    assert.ok(saveButton);
+
+    assert.equal(seoulButton.textContent?.includes('1/4'), true);
+    assert.equal(harness.getAppliedBannerSummary().includes('(1)'), true);
+
+    await act(async () => {
+      toggleButtons[0].dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    assert.equal(seoulButton.textContent?.includes('1/4'), false);
+    assert.equal(harness.getAppliedBannerSummary().includes('(0)'), true);
+
+    await act(async () => {
+      saveButton.dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const premiumPatchCalls = harness.fetchCalls.filter((call) => call.method === 'PATCH' && call.url === '/api/admin/premium');
+    assert.equal(premiumPatchCalls.length, 1);
+    assert.deepEqual(JSON.parse(premiumPatchCalls[0].body ?? '{}'), { orderedIds: ['shop-1'], visibilityById: { 'shop-1': false } });
+    assert.equal(seoulButton.textContent?.includes('1/4'), false);
+    assert.equal(harness.getAppliedBannerSummary().includes('(0)'), true);
   } finally {
     await harness.cleanup();
   }

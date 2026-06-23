@@ -1,17 +1,26 @@
 import sharp from 'sharp';
 
 const DATA_URL_PATTERN = /^data:([^;,]+)(;base64)?,([\s\S]*)$/;
-const IMMUTABLE_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const IMMUTABLE_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, s-maxage=31536000, immutable';
+const IMMUTABLE_IMAGE_CDN_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const SHORT_ERROR_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
 const SHOP_MEDIA_VARIANTS = {
   card: { width: 320, height: 320, quality: 64 },
   'premium-card': { width: 480, height: 480, quality: 68 },
-  gallery: { width: 720, height: 720, quality: 72 },
+  gallery: { width: 560, height: 560, quality: 68 },
   hero: { width: 960, height: 960, quality: 70 },
 } as const;
 
 export type ShopMediaVariant = keyof typeof SHOP_MEDIA_VARIANTS;
+type ShopMediaPayload = {
+  body: Buffer;
+  contentType: string | null;
+};
+
+const UPSTREAM_SHOP_MEDIA_CACHE_LIMIT = 128;
+const upstreamShopMediaCache = new Map<string, Promise<ShopMediaPayload | null>>();
+
 
 export function parseDataUrl(value: string) {
   const match = value.match(DATA_URL_PATTERN);
@@ -35,6 +44,7 @@ export function getShopMediaVariant(value?: string | null): ShopMediaVariant {
 function buildImmutableImageHeaders(contentType?: string | null, contentLength?: number) {
   const headers = new Headers({
     'Cache-Control': IMMUTABLE_IMAGE_CACHE_CONTROL,
+    'CDN-Cache-Control': IMMUTABLE_IMAGE_CDN_CACHE_CONTROL,
     Vary: 'Accept',
   });
 
@@ -75,6 +85,60 @@ function getTransformTargetContentType(contentType: string | null, acceptHeader:
 function shouldBypassOptimization(contentType: string | null) {
   const normalizedContentType = contentType?.toLowerCase() ?? '';
   return normalizedContentType.includes('svg') || normalizedContentType.includes('gif');
+}
+
+function rememberShopMediaCacheEntry(
+  cache: Map<string, Promise<ShopMediaPayload | null>>,
+  cacheKey: string,
+  pending: Promise<ShopMediaPayload | null>,
+  limit: number,
+) {
+  cache.set(cacheKey, pending);
+  while (cache.size > limit) {
+    const oldestCacheKey = cache.keys().next().value;
+    if (!oldestCacheKey) {
+      break;
+    }
+    cache.delete(oldestCacheKey);
+  }
+}
+
+async function fetchUpstreamShopMedia(resolvedSourceUrl: URL) {
+  const cacheKey = resolvedSourceUrl.toString();
+  const cached = upstreamShopMediaCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = fetch(resolvedSourceUrl, {
+    cache: 'force-cache',
+    redirect: 'follow',
+    headers: {
+      Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
+    },
+  })
+    .then(async (upstream) => {
+      if (!upstream.ok) {
+        return null;
+      }
+
+      const body = Buffer.from(await upstream.arrayBuffer());
+      if (body.length === 0) {
+        return null;
+      }
+
+      return {
+        body,
+        contentType: upstream.headers.get('content-type'),
+      } satisfies ShopMediaPayload;
+    })
+    .catch((error) => {
+      upstreamShopMediaCache.delete(cacheKey);
+      throw error;
+    });
+
+  rememberShopMediaCacheEntry(upstreamShopMediaCache, cacheKey, pending, UPSTREAM_SHOP_MEDIA_CACHE_LIMIT);
+  return pending;
 }
 
 async function optimizeShopMediaBuffer(
@@ -175,15 +239,8 @@ export async function proxyShopMediaSource(source: string, request: Request, var
     });
   }
 
-  const upstream = await fetch(resolvedSourceUrl, {
-    cache: 'force-cache',
-    redirect: 'follow',
-    headers: {
-      Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
-    },
-  });
-
-  if (!upstream.ok) {
+  const upstreamMedia = await fetchUpstreamShopMedia(resolvedSourceUrl);
+  if (!upstreamMedia) {
     return new Response(null, {
       status: 502,
       headers: {
@@ -192,20 +249,9 @@ export async function proxyShopMediaSource(source: string, request: Request, var
     });
   }
 
-  const originalBody = Buffer.from(await upstream.arrayBuffer());
-  if (originalBody.length === 0) {
-    return new Response(null, {
-      status: 502,
-      headers: {
-        'Cache-Control': SHORT_ERROR_CACHE_CONTROL,
-      },
-    });
-  }
-
-  const upstreamContentType = upstream.headers.get('content-type');
-  const optimizedBody = await optimizeShopMediaBuffer(originalBody, upstreamContentType, variant, acceptHeader);
-  const responseBody = optimizedBody?.body ?? originalBody;
-  const responseContentType = optimizedBody?.contentType ?? upstreamContentType;
+  const optimizedBody = await optimizeShopMediaBuffer(upstreamMedia.body, upstreamMedia.contentType, variant, acceptHeader);
+  const responseBody = optimizedBody?.body ?? upstreamMedia.body;
+  const responseContentType = optimizedBody?.contentType ?? upstreamMedia.contentType;
 
   return new Response(toResponseBody(responseBody), {
     headers: buildImmutableImageHeaders(responseContentType, responseBody.length),

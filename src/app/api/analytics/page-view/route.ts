@@ -4,6 +4,7 @@ import { ANALYTICS_SESSION_COOKIE_NAME, createAnalyticsSessionId } from '@/lib/a
 import { shouldTrackPath } from '@/lib/analytics';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { getUserBySessionToken } from '@/lib/server/auth-store';
 
 const PAGE_VIEW_DEDUP_WINDOW_MS = 30 * 1000;
@@ -56,10 +57,12 @@ export async function POST(request: Request) {
     if (normalizedPath.startsWith('/shop/')) {
       const slug = decodeURIComponent(normalizedPath.replace('/shop/', ''));
       if (slug) {
-        const shop = await prisma.shop.findUnique({
-          where: { slug },
-          select: { id: true },
-        });
+        const shop = await withDatabaseRetry(() =>
+          prisma.shop.findUnique({
+            where: { slug },
+            select: { id: true },
+          }),
+        );
         shopId = shop?.id;
       }
     }
@@ -72,23 +75,27 @@ export async function POST(request: Request) {
       },
     };
 
-    const existing = await prisma.pageViewEvent.findFirst({
-      where: dedupeWhere,
-      select: { id: true },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.pageViewEvent.findFirst({
+        where: dedupeWhere,
+        select: { id: true },
+      }),
+    );
 
     if (!existing) {
-      await prisma.pageViewEvent.create({
-        data: {
-          path,
-          sessionId: analyticsSessionId,
-          userId: currentUser?.id,
-          shopId,
-          ipHash: ip ? hashIp(ip) : undefined,
-          userAgent,
-          referrer,
-        },
-      });
+      await withDatabaseRetry(() =>
+        prisma.pageViewEvent.create({
+          data: {
+            path,
+            sessionId: analyticsSessionId,
+            userId: currentUser?.id,
+            shopId,
+            ipHash: ip ? hashIp(ip) : undefined,
+            userAgent,
+            referrer,
+          },
+        }),
+      );
     }
 
     return Response.json({ ok: true });

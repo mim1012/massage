@@ -117,11 +117,14 @@ function readSessionPayload(token: string) {
 
 export async function findUserByEmail(email: string) {
   try {
-    return await withDatabaseRetry(() =>
-      prisma.user.findUnique({
-        where: { email: normalizeEmail(email) },
-        include: { ownerProfile: true },
-      }),
+    return await withDatabaseRetry(
+      () =>
+        prisma.user.findUnique({
+          where: { email: normalizeEmail(email) },
+          include: { ownerProfile: true },
+        }),
+      3,
+      'find user by email',
     );
   } catch (error) {
     console.error(`Failed to find user by email ${email}:`, error);
@@ -135,17 +138,20 @@ export async function registerUser(input: { name: string; email: string; passwor
       throw new Error('EMAIL_IN_USE');
     }
 
-    const createdUser = await withDatabaseRetry(() =>
-      prisma.user.create({
-        data: {
-          email: normalizeEmail(input.email),
-          name: input.name.trim(),
-          role: UserRole.USER,
-          status: UserStatus.APPROVED,
-          passwordHash: hashPassword(input.password),
-        },
-        include: { ownerProfile: true },
-      }),
+    const createdUser = await withDatabaseRetry(
+      () =>
+        prisma.user.create({
+          data: {
+            email: normalizeEmail(input.email),
+            name: input.name.trim(),
+            role: UserRole.USER,
+            status: UserStatus.APPROVED,
+            passwordHash: hashPassword(input.password),
+          },
+          include: { ownerProfile: true },
+        }),
+      3,
+      'register user',
     );
 
     return sanitizeUser(createdUser);
@@ -172,57 +178,63 @@ try {
     }
 
     if (existingUser?.role === UserRole.OWNER && existingUser.status === UserStatus.REJECTED) {
-      const reopenedUser = await withDatabaseRetry(() =>
-        prisma.user.update({
-          where: { id: existingUser.id },
-          data: {
-            name: input.name.trim(),
-            status: UserStatus.PENDING,
-            phone: input.phone.trim(),
-            passwordHash: hashPassword(input.password),
-            sessionVersion: {
-              increment: 1,
-            },
-            ownerProfile: {
-              upsert: {
-                create: {
-                  businessName: input.businessName.trim(),
-                  businessNumber: (input.businessNumber ?? '').trim(),
-                },
-                update: {
-                  businessName: input.businessName.trim(),
-                  businessNumber: (input.businessNumber ?? '').trim(),
-                  approvedAt: null,
-                  approvedBy: null,
+      const reopenedUser = await withDatabaseRetry(
+        () =>
+          prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              name: input.name.trim(),
+              status: UserStatus.PENDING,
+              phone: input.phone.trim(),
+              passwordHash: hashPassword(input.password),
+              sessionVersion: {
+                increment: 1,
+              },
+              ownerProfile: {
+                upsert: {
+                  create: {
+                    businessName: input.businessName.trim(),
+                    businessNumber: (input.businessNumber ?? '').trim(),
+                  },
+                  update: {
+                    businessName: input.businessName.trim(),
+                    businessNumber: (input.businessNumber ?? '').trim(),
+                    approvedAt: null,
+                    approvedBy: null,
+                  },
                 },
               },
             },
-          },
-          include: { ownerProfile: true },
-        }),
+            include: { ownerProfile: true },
+          }),
+        3,
+        'reopen owner registration',
       );
 
       return sanitizeUser(reopenedUser);
     }
 
-    const createdUser = await withDatabaseRetry(() =>
-      prisma.user.create({
-        data: {
-          email: normalizeEmail(input.email),
-          name: input.name.trim(),
-          role: UserRole.OWNER,
-          status: UserStatus.PENDING,
-          phone: input.phone.trim(),
-          passwordHash: hashPassword(input.password),
-          ownerProfile: {
-            create: {
-              businessName: input.businessName.trim(),
-              businessNumber: (input.businessNumber ?? '').trim(),
+    const createdUser = await withDatabaseRetry(
+      () =>
+        prisma.user.create({
+          data: {
+            email: normalizeEmail(input.email),
+            name: input.name.trim(),
+            role: UserRole.OWNER,
+            status: UserStatus.PENDING,
+            phone: input.phone.trim(),
+            passwordHash: hashPassword(input.password),
+            ownerProfile: {
+              create: {
+                businessName: input.businessName.trim(),
+                businessNumber: (input.businessNumber ?? '').trim(),
+              },
             },
           },
-        },
-        include: { ownerProfile: true },
-      }),
+          include: { ownerProfile: true },
+        }),
+      3,
+      'register owner',
     );
 
     return sanitizeUser(createdUser);

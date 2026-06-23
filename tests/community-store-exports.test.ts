@@ -4,6 +4,7 @@ import * as communityStore from '@/lib/server/communityStore';
 
 const requiredExports = [
   'getAdminDashboardData',
+  'getCachedAdminDashboardData',
   'listManagedReviews',
   'updateNotice',
   'updatePartnershipInquiryStatus',

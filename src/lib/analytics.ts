@@ -3,7 +3,7 @@ export type PageViewPayload = {
   referrer?: string;
 };
 
-const TRACKED_PREFIXES = ['/', '/shop/', '/board', '/top100', '/auth'];
+const TRACKED_PREFIXES = ['/', '/shop/', '/board', '/top100'];
 const IGNORED_PREFIXES = ['/api', '/admin', '/_next', '/favicon'];
 
 export function shouldTrackPath(path: string) {
@@ -15,5 +15,5 @@ export function shouldTrackPath(path: string) {
     return false;
   }
 
-  return TRACKED_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
+  return TRACKED_PREFIXES.some((prefix) => (prefix === '/' ? path === '/' : path === prefix || path.startsWith(prefix)));
 }

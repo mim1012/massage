@@ -292,13 +292,20 @@ test('shop detail media preserves full scraped images while deferring heavier ga
   const bannerRouteSource = await readProjectFile('src/app/api/shops/[slug]/banner/route.ts');
   const galleryRouteSource = await readProjectFile('src/app/api/shops/[slug]/images/[index]/route.ts');
 
-  assert.equal(shopPageSource.includes('<ShopMediaSection shopName={shop.name} primaryImage={primaryImage} galleryImages={shop.images} />'), true);
+  assert.equal(shopPageSource.includes('const previewImage = (shop.thumbnailUrl || shop.bannerUrl).trim();'), true);
+  assert.equal(shopPageSource.includes('const primaryImage = (shop.detailImageUrl || shop.bannerUrl || shop.thumbnailUrl).trim();'), true);
+  assert.equal(shopPageSource.includes('<ShopMediaSection key={primaryImage} shopName={shop.name} previewImage={previewImage} primaryImage={primaryImage} galleryImages={shop.images} />'), true);
+  assert.equal(shopStoreSource.includes("buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'card')"), true);
+  assert.equal(shopStoreSource.includes("buildShopThumbnailProxyUrl(record.slug, record.updatedAt, 'hero')"), true);
   assert.equal(shopStoreSource.includes("buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')"), true);
-  assert.equal(shopStoreSource.includes("buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, index, 'gallery')"), true);
   assert.equal(shopStoreSource.includes("buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')"), true);
+  assert.equal(mediaSource.includes('previewImage?: string;'), true);
+  assert.equal(mediaSource.includes('const PRELOADED_GALLERY_IMAGES = INITIAL_VISIBLE_GALLERY_IMAGES;'), true);
+  assert.equal(mediaSource.includes('const hasSeparatePreviewImage = Boolean(previewImageUrl) && previewImageUrl !== primaryImage;'), true);
+  assert.equal(mediaSource.includes("transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}"), true);
   assert.equal(mediaSource.includes('loading="eager"'), true);
   assert.equal(mediaSource.includes('fetchPriority="high"'), true);
-  assert.equal(mediaSource.includes('loading="lazy"'), true);
+  assert.equal(mediaSource.includes("loading={index < preloadedGalleryImages.length ? 'eager' : 'lazy'}"), true);
   assert.equal(mediaSource.includes('추가 사진 {dedupedGalleryImages.length}장 불러오기'), true);
   assert.equal(mediaSource.includes('사진 {remainingImageCount}장 더 보기'), true);
   assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
@@ -335,7 +342,7 @@ test('top-level navigation links prefetch on intent for faster page changes', as
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/ad"'), true);
   assert.equal(headerSource.includes('<SmartPrefetchLink href="/board/qna"'), true);
   assert.equal(smartLinkSource.includes('router.push(targetHref, { scroll: true });'), true);
-  assert.equal(headerSource.includes('useAuthSession()'), true);
+  assert.equal(headerSource.includes("useAuthSession({ defer: shouldDeferSessionLookup })"), true);
   assert.equal(headerSource.includes('router.prefetch(href)'), false);
   assert.equal(themesSource.includes('requestIdleCallback'), true);
   assert.equal(themesSource.includes("fetch('/api/themes', { cache: 'force-cache' })"), true);

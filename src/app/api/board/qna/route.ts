@@ -1,6 +1,7 @@
 import { getOptionalSessionUser, requireUser } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { createQna, listQna } from '@/lib/server/communityStore';
 
 export async function GET(request: Request) {
@@ -36,10 +37,12 @@ export async function POST(request: Request) {
     }
     const shopId = body.shopId?.trim();
     if (shopId) {
-      const shop = await prisma.shop.findFirst({
-        where: { id: shopId, isVisible: true },
-        select: { id: true },
-      });
+      const shop = await withDatabaseRetry(() =>
+        prisma.shop.findFirst({
+          where: { id: shopId, isVisible: true },
+          select: { id: true },
+        }),
+      );
       if (!shop) {
         return Response.json({ error: '업소를 찾을 수 없습니다.' }, { status: 404 });
       }

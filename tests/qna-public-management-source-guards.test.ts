@@ -66,7 +66,7 @@ test('public qna page and client keep server-derived pagination and canManage wi
   const clientSource = await readProjectFile('src/components/public/QnaPageClient.tsx');
 
   assert.match(pageSource, /const page = normalizePageParam\(pickFirst\(resolvedSearchParams\?\.page\)\)/);
-  assert.match(pageSource, /const viewer = await getSessionUser\(\)/);
+  assert.match(pageSource, /const viewer = await getOptionalSessionUser\(\)/);
   assert.match(pageSource, /const entryPage = await listPublicQnaPage\(\{[\s\S]*page,[\s\S]*shopId,[\s\S]*search,[\s\S]*viewer: viewer \? \{ id: viewer\.id, role: viewer\.role \} : undefined,[\s\S]*\}\)/);
   assert.match(pageSource, /initialPage=\{entryPage\.page\}/);
   assert.match(pageSource, /initialTotalPages=\{entryPage\.totalPages\}/);

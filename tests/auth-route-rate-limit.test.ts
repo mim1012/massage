@@ -300,6 +300,91 @@ test('handleUserRegisterPost trims display name and email before storing', async
   assert.equal(response.status, 201);
 });
 
+test('handleUserRegisterPost maps database failures to a 503 service error response', async () => {
+  const response = await handleUserRegisterPost(
+    new Request('https://example.com/api/auth/register/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: '홍길동', email: 'user@example.com', password: 'secret123' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+        }),
+      }),
+      registerUser: async () => {
+        throw new Error('DATABASE_ERROR');
+      },
+    },
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(await response.json(), {
+    error: '데이터베이스 연결에 실패했습니다. 관리자에게 문의해 주세요.',
+  });
+});
+
+test('handleUserRegisterPost maps duplicate emails to a 409 conflict response', async () => {
+  const response = await handleUserRegisterPost(
+    new Request('https://example.com/api/auth/register/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: '홍길동', email: 'user@example.com', password: 'secret123' }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+          'X-RateLimit-Remaining': '6',
+        }),
+      }),
+      registerUser: async () => {
+        throw new Error('EMAIL_IN_USE');
+      },
+    },
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('X-RateLimit-Remaining'), '6');
+  assert.deepEqual(await response.json(), { error: '이미 사용 중인 이메일입니다.' });
+});
+
+test('handleUserRegisterPost preserves rate-limit headers when the request body is malformed', async () => {
+  const response = await handleUserRegisterPost(
+    new Request('https://example.com/api/auth/register/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{"name":',
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+          'X-RateLimit-Limit': '10',
+        }),
+      }),
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
+  assert.deepEqual(await response.json(), { error: 'Unexpected end of JSON input' });
+});
+
+
 test('handleOwnerRegisterPost forwards auth rate-limit headers on successful responses', async () => {
   const response = await handleOwnerRegisterPost(
     new Request('https://example.com/api/auth/register/owner', {
@@ -349,4 +434,67 @@ test('handleOwnerRegisterPost forwards auth rate-limit headers on successful res
     nextUrl: '/auth/login?notice=pending-approval',
     message: '관리자 승인 후 로그인할 수 있습니다.',
   });
+});
+
+test('handleOwnerRegisterPost maps duplicate emails to a 409 conflict response', async () => {
+  const response = await handleOwnerRegisterPost(
+    new Request('https://example.com/api/auth/register/owner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: '업주',
+        email: 'owner@example.com',
+        password: 'secret123',
+        businessName: '테스트샵',
+        businessNumber: '123-45-67890',
+        phone: '010-1234-5678',
+      }),
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+          'X-RateLimit-Remaining': '5',
+        }),
+      }),
+      registerOwnerRoute: async () => Response.json({ error: '이미 사용 중인 이메일입니다.' }, { status: 409 }),
+      registerOwner: async () => {
+        throw new Error('EMAIL_IN_USE');
+      },
+    },
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('X-RateLimit-Remaining'), '5');
+  assert.deepEqual(await response.json(), { error: '이미 사용 중인 이메일입니다.' });
+});
+
+test('handleOwnerRegisterPost preserves rate-limit headers when the request body is malformed', async () => {
+  const response = await handleOwnerRegisterPost(
+    new Request('https://example.com/api/auth/register/owner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{"name":',
+    }),
+    {
+      checkRateLimit: () => ({
+        limited: false,
+        headers: new Headers({
+          'Cache-Control': 'no-store',
+          'X-RateLimit-Limit': '10',
+        }),
+      }),
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
+  assert.deepEqual(await response.json(), { error: 'Unexpected end of JSON input' });
 });

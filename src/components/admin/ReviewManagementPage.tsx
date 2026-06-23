@@ -125,7 +125,13 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
     resetForm();
   }
 
+  const canCreateOrEdit = scope === 'admin';
+
   function handleOpenCreateModal() {
+    if (!canCreateOrEdit) {
+      return;
+    }
+
     setEditingReview(null);
     setError(null);
     resetForm();
@@ -133,6 +139,10 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
   }
 
   function handleOpenEditModal(review: ManagedReview) {
+    if (!canCreateOrEdit) {
+      return;
+    }
+
     setEditingReview(review);
     setError(null);
     setForm({
@@ -270,7 +280,7 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
   const scopeDescription =
     scope === 'admin'
       ? '관리자는 전체 리뷰를 등록, 수정, 삭제할 수 있습니다.'
-      : '오너는 내 업소 리뷰를 조회, 등록, 수정, 삭제할 수 있습니다.';
+      : '오너는 내 업소 리뷰를 조회하고 필요한 경우 삭제할 수 있습니다.';
 
   return (
     <div className="max-w-[900px] space-y-4">
@@ -280,19 +290,24 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
           {pageTitle}
         </h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            리뷰 등록
-          </button>
+          {canCreateOrEdit ? (
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              리뷰 등록
+            </button>
+          ) : null}
           <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filteredReviews.length}건 / 전체 {reviews.length}건</div>
         </div>
       </div>
 
       <div className="rounded border border-[color-mix(in_srgb,var(--portal-brand)_20%,white)] bg-[var(--portal-brand-soft)] px-3 py-2 text-xs text-[var(--portal-brand-dark)]">
-        리뷰를 직접 등록하거나 기존 리뷰를 수정 및 삭제하여 관리할 수 있습니다. {scopeDescription}
+        {canCreateOrEdit
+          ? '리뷰를 직접 등록하거나 기존 리뷰를 수정 및 삭제하여 관리할 수 있습니다.'
+          : '오너는 내 업소에 등록된 리뷰를 확인하고 삭제 요청이 필요한 건을 즉시 정리할 수 있습니다.'}{' '}
+        {scopeDescription}
       </div>
 
       <div className="flex flex-col gap-2 rounded border border-gray-200 bg-white p-3 sm:flex-row">
@@ -346,13 +361,15 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
                 <p className="text-sm leading-relaxed text-gray-600">{review.content}</p>
               </div>
               <div className="flex gap-1.5">
-                <button
-                  onClick={() => handleOpenEditModal(review)}
-                  className="rounded border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                  title="수정"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
+                {canCreateOrEdit ? (
+                  <button
+                    onClick={() => handleOpenEditModal(review)}
+                    className="rounded border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                    title="수정"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
                 <button
                   onClick={() => void removeReview(review.id)}
                   disabled={isDeleting(review.id)}

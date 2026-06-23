@@ -6,7 +6,12 @@ const DEFAULT_LOCAL_DATABASE_URL = 'postgresql://postgres:postgres@localhost:543
 const DEFAULT_DEVELOPMENT_POOL_MAX = 10;
 const DEFAULT_PRODUCTION_POOL_MAX = 5;
 const DEFAULT_SUPABASE_POOL_MAX = 1;
+const DEFAULT_POOL_IDLE_TIMEOUT_MS = 5_000;
+const DEFAULT_SUPABASE_IDLE_TIMEOUT_MS = 1_000;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
 const DEFAULT_PRODUCTION_MAX_LIFETIME_SECONDS = 60;
+const DEFAULT_SUPABASE_MAX_LIFETIME_SECONDS = 15;
+
 
 const globalForPrisma = globalThis as typeof globalThis & {
   __massagePgPool?: Pool;
@@ -47,21 +52,30 @@ export function resolvePoolMax(url: URL, env: NodeJS.ProcessEnv = process.env) {
     return parsed;
   }
 
+  if (isSupabaseHost(url.hostname)) {
+    return DEFAULT_SUPABASE_POOL_MAX;
+  }
+
   if (env.NODE_ENV === 'production') {
-    return isSupabaseHost(url.hostname) ? DEFAULT_SUPABASE_POOL_MAX : DEFAULT_PRODUCTION_POOL_MAX;
+    return DEFAULT_PRODUCTION_POOL_MAX;
   }
 
   return DEFAULT_DEVELOPMENT_POOL_MAX;
 }
 
-function resolveMaxLifetimeSeconds(env: NodeJS.ProcessEnv) {
+function resolveMaxLifetimeSeconds(env: NodeJS.ProcessEnv, isSupabase: boolean) {
   const configured = parsePositiveNumber(env.PG_MAX_LIFETIME_SECONDS ?? null);
   if (configured) {
-    return configured;
+    return isSupabase ? Math.min(configured, DEFAULT_SUPABASE_MAX_LIFETIME_SECONDS) : configured;
+  }
+
+  if (isSupabase) {
+    return DEFAULT_SUPABASE_MAX_LIFETIME_SECONDS;
   }
 
   return env.NODE_ENV === 'production' ? DEFAULT_PRODUCTION_MAX_LIFETIME_SECONDS : 0;
 }
+
 
 function shouldUseSsl(url: URL) {
   const sslMode = url.searchParams.get('sslmode')?.toLowerCase();
@@ -96,12 +110,13 @@ function shouldRejectUnauthorized(url: URL, env: NodeJS.ProcessEnv) {
 
 export function createPoolConfig(connectionString: string, env: NodeJS.ProcessEnv = process.env): PoolConfig {
   const url = new URL(connectionString);
-  const maxLifetimeSeconds = resolveMaxLifetimeSeconds(env);
+  const supabaseHost = isSupabaseHost(url.hostname);
+  const maxLifetimeSeconds = resolveMaxLifetimeSeconds(env, supabaseHost);
   const baseConfig: PoolConfig = {
     connectionString,
     max: resolvePoolMax(url, env),
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: supabaseHost ? DEFAULT_SUPABASE_IDLE_TIMEOUT_MS : DEFAULT_POOL_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: DEFAULT_CONNECTION_TIMEOUT_MS,
     keepAlive: true,
     keepAliveInitialDelayMillis: 1_000,
     allowExitOnIdle: env.NODE_ENV !== 'production',
@@ -122,7 +137,11 @@ export function createPoolConfig(connectionString: string, env: NodeJS.ProcessEn
 
 export function getPgPool() {
   if (!globalForPrisma.__massagePgPool) {
-    globalForPrisma.__massagePgPool = new Pool(createPoolConfig(resolveDatabaseUrl()));
+    const pool = new Pool(createPoolConfig(resolveDatabaseUrl()));
+    pool.on('error', (error) => {
+      console.error('[db] unexpected pg pool error:', error);
+    });
+    globalForPrisma.__massagePgPool = pool;
   }
 
   return globalForPrisma.__massagePgPool;

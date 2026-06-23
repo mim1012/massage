@@ -61,22 +61,14 @@ type ManagedShopListRecord = Prisma.ShopGetPayload<{
 const SITE_SETTINGS_ID = 'default';
 const PUBLIC_SITE_CONTENT_CACHE_TAG = 'public-site-content';
 
-let cachedPublicSiteContent:
-  | {
-      siteSettings: SiteSettings;
-      homeSeo: HomeSeoContent;
-    }
-  | null
-  | undefined;
+const ADMIN_DASHBOARD_CACHE_TAG = 'admin-dashboard';
+const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 let cachedPublicSiteContentPromise:
   | Promise<{
       siteSettings: SiteSettings;
       homeSeo: HomeSeoContent;
     } | null>
   | null = null;
-let cachedBoardSummary: Promise<{ notices: number; qna: number; reviews: number }> | null = null;
-const cachedPublicNoticeLists = new Map<string, Promise<Notice[]>>();
-const cachedPublicReviewLists = new Map<string, Promise<Review[]>>();
 
 const getPersistentPublicSiteContent = unstable_cache(
   async () => {
@@ -125,9 +117,8 @@ function safeRevalidateTag(tag: string) {
 }
 
 function invalidatePublicBoardCaches() {
-  cachedBoardSummary = null;
-  cachedPublicNoticeLists.clear();
-  cachedPublicReviewLists.clear();
+  safeRevalidateTag(PUBLIC_BOARD_CACHE_TAG);
+  safeRevalidateTag(ADMIN_DASHBOARD_CACHE_TAG);
 }
 
 function mapManagedShopRecordForAdmin(shop: ManagedShopListRecord): AdminShopListItem {
@@ -284,21 +275,23 @@ async function loadLegacyQnaRecords(
     take?: number;
   },
 ) {
-  const entries = await prisma.qnA.findMany({
-    where,
-    include: {
-      shop: {
-        select: {
-          ownerId: true,
-          name: true,
-          regionLabel: true,
+  const entries = await withDatabaseRetry(() =>
+    prisma.qnA.findMany({
+      where,
+      include: {
+        shop: {
+          select: {
+            ownerId: true,
+            name: true,
+            regionLabel: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-    ...(typeof pagination?.skip === 'number' ? { skip: pagination.skip } : {}),
-    ...(typeof pagination?.take === 'number' ? { take: pagination.take } : {}),
-  });
+      orderBy: { createdAt: 'desc' },
+      ...(typeof pagination?.skip === 'number' ? { skip: pagination.skip } : {}),
+      ...(typeof pagination?.take === 'number' ? { take: pagination.take } : {}),
+    }),
+  );
 
   return entries.map((entry) => ({ ...entry, comments: [] as [] })) satisfies LegacyQnaRecord[];
 }
@@ -473,9 +466,11 @@ function hasLegacySiteContent(
 }
 
 async function loadSiteContentRecord() {
-  const record = await prisma.siteSettings.findUnique({
-    where: { id: SITE_SETTINGS_ID },
-  });
+  const record = await withDatabaseRetry(() =>
+    prisma.siteSettings.findUnique({
+      where: { id: SITE_SETTINGS_ID },
+    }),
+  );
 
   if (!record) {
     return null;
@@ -508,10 +503,12 @@ async function createUniqueShopSlug(input: Pick<Shop, 'name' | 'region' | 'theme
   let candidate = base;
 
   for (let suffix = 2; suffix < 1000; suffix += 1) {
-    const existing = await prisma.shop.findUnique({
-      where: { slug: candidate },
-      select: { id: true },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.shop.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      }),
+    );
 
     if (!existing) {
       return candidate;
@@ -623,22 +620,30 @@ export async function listManagedShops(
 }
 
 export async function updatePremiumOrder(orderedIds: string[], visibilityById: Record<string, boolean> = {}) {
-  const existingShops = await prisma.shop.findMany({ select: { id: true } });
-  const existingIds = new Set(existingShops.map((shop) => shop.id));
-  const validIds = Array.from(new Set(orderedIds.filter((id) => existingIds.has(id))));
+  const existingShops = await withDatabaseRetry(() =>
+    prisma.shop.findMany({ select: { id: true, isVisible: true } }),
+  );
+  const existingShopMap = new Map(existingShops.map((shop) => [shop.id, shop]));
+  const validIds = Array.from(new Set(orderedIds.filter((id) => existingShopMap.has(id))));
 
-  await prisma.$transaction([
-    prisma.shop.updateMany({
-      where: validIds.length > 0 ? { id: { notIn: validIds }, isPremium: true } : { isPremium: true },
-      data: { isPremium: false, premiumOrder: null },
-    }),
-    ...validIds.map((id, index) =>
-      prisma.shop.update({
-        where: { id },
-        data: { isPremium: true, premiumOrder: index + 1, isVisible: visibilityById[id] ?? true },
+  await withDatabaseRetry(() =>
+    prisma.$transaction([
+      prisma.shop.updateMany({
+        where: validIds.length > 0 ? { id: { notIn: validIds }, isPremium: true } : { isPremium: true },
+        data: { isPremium: false, premiumOrder: null },
       }),
-    ),
-  ]);
+      ...validIds.map((id, index) =>
+        prisma.shop.update({
+          where: { id },
+          data: {
+            isPremium: true,
+            premiumOrder: index + 1,
+            isVisible: visibilityById[id] ?? existingShopMap.get(id)?.isVisible ?? true,
+          },
+        }),
+      ),
+    ]),
+  );
   invalidatePublicShopCaches();
 
   return await getPremiumBoardData();
@@ -658,54 +663,67 @@ type NoticeListOptions = {
   strict?: boolean;
 };
 
-export async function listNotices(options: NoticeListOptions = {}) {
-  const search = options.search?.trim();
-  const cacheKey = search ?? '__all__';
-  const cached = cachedPublicNoticeLists.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const pending = prisma.notice
-    .findMany({
+async function loadNotices(search?: string) {
+  const notices = await withDatabaseRetry(() =>
+    prisma.notice.findMany({
       where: search
         ? {
             OR: [{ title: buildContainsFilter(search) }, { content: buildContainsFilter(search) }],
           }
         : undefined,
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-    })
-    .then((notices) => notices.map(mapNotice))
-    .catch((error) => {
-      cachedPublicNoticeLists.delete(cacheKey);
+    }),
+  );
+
+  return notices.map(mapNotice);
+}
+
+const getCachedNotices = unstable_cache(loadNotices, [PUBLIC_BOARD_CACHE_TAG, 'notices'], {
+  revalidate: 30,
+  tags: [PUBLIC_BOARD_CACHE_TAG],
+});
+
+export async function listNotices(options: NoticeListOptions = {}) {
+  const search = options.search?.trim() || undefined;
+
+  try {
+    return await getCachedNotices(search);
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      console.error('Failed to list notices:', error);
+    }
+
+    try {
+      return await loadNotices(search);
+    } catch (directError) {
       if (options.strict) {
-        console.error('Failed to list notices:', error);
+        console.error('Failed to list notices:', directError);
         throw new Error('DATABASE_ERROR');
       }
+
       return [];
-    });
-
-  cachedPublicNoticeLists.set(cacheKey, pending);
-
-  return pending;
+    }
+  }
 }
 
 export async function getNoticeById(id: string) {
-  const notice = await prisma.notice.findUnique({ where: { id } });
+  const notice = await withDatabaseRetry(() => prisma.notice.findUnique({ where: { id } }));
   return notice ? mapNotice(notice) : null;
 }
 
 export async function createNotice(
   input: Pick<Notice, 'title' | 'content' | 'isPinned'> & { createdBy: string },
 ) {
-  const notice = await prisma.notice.create({
-    data: {
-      title: input.title.trim(),
-      content: input.content.trim(),
-      isPinned: input.isPinned,
-      createdBy: input.createdBy,
-    },
-  });
+  const notice = await withDatabaseRetry(() =>
+    prisma.notice.create({
+      data: {
+        title: input.title.trim(),
+        content: input.content.trim(),
+        isPinned: input.isPinned,
+        createdBy: input.createdBy,
+      },
+    }),
+  );
 
   invalidatePublicBoardCaches();
 
@@ -713,23 +731,27 @@ export async function createNotice(
 }
 
 export async function updateNotice(id: string, input: Pick<Notice, 'title' | 'content' | 'isPinned'>) {
-  const existingNotice = await prisma.notice.findUnique({
-    where: { id },
-    select: { id: true },
-  });
+  const existingNotice = await withDatabaseRetry(() =>
+    prisma.notice.findUnique({
+      where: { id },
+      select: { id: true },
+    }),
+  );
 
   if (!existingNotice) {
     return null;
   }
 
-  const notice = await prisma.notice.update({
-    where: { id },
-    data: {
-      title: input.title.trim(),
-      content: input.content.trim(),
-      isPinned: input.isPinned,
-    },
-  });
+  const notice = await withDatabaseRetry(() =>
+    prisma.notice.update({
+      where: { id },
+      data: {
+        title: input.title.trim(),
+        content: input.content.trim(),
+        isPinned: input.isPinned,
+      },
+    }),
+  );
 
   invalidatePublicBoardCaches();
 
@@ -737,7 +759,7 @@ export async function updateNotice(id: string, input: Pick<Notice, 'title' | 'co
 }
 
 export async function deleteNotice(id: string) {
-  const result = await prisma.notice.deleteMany({ where: { id } });
+  const result = await withDatabaseRetry(() => prisma.notice.deleteMany({ where: { id } }));
   if (result.count > 0) {
     invalidatePublicBoardCaches();
   }
@@ -1097,38 +1119,40 @@ export async function createQnaComment(
   viewer?: ViewerContext,
 ) {
   try {
-    const entry = await prisma.$transaction(async (tx) => {
-      const existingEntry = await tx.qnA.findUnique({
-        where: { id },
-        include: qnaInclude,
-      });
+    const entry = await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const existingEntry = await tx.qnA.findUnique({
+          where: { id },
+          include: qnaInclude,
+        });
 
-      if (!existingEntry || !canManageQnaEntry(existingEntry, viewer)) {
-        return null;
-      }
+        if (!existingEntry || !canManageQnaEntry(existingEntry, viewer)) {
+          return null;
+        }
 
-      await tx.qnAComment.create({
-        data: {
-          qnaId: id,
-          userId: input.userId ?? null,
-          authorName: input.authorName.trim(),
-          role: input.role,
-          content: input.content.trim(),
-        },
-      });
+        await tx.qnAComment.create({
+          data: {
+            qnaId: id,
+            userId: input.userId ?? null,
+            authorName: input.authorName.trim(),
+            role: input.role,
+            content: input.content.trim(),
+          },
+        });
 
-      await tx.qnA.update({
-        where: { id },
-        data: {
-          status: QnaStatus.ANSWERED,
-        },
-      });
+        await tx.qnA.update({
+          where: { id },
+          data: {
+            status: QnaStatus.ANSWERED,
+          },
+        });
 
-      return await tx.qnA.findUnique({
-        where: { id },
-        include: qnaInclude,
-      });
-    });
+        return await tx.qnA.findUnique({
+          where: { id },
+          include: qnaInclude,
+        });
+      }),
+    );
 
     return entry ? mapQna(entry, viewer) : null;
   } catch (error) {
@@ -1149,47 +1173,49 @@ export async function answerQna(
   viewer?: ViewerContext,
 ) {
   try {
-    const entry = await prisma.$transaction(async (tx) => {
-      const existingEntry = await tx.qnA.findUnique({
-        where: { id },
-        include: qnaInclude,
-      });
+    const entry = await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const existingEntry = await tx.qnA.findUnique({
+          where: { id },
+          include: qnaInclude,
+        });
 
-      if (!existingEntry || !canManageQnaEntry(existingEntry, viewer)) {
-        return null;
-      }
+        if (!existingEntry || !canManageQnaEntry(existingEntry, viewer)) {
+          return null;
+        }
 
-      if (existingEntry.status === QnaStatus.ANSWERED) {
-        return existingEntry;
-      }
+        if (existingEntry.status === QnaStatus.ANSWERED) {
+          return existingEntry;
+        }
 
-      const claimed = await tx.qnA.updateMany({
-        where: { id, status: QnaStatus.OPEN },
-        data: { status: QnaStatus.ANSWERED },
-      });
+        const claimed = await tx.qnA.updateMany({
+          where: { id, status: QnaStatus.OPEN },
+          data: { status: QnaStatus.ANSWERED },
+        });
 
-      if (claimed.count === 0) {
+        if (claimed.count === 0) {
+          return await tx.qnA.findUnique({
+            where: { id },
+            include: qnaInclude,
+          });
+        }
+
+        await tx.qnAComment.create({
+          data: {
+            qnaId: id,
+            userId: answeredBy ?? null,
+            authorName: answeredByName.trim(),
+            role,
+            content: answer.trim(),
+          },
+        });
+
         return await tx.qnA.findUnique({
           where: { id },
           include: qnaInclude,
         });
-      }
-
-      await tx.qnAComment.create({
-        data: {
-          qnaId: id,
-          userId: answeredBy ?? null,
-          authorName: answeredByName.trim(),
-          role,
-          content: answer.trim(),
-        },
-      });
-
-      return await tx.qnA.findUnique({
-        where: { id },
-        include: qnaInclude,
-      });
-    });
+      }),
+    );
 
     return entry ? mapQna(entry, viewer) : null;
   } catch (error) {
@@ -1206,18 +1232,20 @@ export async function createQna(
   viewer?: ViewerContext,
 ) {
   try {
-    const entry = await prisma.qnA.create({
-      data: {
-        question: input.question.trim(),
-        authorName: input.authorName.trim(),
-        shopId: input.shopId?.trim() || null,
-        userId: input.userId?.trim() || null,
-        status: QnaStatus.OPEN,
-      },
-      include: qnaInclude,
-    });
+    const entry = await withDatabaseRetry(() =>
+      prisma.qnA.create({
+        data: {
+          question: input.question.trim(),
+          authorName: input.authorName.trim(),
+          shopId: input.shopId?.trim() || null,
+          userId: input.userId?.trim() || null,
+          status: QnaStatus.OPEN,
+        },
+        include: qnaInclude,
+      }),
+    );
 
-    cachedBoardSummary = null;
+    invalidatePublicBoardCaches();
 
     return mapQna(entry, viewer);
   } catch (error) {
@@ -1225,26 +1253,28 @@ export async function createQna(
       throw error;
     }
 
-    const entry = await prisma.qnA.create({
-      data: {
-        question: input.question.trim(),
-        authorName: input.authorName.trim(),
-        shopId: input.shopId?.trim() || null,
-        userId: input.userId?.trim() || null,
-        status: QnaStatus.OPEN,
-      },
-      include: {
-        shop: {
-          select: {
-            ownerId: true,
-            name: true,
-            regionLabel: true,
+    const entry = await withDatabaseRetry(() =>
+      prisma.qnA.create({
+        data: {
+          question: input.question.trim(),
+          authorName: input.authorName.trim(),
+          shopId: input.shopId?.trim() || null,
+          userId: input.userId?.trim() || null,
+          status: QnaStatus.OPEN,
+        },
+        include: {
+          shop: {
+            select: {
+              ownerId: true,
+              name: true,
+              regionLabel: true,
+            },
           },
         },
-      },
-    });
+      }),
+    );
 
-    cachedBoardSummary = null;
+    invalidatePublicBoardCaches();
 
     return mapQna({ ...entry, comments: [] }, viewer);
   }
@@ -1267,23 +1297,25 @@ const PUBLIC_REVIEWER_EMAIL = 'public-reviewer@massage.local';
 const PUBLIC_REVIEWER_PASSWORD_HASH = 'public-reviewer';
 
 async function getPublicReviewerId() {
-  const reviewer = await prisma.user.upsert({
-    where: { email: PUBLIC_REVIEWER_EMAIL },
-    update: {
-      name: '공개 리뷰 작성자',
-      role: PrismaUserRole.USER,
-      status: UserStatus.APPROVED,
-      passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
-    },
-    create: {
-      email: PUBLIC_REVIEWER_EMAIL,
-      name: '공개 리뷰 작성자',
-      role: PrismaUserRole.USER,
-      status: UserStatus.APPROVED,
-      passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
-    },
-    select: { id: true },
-  });
+  const reviewer = await withDatabaseRetry(() =>
+    prisma.user.upsert({
+      where: { email: PUBLIC_REVIEWER_EMAIL },
+      update: {
+        name: '공개 리뷰 작성자',
+        role: PrismaUserRole.USER,
+        status: UserStatus.APPROVED,
+        passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
+      },
+      create: {
+        email: PUBLIC_REVIEWER_EMAIL,
+        name: '공개 리뷰 작성자',
+        role: PrismaUserRole.USER,
+        status: UserStatus.APPROVED,
+        passwordHash: PUBLIC_REVIEWER_PASSWORD_HASH,
+      },
+      select: { id: true },
+    }),
+  );
 
   return reviewer.id;
 }
@@ -1316,18 +1348,20 @@ export async function createReview(input: {
 }) {
   const userId = input.userId?.trim() || (await getPublicReviewerId());
 
-  const review = await prisma.review.create({
-    data: {
-      shopId: input.shopId,
-      userId,
-      authorName: input.authorName.trim(),
-      rating: input.rating,
-      content: input.content.trim(),
-    },
-    include: { shop: { select: { name: true } } },
-  });
+  const review = await withDatabaseRetry(() =>
+    prisma.review.create({
+      data: {
+        shopId: input.shopId,
+        userId,
+        authorName: input.authorName.trim(),
+        rating: input.rating,
+        content: input.content.trim(),
+      },
+      include: { shop: { select: { name: true } } },
+    }),
+  );
 
-  await refreshShopReviewRating(input.shopId);
+  await withDatabaseRetry(() => refreshShopReviewRating(input.shopId));
   invalidatePublicShopCaches();
   invalidatePublicBoardCaches();
   return mapReview(review);
@@ -1371,38 +1405,45 @@ export async function listPublicReviewPage(
   };
 }
 
-export async function listReviews(options: number | ReviewListOptions = {}) {
-  const normalizedOptions =
-    typeof options === 'number'
-      ? { limit: options }
-      : options;
+async function loadReviews(normalizedOptions: ReviewListOptions) {
   const shopId = normalizedOptions.shopId?.trim();
   const region = normalizedOptions.region?.trim();
   const search = normalizedOptions.search?.trim();
   const searchType = normalizedOptions.searchType ?? 'all';
-  const limit = typeof normalizedOptions.limit === 'number' ? normalizedOptions.limit : null;
-  const cacheKey = JSON.stringify({ shopId: shopId ?? '', region: region ?? '', search: search ?? '', searchType, limit, viewerId: normalizedOptions.viewer?.id ?? '', viewerRole: normalizedOptions.viewer?.role ?? '' });
-  const cached = cachedPublicReviewLists.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
 
-  const pending = prisma.review
-    .findMany({
+  const reviews = await withDatabaseRetry(() =>
+    prisma.review.findMany({
       where: buildReviewWhere(shopId, search, region, searchType),
       include: { shop: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       ...(typeof normalizedOptions.limit === 'number' ? { take: normalizedOptions.limit } : {}),
-    })
-    .then((reviews) => reviews.map((review) => mapPublicReview(mapReview(review), normalizedOptions.viewer)))
-    .catch(() => {
-      cachedPublicReviewLists.delete(cacheKey);
+    }),
+  );
+
+  return reviews.map((review) => mapPublicReview(mapReview(review), normalizedOptions.viewer));
+}
+
+const getCachedReviews = unstable_cache(loadReviews, [PUBLIC_BOARD_CACHE_TAG, 'reviews'], {
+  revalidate: 30,
+  tags: [PUBLIC_BOARD_CACHE_TAG],
+});
+
+export async function listReviews(options: number | ReviewListOptions = {}) {
+  const normalizedOptions = typeof options === 'number' ? { limit: options } : options;
+
+  try {
+    return await getCachedReviews(normalizedOptions);
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      console.error('Failed to load reviews:', error);
+    }
+
+    try {
+      return await loadReviews(normalizedOptions);
+    } catch {
       return [];
-    });
-
-  cachedPublicReviewLists.set(cacheKey, pending);
-
-  return pending;
+    }
+  }
 }
 
 export async function listManagedReviews(user: { id: string; role: UserRole }, search?: string, pagination: { page?: number; pageSize?: number } = {}) {
@@ -1466,23 +1507,25 @@ export async function updateReview(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
-      const review = await tx.review.update({
-        where: { id },
-        data: {
-          ...(typeof input.rating === 'number' ? { rating: input.rating } : {}),
-          ...(trimmedContent !== undefined ? { content: trimmedContent } : {}),
-          ...(trimmedAuthorName !== undefined ? { authorName: trimmedAuthorName } : {}),
-        },
-        include: { shop: { select: { name: true } } },
-      });
+    const updated = await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const review = await tx.review.update({
+          where: { id },
+          data: {
+            ...(typeof input.rating === 'number' ? { rating: input.rating } : {}),
+            ...(trimmedContent !== undefined ? { content: trimmedContent } : {}),
+            ...(trimmedAuthorName !== undefined ? { authorName: trimmedAuthorName } : {}),
+          },
+          include: { shop: { select: { name: true } } },
+        });
 
-      if (input.rating !== undefined) {
-        await refreshShopReviewRating(review.shopId, tx);
-      }
+        if (input.rating !== undefined) {
+          await refreshShopReviewRating(review.shopId, tx);
+        }
 
-      return review;
-    });
+        return review;
+      }),
+    );
 
     invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
@@ -1498,14 +1541,16 @@ export async function updateReview(
 
 export async function deleteReview(reviewId: string) {
   try {
-    await prisma.$transaction(async (tx) => {
-      const review = await tx.review.delete({
-        where: { id: reviewId },
-        select: { shopId: true },
-      });
+    await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const review = await tx.review.delete({
+          where: { id: reviewId },
+          select: { shopId: true },
+        });
 
-      await refreshShopReviewRating(review.shopId, tx);
-    });
+        await refreshShopReviewRating(review.shopId, tx);
+      }),
+    );
 
     invalidatePublicShopCaches();
     invalidatePublicBoardCaches();
@@ -1530,13 +1575,15 @@ export async function updateQna(
       return null;
     }
 
-    const entry = await prisma.qnA.update({
-      where: { id },
-      data: {
-        question,
-      },
-      include: qnaInclude,
-    });
+    const entry = await withDatabaseRetry(() =>
+      prisma.qnA.update({
+        where: { id },
+        data: {
+          question,
+        },
+        include: qnaInclude,
+      }),
+    );
     invalidatePublicBoardCaches();
     return mapQna(entry, viewer);
   } catch {
@@ -1556,24 +1603,28 @@ export async function updatePublicQna(
       return null;
     }
 
-    const updated = await prisma.qnA.updateMany({
-      where: {
-        id,
-        userId,
-        status: QnaStatus.OPEN,
-        comments: { none: {} },
-      },
-      data: { question },
-    });
+    const updated = await withDatabaseRetry(() =>
+      prisma.qnA.updateMany({
+        where: {
+          id,
+          userId,
+          status: QnaStatus.OPEN,
+          comments: { none: {} },
+        },
+        data: { question },
+      }),
+    );
 
     if (updated.count === 0) {
       return null;
     }
 
-    const entry = await prisma.qnA.findUnique({
-      where: { id },
-      include: qnaInclude,
-    });
+    const entry = await withDatabaseRetry(() =>
+      prisma.qnA.findUnique({
+        where: { id },
+        include: qnaInclude,
+      }),
+    );
 
     invalidatePublicBoardCaches();
     return entry ? mapQna(entry, viewer) : null;
@@ -1584,7 +1635,7 @@ export async function updatePublicQna(
 
 export async function deleteQna(id: string) {
   try {
-    await prisma.qnA.delete({ where: { id } });
+    await withDatabaseRetry(() => prisma.qnA.delete({ where: { id } }));
     invalidatePublicBoardCaches();
     return true;
   } catch {
@@ -1594,14 +1645,16 @@ export async function deleteQna(id: string) {
 
 export async function deletePublicQna(id: string, userId: string) {
   try {
-    const deleted = await prisma.qnA.deleteMany({
-      where: {
-        id,
-        userId,
-        status: QnaStatus.OPEN,
-        comments: { none: {} },
-      },
-    });
+    const deleted = await withDatabaseRetry(() =>
+      prisma.qnA.deleteMany({
+        where: {
+          id,
+          userId,
+          status: QnaStatus.OPEN,
+          comments: { none: {} },
+        },
+      }),
+    );
 
     if (deleted.count === 0) {
       return false;
@@ -1620,36 +1673,38 @@ export async function setReviewHiddenState(
   isHidden: boolean,
 ) {
   try {
-    const updated = await prisma.$transaction(async (tx) => {
-      const review = await tx.review.findUnique({
-        where: { id: reviewId },
-        include: {
-          shop: {
-            select: {
-              ownerId: true,
+    const updated = await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const review = await tx.review.findUnique({
+          where: { id: reviewId },
+          include: {
+            shop: {
+              select: {
+                ownerId: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      if (!review) {
-        return null;
-      }
+        if (!review) {
+          return null;
+        }
 
-      if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-        return null;
-      }
+        if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+          return null;
+        }
 
-      const nextReview = await tx.review.update({
-        where: { id: reviewId },
-        data: { isHidden },
-        include: { shop: { select: { name: true } } },
-      });
+        const nextReview = await tx.review.update({
+          where: { id: reviewId },
+          data: { isHidden },
+          include: { shop: { select: { name: true } } },
+        });
 
-      await refreshShopReviewRating(review.shopId, tx);
+        await refreshShopReviewRating(review.shopId, tx);
 
-      return nextReview;
-    });
+        return nextReview;
+      }),
+    );
 
     if (!updated) {
       return null;
@@ -1670,30 +1725,32 @@ export async function setReviewHiddenState(
 
 export async function deleteManagedReview(user: { id: string; role: UserRole }, reviewId: string) {
   try {
-    const deleted = await prisma.$transaction(async (tx) => {
-      const review = await tx.review.findUnique({
-        where: { id: reviewId },
-        include: {
-          shop: {
-            select: {
-              ownerId: true,
+    const deleted = await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const review = await tx.review.findUnique({
+          where: { id: reviewId },
+          include: {
+            shop: {
+              select: {
+                ownerId: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      if (!review) {
-        return false;
-      }
+        if (!review) {
+          return false;
+        }
 
-      if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
-        return false;
-      }
+        if (user.role !== 'ADMIN' && review.shop.ownerId !== user.id) {
+          return false;
+        }
 
-      await tx.review.delete({ where: { id: reviewId } });
-      await refreshShopReviewRating(review.shopId, tx);
-      return true;
-    });
+        await tx.review.delete({ where: { id: reviewId } });
+        await refreshShopReviewRating(review.shopId, tx);
+        return true;
+      }),
+    );
 
     if (!deleted) {
       return false;
@@ -1712,16 +1769,18 @@ export async function deleteManagedReview(user: { id: string; role: UserRole }, 
 }
 
 export async function deleteManagedQna(user: { id: string; role: UserRole }, qnaId: string) {
-  const qna = await prisma.qnA.findUnique({
-    where: { id: qnaId },
-    select: {
-      shop: {
-        select: {
-          ownerId: true,
+  const qna = await withDatabaseRetry(() =>
+    prisma.qnA.findUnique({
+      where: { id: qnaId },
+      select: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!qna) {
     return false;
@@ -1732,7 +1791,7 @@ export async function deleteManagedQna(user: { id: string; role: UserRole }, qna
   }
 
   try {
-    await prisma.qnA.delete({ where: { id: qnaId } });
+    await withDatabaseRetry(() => prisma.qnA.delete({ where: { id: qnaId } }));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return false;
@@ -1757,16 +1816,18 @@ export async function getAdminShopById(id: string) {
 }
 
 export async function getQnaShopOwnerId(id: string) {
-  const qna = await prisma.qnA.findUnique({
-    where: { id },
-    select: {
-      shop: {
-        select: {
-          ownerId: true,
+  const qna = await withDatabaseRetry(() =>
+    prisma.qnA.findUnique({
+      where: { id },
+      select: {
+        shop: {
+          select: {
+            ownerId: true,
+          },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!qna) {
     return { exists: false, ownerId: null };
@@ -1878,38 +1939,45 @@ export async function updateAdminShop(id: string, input: Shop, access?: { ownerI
   }
 }
 
+async function loadBoardSummary() {
+  const [notices, qna, reviews] = await withDatabaseRetry(() =>
+    Promise.all([
+      prisma.notice.count(),
+      prisma.qnA.count({ where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] } }),
+      prisma.review.count({ where: { isHidden: false, shop: { isVisible: true } } }),
+    ]),
+  );
+
+  return { notices, qna, reviews };
+}
+
+const getCachedBoardSummary = unstable_cache(loadBoardSummary, [PUBLIC_BOARD_CACHE_TAG, 'summary'], {
+  revalidate: 30,
+  tags: [PUBLIC_BOARD_CACHE_TAG],
+});
+
 export async function getBoardSummary() {
-  if (cachedBoardSummary) {
-    return cachedBoardSummary;
+  try {
+    return await getCachedBoardSummary();
+  } catch (error) {
+    if (!isMissingNextCacheContextError(error)) {
+      console.error('Failed to load board summary:', error);
+    }
+
+    try {
+      return await loadBoardSummary();
+    } catch {
+      return { notices: 0, qna: 0, reviews: 0 };
+    }
   }
-
-  const pending = Promise.all([
-    prisma.notice.count(),
-    prisma.qnA.count({ where: { OR: [{ shopId: null }, { shop: { isVisible: true } }] } }),
-    prisma.review.count({ where: { isHidden: false, shop: { isVisible: true } } }),
-  ])
-    .then(([notices, qna, reviews]) => ({
-      notices,
-      qna,
-      reviews,
-    }))
-    .catch(() => {
-      cachedBoardSummary = null;
-      return {
-        notices: 0,
-        qna: 0,
-        reviews: 0,
-      };
-    });
-
-  cachedBoardSummary = pending;
-  return pending;
 }
 
 export async function listPartnershipInquiries() {
-  const entries = await prisma.partnershipInquiry.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  const entries = await withDatabaseRetry(() =>
+    prisma.partnershipInquiry.findMany({
+      orderBy: { createdAt: 'desc' },
+    }),
+  );
 
   return entries.map(mapPartnershipInquiry);
 }
@@ -1917,19 +1985,21 @@ export async function listPartnershipInquiries() {
 export async function createPartnershipInquiry(
   input: Omit<PartnershipInquiry, 'id' | 'createdAt' | 'status'> & { status?: PartnershipInquiry['status'] },
 ) {
-  const entry = await prisma.partnershipInquiry.create({
-    data: {
-      shopName: input.shopName.trim(),
-      region: input.region.trim(),
-      subRegion: input.subRegion.trim(),
-      theme: input.theme.trim(),
-      contactName: input.contactName.trim(),
-      phone: input.phone.trim(),
-      kakaoId: input.kakaoId?.trim() || null,
-      message: input.message.trim(),
-      status: mapPartnershipStatus(input.status ?? 'pending'),
-    },
-  });
+  const entry = await withDatabaseRetry(() =>
+    prisma.partnershipInquiry.create({
+      data: {
+        shopName: input.shopName.trim(),
+        region: input.region.trim(),
+        subRegion: input.subRegion.trim(),
+        theme: input.theme.trim(),
+        contactName: input.contactName.trim(),
+        phone: input.phone.trim(),
+        kakaoId: input.kakaoId?.trim() || null,
+        message: input.message.trim(),
+        status: mapPartnershipStatus(input.status ?? 'pending'),
+      },
+    }),
+  );
 
   return mapPartnershipInquiry(entry);
 }
@@ -1939,10 +2009,12 @@ export async function updatePartnershipInquiryStatus(
   status: PartnershipInquiry['status'],
 ) {
   try {
-    const entry = await prisma.partnershipInquiry.update({
-      where: { id },
-      data: { status: mapPartnershipStatus(status) },
-    });
+    const entry = await withDatabaseRetry(() =>
+      prisma.partnershipInquiry.update({
+        where: { id },
+        data: { status: mapPartnershipStatus(status) },
+      }),
+    );
 
     return mapPartnershipInquiry(entry);
   } catch {
@@ -1951,9 +2023,11 @@ export async function updatePartnershipInquiryStatus(
 }
 
 export async function deletePartnershipInquiry(id: string) {
-  const result = await prisma.partnershipInquiry.deleteMany({
-    where: { id },
-  });
+  const result = await withDatabaseRetry(() =>
+    prisma.partnershipInquiry.deleteMany({
+      where: { id },
+    }),
+  );
 
   return result.count > 0;
 }
@@ -1968,45 +2042,37 @@ export async function getSiteContent() {
   const { record, content } = loaded;
 
   if (hasLegacySiteContent(record, content)) {
-    await prisma.siteSettings.update({
-      where: { id: SITE_SETTINGS_ID },
-      data: {
-        siteName: content.siteSettings.siteName,
-        siteTitle: content.siteSettings.siteTitle,
-        siteDescription: content.siteSettings.siteDescription,
-        heroMainText: content.siteSettings.heroMainText,
-        heroSubText: content.siteSettings.heroSubText,
-        contactPhone: content.siteSettings.contactPhone,
-        footerInfo: content.siteSettings.footerInfo,
-        seoSection1Title: content.homeSeo.section1Title,
-        seoSection1Content: content.homeSeo.section1Content,
-        seoSection2Title: content.homeSeo.section2Title,
-        seoSection2Content: content.homeSeo.section2Content,
-        seoSection3Title: content.homeSeo.section3Title,
-        seoSection3Content: content.homeSeo.section3Content,
-      },
-    });
+    await withDatabaseRetry(() =>
+      prisma.siteSettings.update({
+        where: { id: SITE_SETTINGS_ID },
+        data: {
+          siteName: content.siteSettings.siteName,
+          siteTitle: content.siteSettings.siteTitle,
+          siteDescription: content.siteSettings.siteDescription,
+          heroMainText: content.siteSettings.heroMainText,
+          heroSubText: content.siteSettings.heroSubText,
+          contactPhone: content.siteSettings.contactPhone,
+          footerInfo: content.siteSettings.footerInfo,
+          seoSection1Title: content.homeSeo.section1Title,
+          seoSection1Content: content.homeSeo.section1Content,
+          seoSection2Title: content.homeSeo.section2Title,
+          seoSection2Content: content.homeSeo.section2Content,
+          seoSection3Title: content.homeSeo.section3Title,
+          seoSection3Content: content.homeSeo.section3Content,
+        },
+      }),
+    );
   }
 
-  cachedPublicSiteContent = content;
 
   return content;
 }
 
 export async function getPublicSiteContent() {
-  if (cachedPublicSiteContent !== undefined) {
-    return cachedPublicSiteContent;
-  }
-
   if (!cachedPublicSiteContentPromise) {
-    cachedPublicSiteContentPromise = readPublicSiteContentWithFallback()
-      .then((content) => {
-        cachedPublicSiteContent = content;
-        return content;
-      })
-      .finally(() => {
-        cachedPublicSiteContentPromise = null;
-      });
+    cachedPublicSiteContentPromise = readPublicSiteContentWithFallback().finally(() => {
+      cachedPublicSiteContentPromise = null;
+    });
   }
 
   return cachedPublicSiteContentPromise;
@@ -2014,43 +2080,44 @@ export async function getPublicSiteContent() {
 
 export async function upsertSiteContent(input: SiteSettings & HomeSeoContent) {
   const sanitizedInput = sanitizeSiteContentInput(input);
-  const record = await prisma.siteSettings.upsert({
-    where: { id: SITE_SETTINGS_ID },
-    update: {
-      siteName: sanitizedInput.siteName,
-      siteTitle: sanitizedInput.siteTitle,
-      siteDescription: sanitizedInput.siteDescription,
-      heroMainText: sanitizedInput.heroMainText,
-      heroSubText: sanitizedInput.heroSubText,
-      contactPhone: sanitizedInput.contactPhone,
-      footerInfo: sanitizedInput.footerInfo,
-      seoSection1Title: sanitizedInput.section1Title,
-      seoSection1Content: sanitizedInput.section1Content,
-      seoSection2Title: sanitizedInput.section2Title,
-      seoSection2Content: sanitizedInput.section2Content,
-      seoSection3Title: sanitizedInput.section3Title,
-      seoSection3Content: sanitizedInput.section3Content,
-    },
-    create: {
-      id: SITE_SETTINGS_ID,
-      siteName: sanitizedInput.siteName,
-      siteTitle: sanitizedInput.siteTitle,
-      siteDescription: sanitizedInput.siteDescription,
-      heroMainText: sanitizedInput.heroMainText,
-      heroSubText: sanitizedInput.heroSubText,
-      contactPhone: sanitizedInput.contactPhone,
-      footerInfo: sanitizedInput.footerInfo,
-      seoSection1Title: sanitizedInput.section1Title,
-      seoSection1Content: sanitizedInput.section1Content,
-      seoSection2Title: sanitizedInput.section2Title,
-      seoSection2Content: sanitizedInput.section2Content,
-      seoSection3Title: sanitizedInput.section3Title,
-      seoSection3Content: sanitizedInput.section3Content,
-    },
-  });
+  const record = await withDatabaseRetry(() =>
+    prisma.siteSettings.upsert({
+      where: { id: SITE_SETTINGS_ID },
+      update: {
+        siteName: sanitizedInput.siteName,
+        siteTitle: sanitizedInput.siteTitle,
+        siteDescription: sanitizedInput.siteDescription,
+        heroMainText: sanitizedInput.heroMainText,
+        heroSubText: sanitizedInput.heroSubText,
+        contactPhone: sanitizedInput.contactPhone,
+        footerInfo: sanitizedInput.footerInfo,
+        seoSection1Title: sanitizedInput.section1Title,
+        seoSection1Content: sanitizedInput.section1Content,
+        seoSection2Title: sanitizedInput.section2Title,
+        seoSection2Content: sanitizedInput.section2Content,
+        seoSection3Title: sanitizedInput.section3Title,
+        seoSection3Content: sanitizedInput.section3Content,
+      },
+      create: {
+        id: SITE_SETTINGS_ID,
+        siteName: sanitizedInput.siteName,
+        siteTitle: sanitizedInput.siteTitle,
+        siteDescription: sanitizedInput.siteDescription,
+        heroMainText: sanitizedInput.heroMainText,
+        heroSubText: sanitizedInput.heroSubText,
+        contactPhone: sanitizedInput.contactPhone,
+        footerInfo: sanitizedInput.footerInfo,
+        seoSection1Title: sanitizedInput.section1Title,
+        seoSection1Content: sanitizedInput.section1Content,
+        seoSection2Title: sanitizedInput.section2Title,
+        seoSection2Content: sanitizedInput.section2Content,
+        seoSection3Title: sanitizedInput.section3Title,
+        seoSection3Content: sanitizedInput.section3Content,
+      },
+    }),
+  );
 
   const content = mapSiteSettings(record);
-  cachedPublicSiteContent = content;
   cachedPublicSiteContentPromise = null;
   safeRevalidateTag(PUBLIC_SITE_CONTENT_CACHE_TAG);
 
@@ -2075,22 +2142,41 @@ function sanitizeSiteContentInput(input: SiteSettings & HomeSeoContent) {
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
-  const [shopCount, premiumCount, unansweredCount, noticeCount, pendingQna, recentReviews] = await Promise.all([
-    prisma.shop.count(),
-    prisma.shop.count({ where: { isPremium: true } }),
-    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
-    prisma.notice.count(),
-    prisma.qnA.findMany({
-      where: { status: QnaStatus.OPEN },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-    }),
-    prisma.review.findMany({
-      include: { shop: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-    }),
-  ]);
+  const [summaryRow, pendingQna, recentReviews] = await withDatabaseRetry(async () => {
+    const [summaryRows, pendingQnaRows, recentReviewRows] = await Promise.all([
+      prisma.$queryRaw<
+        Array<{
+          shopCount: bigint | number;
+          premiumCount: bigint | number;
+          unansweredCount: bigint | number;
+          noticeCount: bigint | number;
+        }>
+      >(Prisma.sql`
+        SELECT
+          (SELECT COUNT(*)::bigint FROM "shops") AS "shopCount",
+          (SELECT COUNT(*)::bigint FROM "shops" WHERE "is_premium" = true) AS "premiumCount",
+          (SELECT COUNT(*)::bigint FROM "qna" WHERE "status" = ${QnaStatus.OPEN}) AS "unansweredCount",
+          (SELECT COUNT(*)::bigint FROM "notices") AS "noticeCount"
+      `),
+      prisma.qnA.findMany({
+        where: { status: QnaStatus.OPEN },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+      }),
+      prisma.review.findMany({
+        include: { shop: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+      }),
+    ]);
+
+    return [summaryRows[0], pendingQnaRows, recentReviewRows] as const;
+  });
+
+  const shopCount = Number(summaryRow?.shopCount ?? 0);
+  const premiumCount = Number(summaryRow?.premiumCount ?? 0);
+  const unansweredCount = Number(summaryRow?.unansweredCount ?? 0);
+  const noticeCount = Number(summaryRow?.noticeCount ?? 0);
 
   return {
     summary: [
@@ -2113,23 +2199,30 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   };
 }
 
+export const getCachedAdminDashboardData = unstable_cache(getAdminDashboardData, ['admin-dashboard-data'], {
+  revalidate: 60,
+  tags: [ADMIN_DASHBOARD_CACHE_TAG],
+});
+
 export async function getAdminStatsData(): Promise<AdminStatsData> {
-  const [shopCount, premiumCount, unansweredCount, visibleReviewCount, topShops] = await Promise.all([
-    prisma.shop.count(),
-    prisma.shop.count({ where: { isPremium: true } }),
-    prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
-    prisma.review.count({ where: { isHidden: false } }),
-    prisma.shop.findMany({
-      select: {
-        id: true,
-        name: true,
-        regionLabel: true,
-        reviewCount: true,
-      },
-      orderBy: [{ reviewCount: 'desc' }, { name: 'asc' }],
-      take: 5,
-    }),
-  ]);
+  const [shopCount, premiumCount, unansweredCount, visibleReviewCount, topShops] = await withDatabaseRetry(() =>
+    Promise.all([
+      prisma.shop.count(),
+      prisma.shop.count({ where: { isPremium: true } }),
+      prisma.qnA.count({ where: { status: QnaStatus.OPEN } }),
+      prisma.review.count({ where: { isHidden: false } }),
+      prisma.shop.findMany({
+        select: {
+          id: true,
+          name: true,
+          regionLabel: true,
+          reviewCount: true,
+        },
+        orderBy: [{ reviewCount: 'desc' }, { name: 'asc' }],
+        take: 5,
+      }),
+    ]),
+  );
 
   return {
     summary: [

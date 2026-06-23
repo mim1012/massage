@@ -29,7 +29,9 @@ function LoginContent() {
   const [formReady, setFormReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loginNotice = useMemo(() => getLoginNotice(searchParams.get('notice'), error), [error, searchParams]);
-  const { user, authChecked } = useAuthSession();
+  const shouldShowAdminShortcut = process.env.NODE_ENV === 'development';
+  const shouldDeferSessionLookup = true;
+  const { user, authChecked } = useAuthSession({ defer: shouldDeferSessionLookup });
 
   useEffect(() => {
     setFormReady(true);
@@ -177,7 +179,7 @@ function LoginContent() {
               >
                 {redirecting ? '로그인 완료, 이동 중...' : loading ? '로그인 중...' : '로그인'}
               </button>
-              {redirecting ? <p className="text-xs text-red-600" role="status">로그인되었습니다. 관리자 화면으로 이동 중입니다.</p> : null}
+              {redirecting ? <p className="text-xs text-red-600" role="status">로그인되었습니다. 이동 중입니다.</p> : null}
               {error && !loginNotice ? <p className="text-xs text-red-600">{error}</p> : null}
             </form>
 
@@ -190,7 +192,7 @@ function LoginContent() {
               </Link>
             </div>
 
-            {activeTab === 'user' ? (
+            {activeTab === 'user' && shouldShowAdminShortcut ? (
               <div className="mt-6 border-t border-gray-100 pt-4 text-center">
                 <Link
                   href="/admin"

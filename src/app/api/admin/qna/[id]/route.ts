@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
+import { withDatabaseRetry } from '@/lib/db/retry';
 import { deleteManagedQna, updateQna } from '@/lib/server/communityStore';
 
 type Context = {
@@ -12,10 +13,12 @@ export async function PATCH(request: Request, context: Context) {
     const user = await requireRole('ADMIN');
     const { id } = await context.params;
 
-    const existing = await prisma.qnA.findUnique({
-      where: { id },
-      include: { shop: { select: { ownerId: true } } },
-    });
+    const existing = await withDatabaseRetry(() =>
+      prisma.qnA.findUnique({
+        where: { id },
+        include: { shop: { select: { ownerId: true } } },
+      }),
+    );
 
     if (!existing) {
       return Response.json({ error: 'Q&A를 찾을 수 없습니다.' }, { status: 404 });

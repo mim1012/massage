@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 
+import { withDatabaseRetry } from '@/lib/db/retry';
 export interface ThemeItem {
   code: string;
   label: string;
@@ -29,7 +30,7 @@ function invalidateThemeCache() {
 }
 
 async function listThemesUncached(): Promise<ThemeItem[]> {
-  return prisma.theme.findMany({ orderBy: { sortOrder: 'asc' }, select: SELECT });
+  return withDatabaseRetry(() => prisma.theme.findMany({ orderBy: { sortOrder: 'asc' }, select: SELECT }));
 }
 
 const getPersistentThemeList = unstable_cache(listThemesUncached, [PUBLIC_THEMES_CACHE_TAG], {
@@ -55,29 +56,31 @@ export async function addTheme(
   const code = item.code.trim().toLowerCase();
   if (!code) return { ok: false, error: 'code가 필요합니다.' };
 
-  const existing = await prisma.theme.findUnique({ where: { code } });
+  const existing = await withDatabaseRetry(() => prisma.theme.findUnique({ where: { code } }));
   if (existing) return { ok: false, error: '이미 존재하는 코드입니다.' };
 
-  const agg = await prisma.theme.aggregate({ _max: { sortOrder: true } });
+  const agg = await withDatabaseRetry(() => prisma.theme.aggregate({ _max: { sortOrder: true } }));
   const sortOrder = (agg._max.sortOrder ?? -1) + 1;
 
-  const theme = await prisma.theme.create({
-    data: { code, label: item.label.trim(), emoji: item.emoji.trim(), sortOrder },
-    select: SELECT,
-  });
+  const theme = await withDatabaseRetry(() =>
+    prisma.theme.create({
+      data: { code, label: item.label.trim(), emoji: item.emoji.trim(), sortOrder },
+      select: SELECT,
+    }),
+  );
   invalidateThemeCache();
   return { ok: true, theme };
 }
 
 export async function deleteTheme(code: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const normalizedCode = code.trim();
-  const referencedShops = await prisma.shop.count({ where: { theme: normalizedCode } });
+  const referencedShops = await withDatabaseRetry(() => prisma.shop.count({ where: { theme: normalizedCode } }));
   if (referencedShops > 0) {
     return { ok: false, status: 409, error: '사용 중인 테마는 삭제할 수 없습니다.' };
   }
 
   try {
-    await prisma.theme.delete({ where: { code: normalizedCode } });
+    await withDatabaseRetry(() => prisma.theme.delete({ where: { code: normalizedCode } }));
     invalidateThemeCache();
     return { ok: true };
   } catch {

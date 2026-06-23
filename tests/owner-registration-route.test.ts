@@ -62,6 +62,46 @@ test('registerOwnerRoute accepts business numbers without hyphens', async () => 
   assert.equal(forwardedInput?.businessNumber, '123-45-67890');
 });
 
+test('registerOwnerRoute trims forwarded owner fields while normalizing business numbers', async () => {
+  let forwardedInput:
+    | {
+        name: string;
+        email: string;
+        password: string;
+        businessName: string;
+        businessNumber: string;
+        phone: string;
+      }
+    | null = null;
+
+  const response = await registerOwnerRoute(
+    {
+      ...validBody,
+      name: '  홍길동  ',
+      email: ' Owner@Example.com ',
+      businessName: '  강남 힐링스파  ',
+      businessNumber: ' 1234567890 ',
+      phone: ' 010-1234-5678 ',
+    },
+    {
+      registerOwner: async (input) => {
+        forwardedInput = input;
+        return { id: 'owner-1', email: input.email, role: 'OWNER' };
+      },
+    },
+  );
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(forwardedInput, {
+    name: '홍길동',
+    email: 'Owner@Example.com',
+    password: 'secret1234',
+    businessName: '강남 힐링스파',
+    businessNumber: '123-45-67890',
+    phone: '010-1234-5678',
+  });
+});
+
 test('registerOwnerRoute rejects whitespace-only required fields', async () => {
   const response = await registerOwnerRoute(
     { ...validBody, businessNumber: '   ' },

@@ -21,6 +21,28 @@ function SessionHarness() {
   );
 }
 
+function DualSessionHarness() {
+  const primary = useAuthSession();
+  const secondary = useAuthSession();
+
+  return React.createElement(
+    'div',
+    null,
+    React.createElement('div', { id: 'primary-status' }, `${primary.authChecked ? 'checked' : 'pending'}:${primary.user?.email ?? 'guest'}`),
+    React.createElement('div', { id: 'secondary-status' }, `${secondary.authChecked ? 'checked' : 'pending'}:${secondary.user?.email ?? 'guest'}`),
+  );
+}
+
+function DeferredSessionHarness() {
+  const { user, authChecked } = useAuthSession({ defer: true });
+
+  return React.createElement(
+    'div',
+    { id: 'deferred-status' },
+    `${authChecked ? 'checked' : 'pending'}:${user?.email ?? 'guest'}`,
+  );
+}
+
 async function flush() {
   await act(async () => {
     await Promise.resolve();
@@ -28,7 +50,7 @@ async function flush() {
   });
 }
 
-async function renderHarness(fetchImpl: typeof fetch, setupWindow?: (window: Window) => void) {
+async function renderHarness(fetchImpl: typeof fetch, setupWindow?: (window: Window) => void, component: React.ReactNode = React.createElement(SessionHarness)) {
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', {
     url: 'https://example.com/',
   });
@@ -63,7 +85,7 @@ async function renderHarness(fetchImpl: typeof fetch, setupWindow?: (window: Win
   const root = createRoot(container);
 
   await act(async () => {
-    root.render(React.createElement(SessionHarness));
+    root.render(component);
   });
 
   await flush();
@@ -145,6 +167,55 @@ test('useAuthSession preserves the current user when a refetch hits a transient 
 
     assert.equal(harness.dom.window.document.getElementById('status')?.textContent, 'checked:qa-prod-user@massage.co.kr');
     assert.equal(callCount, 2);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test('useAuthSession shares one in-flight session request across multiple consumers', async () => {
+  let callCount = 0;
+  let resolveFetch: ((value: Response) => void) | null = null;
+  const harness = await renderHarness(
+    (async () => {
+      callCount += 1;
+      return await new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      });
+    }) as typeof fetch,
+    undefined,
+    React.createElement(DualSessionHarness),
+  );
+
+  try {
+    assert.equal(callCount, 1);
+    assert.equal(harness.dom.window.document.getElementById('primary-status')?.textContent, 'pending:guest');
+    assert.equal(harness.dom.window.document.getElementById('secondary-status')?.textContent, 'pending:guest');
+
+    resolveFetch?.(Response.json({ user: { id: 'user-1', email: 'qa-prod-user@massage.co.kr', name: 'QA', role: 'USER' } }, { status: 200 }));
+    await flush();
+
+    assert.equal(harness.dom.window.document.getElementById('primary-status')?.textContent, 'checked:qa-prod-user@massage.co.kr');
+    assert.equal(harness.dom.window.document.getElementById('secondary-status')?.textContent, 'checked:qa-prod-user@massage.co.kr');
+    assert.equal(callCount, 1);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test('useAuthSession defers the initial session request when requested', async () => {
+  let callCount = 0;
+  const harness = await renderHarness(
+    (async () => {
+      callCount += 1;
+      return Response.json({ user: null }, { status: 200 });
+    }) as typeof fetch,
+    undefined,
+    React.createElement(DeferredSessionHarness),
+  );
+
+  try {
+    assert.equal(harness.dom.window.document.getElementById('deferred-status')?.textContent, 'pending:guest');
+    assert.equal(callCount, 0);
   } finally {
     await harness.cleanup();
   }

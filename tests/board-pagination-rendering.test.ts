@@ -18,12 +18,15 @@ test('board notice page reads a page search param and renders pagination control
   assert.equal(source.includes('PaginationControls'), true);
 });
 
-test('home page reads the page search param and requests the matching regular slice', async () => {
+test('home page renders a static first-page shell and delegates directory pagination to the client', async () => {
   const source = await readProjectFile('src/app/page.tsx');
 
-  assert.equal(source.includes('normalizePageParam(pickFirst(resolvedSearchParams?.page))'), true);
-  assert.equal(source.includes('regularOffset: (page - 1) * HOME_REGULAR_PAGE_SIZE'), true);
-  assert.equal(source.includes('includePremium: page === 1'), true);
+  // Directory pagination moved to the client bootstrap, so the server shell must not slice by a page search param.
+  assert.equal(source.includes('resolvedSearchParams?.page'), false);
+  assert.equal(source.includes('regularOffset: 0'), true);
+  assert.equal(source.includes('includePremium: true'), true);
+  assert.equal(source.includes('deferInitialDirectoryFetch={false}'), true);
+  assert.equal(source.includes('<HomePageClient'), true);
 });
 
 test('board review route reads search params and delegates pagination to the server store', async () => {

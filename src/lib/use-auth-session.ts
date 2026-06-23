@@ -23,6 +23,9 @@ type SessionFetchResult =
       ok: false;
     };
 
+let inFlightSessionFetch: Promise<SessionFetchResult> | null = null;
+
+
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 function readStoredSessionUser(): User | null {
@@ -91,6 +94,21 @@ async function fetchSessionUser(): Promise<SessionFetchResult> {
   }
 }
 
+function fetchSharedSessionUser() {
+  if (inFlightSessionFetch) {
+    return inFlightSessionFetch;
+  }
+
+  const pending = fetchSessionUser().finally(() => {
+    if (inFlightSessionFetch === pending) {
+      inFlightSessionFetch = null;
+    }
+  });
+
+  inFlightSessionFetch = pending;
+  return pending;
+}
+
 export function useAuthSession(options: UseAuthSessionOptions = {}) {
   const { defer = false } = options;
   const [user, setUser] = useState<User | null>(null);
@@ -130,7 +148,7 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
 
     const loadSession = (attempt: number) => {
       void (async () => {
-        const sessionResult = await fetchSessionUser();
+        const sessionResult = await fetchSharedSessionUser();
         if (cancelled) return;
 
         if (sessionResult.ok) {
@@ -186,7 +204,7 @@ export function useAuthSession(options: UseAuthSessionOptions = {}) {
   }, [defer]);
 
   const refetch = async () => {
-    const sessionResult = await fetchSessionUser();
+    const sessionResult = await fetchSharedSessionUser();
     if (sessionResult.ok) {
       persistSessionUser(sessionResult.user);
       setUser(sessionResult.user);

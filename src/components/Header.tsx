@@ -21,6 +21,7 @@ export default function Header() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const shouldDeferSessionLookup = pathname?.startsWith('/auth') ?? false;
   const currentRegion = searchParams.get('region');
   const currentSubRegion = searchParams.get('subRegion');
   const currentTheme = searchParams.get('theme');
@@ -36,7 +37,7 @@ export default function Header() {
   const mobileNavigatorRegionLabel =
     REGIONS.find((region) => region.code === mobileRegionNavigatorCode)?.label ?? '전체';
   const { siteSettings } = useSiteContent();
-  const { user, authChecked, refetch, clearSession } = useAuthSession();
+  const { user, authChecked, refetch, clearSession } = useAuthSession({ defer: shouldDeferSessionLookup });
   const themes = useThemes();
 
   const myHref = getMyHref(user?.role);

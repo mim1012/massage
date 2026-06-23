@@ -228,6 +228,55 @@ test('only rejected owners can reapply with an existing owner email', async () =
   }
 });
 
+test('listUsers returns general members and owner metadata with sanitized fallback names', async () => {
+  const memberId = 'test-list-users-member';
+  const ownerId = 'test-list-users-owner';
+  await cleanup({ userIds: [memberId, ownerId] });
+
+  try {
+    await prisma.user.create({
+      data: {
+        id: memberId,
+        email: `${memberId}@example.com`,
+        passwordHash: 'hash',
+        name: ' ??? ',
+        role: UserRole.USER,
+        status: UserStatus.APPROVED,
+      },
+    });
+    await prisma.user.create({
+      data: {
+        id: ownerId,
+        email: `${ownerId}@example.com`,
+        passwordHash: 'hash',
+        name: ' ??? ',
+        role: UserRole.OWNER,
+        status: UserStatus.APPROVED,
+        ownerProfile: {
+          create: {
+            businessName: '메타데이터 업소',
+            businessNumber: '333-22-11111',
+          },
+        },
+      },
+    });
+
+    const users = await listUsers();
+    const member = users.find((user) => user.id === memberId);
+    const owner = users.find((user) => user.id === ownerId);
+
+    assert.equal(member?.role, 'USER');
+    assert.equal(member?.name, '회원');
+    assert.equal(member?.businessName, undefined);
+    assert.equal(owner?.role, 'OWNER');
+    assert.equal(owner?.name, '메타데이터 업소');
+    assert.equal(owner?.businessName, '메타데이터 업소');
+  } finally {
+    await cleanup({ userIds: [memberId, ownerId] });
+  }
+});
+
+
 function buildShopInput(overrides: Partial<Shop> = {}): Shop {
   const now = new Date(0).toISOString();
   return {
@@ -370,6 +419,69 @@ test('owner-scoped shop update preserves admin-only fields and rejects stale own
   }
 });
 
+test('approved owners can complete approval, shop registration, and owner-scoped shop updates', async () => {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const email = `approved-owner-flow-${suffix}@example.com`;
+  let ownerId = '';
+  let createdShopId = '';
+
+  try {
+    const pendingOwner = await registerOwner({
+      name: '승인 대기 업주',
+      email,
+      password: 'secret1234',
+      businessName: '승인 대기 샵',
+      businessNumber: '123-45-67890',
+      phone: '010-5555-5555',
+    });
+    ownerId = pendingOwner.id;
+    assert.equal(pendingOwner.status, 'pending');
+
+    const approvedOwner = await updateOwnerStatus(ownerId, 'approved');
+    assert.equal(approvedOwner?.status, 'approved');
+
+    const createdShop = await createAdminShop(
+      buildShopInput({
+        id: `approved-owner-shop-${suffix}`,
+        slug: `approved-owner-shop-${suffix}`,
+        name: '승인 후 등록 업소',
+        ownerId,
+        isVisible: false,
+        isPremium: false,
+        premiumOrder: undefined,
+      }),
+    );
+    createdShopId = createdShop.id;
+
+    const ownerRecord = await prisma.user.findUniqueOrThrow({
+      where: { id: ownerId },
+      select: { managedShopId: true, status: true },
+    });
+    assert.equal(ownerRecord.status, UserStatus.APPROVED);
+    assert.equal(ownerRecord.managedShopId, createdShopId);
+
+    const managedShops = await listManagedShops({ id: ownerId, role: UserRole.OWNER, managedShopId: createdShopId });
+    assert.equal(managedShops.some((shop) => shop.id === createdShopId), true);
+
+    const updatedShop = await updateAdminShop(
+      createdShopId,
+      buildShopInput({
+        ...createdShop,
+        id: createdShopId,
+        slug: createdShop.slug,
+        ownerId,
+        name: '승인 후 수정 업소',
+      }),
+      { ownerId },
+    );
+
+    assert.equal(updatedShop?.name, '승인 후 수정 업소');
+  } finally {
+    await cleanup({ shopIds: [createdShopId].filter(Boolean), userIds: [ownerId].filter(Boolean) });
+  }
+});
+
+
 test('hiding a review recalculates shop rating from visible reviews only', async () => {
   const userId = 'test-review-user';
   const shopId = 'test-review-shop';
@@ -420,6 +532,87 @@ test('hiding a review recalculates shop rating from visible reviews only', async
     assert.equal(shop.rating, 1);
   } finally {
     await cleanup({ shopIds: [shopId], userIds: [userId] });
+  }
+});
+
+test('unrelated owners cannot hide or delete reviews for shops they do not own', async () => {
+  const shopOwnerId = 'test-review-owner-owner';
+  const otherOwnerId = 'test-review-owner-other';
+  const reviewerId = 'test-review-owner-reviewer';
+  const shopId = 'test-review-owner-shop';
+  const reviewId = 'test-review-owner-entry';
+  await cleanup({ shopIds: [shopId], userIds: [shopOwnerId, otherOwnerId, reviewerId] });
+
+  try {
+    await prisma.user.createMany({
+      data: [
+        {
+          id: shopOwnerId,
+          email: `${shopOwnerId}@example.com`,
+          passwordHash: 'hash',
+          name: '실제 업주',
+          role: UserRole.OWNER,
+          status: UserStatus.APPROVED,
+        },
+        {
+          id: otherOwnerId,
+          email: `${otherOwnerId}@example.com`,
+          passwordHash: 'hash',
+          name: '관련 없는 업주',
+          role: UserRole.OWNER,
+          status: UserStatus.APPROVED,
+        },
+        {
+          id: reviewerId,
+          email: `${reviewerId}@example.com`,
+          passwordHash: 'hash',
+          name: '리뷰 작성자',
+          role: UserRole.USER,
+          status: UserStatus.APPROVED,
+        },
+      ],
+    });
+    await prisma.shop.create({
+      data: {
+        id: shopId,
+        ownerId: shopOwnerId,
+        name: '권한 테스트샵',
+        slug: 'review-owner-guard-shop',
+        region: 'seoul',
+        regionLabel: '서울',
+        theme: 'swedish',
+        themeLabel: '스웨디시',
+        tagline: '테스트',
+        description: '테스트 설명',
+        address: '서울',
+        phone: '010-0000-0000',
+        hours: '24시간',
+        rating: 4,
+        reviewCount: 1,
+        tags: [],
+      },
+    });
+    await prisma.review.create({
+      data: {
+        id: reviewId,
+        shopId,
+        userId: reviewerId,
+        authorName: '리뷰 작성자',
+        rating: 4,
+        content: '권한 테스트 리뷰',
+      },
+    });
+
+    assert.equal(await setReviewHiddenState({ id: otherOwnerId, role: UserRole.OWNER }, reviewId, true), null);
+    assert.equal(await deleteManagedReview({ id: otherOwnerId, role: UserRole.OWNER }, reviewId), false);
+
+    const storedReview = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+    const storedShop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    assert.equal(storedReview.isHidden, false);
+    assert.equal(storedShop.rating, 4);
+    assert.equal(storedShop.reviewCount, 1);
+  } finally {
+    await cleanup({ shopIds: [shopId], userIds: [shopOwnerId, otherOwnerId, reviewerId] });
   }
 });
 

@@ -3,6 +3,7 @@ import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
 import { createReviewDeleteResponse, normalizePublicReviewPatchInput } from '@/lib/review-route-helpers';
 import { deleteReview, updateReview } from '@/lib/server/communityStore';
+import { withDatabaseRetry } from '@/lib/db/retry';
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -12,7 +13,7 @@ export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser();
     const { id } = await context.params;
-    const existing = await prisma.review.findUnique({ where: { id } });
+    const existing = await withDatabaseRetry(() => prisma.review.findUnique({ where: { id } }));
 
     if (!existing) {
       return Response.json({ error: '리뷰를 찾을 수 없습니다.' }, { status: 404 });
@@ -40,7 +41,7 @@ export async function DELETE(_: Request, context: Context) {
   try {
     const user = await requireUser();
     const { id } = await context.params;
-    const existing = await prisma.review.findUnique({ where: { id } });
+    const existing = await withDatabaseRetry(() => prisma.review.findUnique({ where: { id } }));
 
     if (!existing) {
       return Response.json({ error: '리뷰를 찾을 수 없습니다.' }, { status: 404 });

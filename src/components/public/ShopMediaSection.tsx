@@ -4,13 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ShopMediaSectionProps = {
   shopName: string;
+  previewImage?: string;
   primaryImage: string;
   galleryImages: string[];
 };
 
 const INITIAL_VISIBLE_GALLERY_IMAGES = 6;
+const PRELOADED_GALLERY_IMAGES = INITIAL_VISIBLE_GALLERY_IMAGES;
 
-export default function ShopMediaSection({ shopName, primaryImage, galleryImages }: ShopMediaSectionProps) {
+
+export default function ShopMediaSection({ shopName, previewImage = '', primaryImage, galleryImages }: ShopMediaSectionProps) {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const [showGallery, setShowGallery] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_GALLERY_IMAGES);
@@ -20,9 +23,15 @@ export default function ShopMediaSection({ shopName, primaryImage, galleryImages
     [galleryImages],
   );
   const visibleGalleryImages = dedupedGalleryImages.slice(0, visibleCount);
+  const preloadedGalleryImages = dedupedGalleryImages.slice(0, PRELOADED_GALLERY_IMAGES);
   const remainingImageCount = Math.max(dedupedGalleryImages.length - visibleGalleryImages.length, 0);
   const hasGallery = dedupedGalleryImages.length > 0;
   const hasMoreGalleryImages = remainingImageCount > 0;
+  const previewImageUrl = previewImage.trim();
+  const hasSeparatePreviewImage = Boolean(previewImageUrl) && previewImageUrl !== primaryImage;
+  const [primaryImageLoaded, setPrimaryImageLoaded] = useState(!hasSeparatePreviewImage);
+  const [primaryImageFailed, setPrimaryImageFailed] = useState(false);
+
 
   const revealGallery = useCallback(() => {
     setShowGallery(true);
@@ -72,6 +81,7 @@ export default function ShopMediaSection({ shopName, primaryImage, galleryImages
     return () => window.clearTimeout(timeoutHandle);
   }, [hasGallery, revealGallery]);
 
+
   return (
     <div ref={sectionRef} className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
@@ -80,15 +90,48 @@ export default function ShopMediaSection({ shopName, primaryImage, galleryImages
       </div>
       <div className="space-y-3">
         <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white">
-          <img
-            src={primaryImage}
-            alt={`${shopName} 대표 이미지`}
-            className="absolute inset-0 h-full w-full object-contain"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-          />
+          {hasSeparatePreviewImage ? (
+            <img
+              src={previewImageUrl}
+              alt={`${shopName} 미리보기 이미지`}
+              className="absolute inset-0 h-full w-full object-contain"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
+          ) : null}
+          {!primaryImageFailed ? (
+            <img
+              src={primaryImage}
+              alt={`${shopName} 대표 이미지`}
+              className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setPrimaryImageLoaded(true)}
+              onError={() => {
+                if (hasSeparatePreviewImage) {
+                  setPrimaryImageFailed(true);
+                }
+              }}
+            />
+          ) : null}
         </div>
+
+        {preloadedGalleryImages.length > 0 ? (
+          <div aria-hidden="true" className="pointer-events-none h-0 overflow-hidden opacity-0">
+            {preloadedGalleryImages.map((imageUrl, index) => (
+              <img
+                key={`preload-${imageUrl.slice(0, 40)}-${index}`}
+                src={imageUrl}
+                alt=""
+                loading="eager"
+                decoding="async"
+                fetchPriority={index === 0 ? 'high' : 'low'}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {hasGallery ? (
           showGallery ? (
@@ -101,8 +144,9 @@ export default function ShopMediaSection({ shopName, primaryImage, galleryImages
                         src={imageUrl}
                         alt={`${shopName} 갤러리 ${index + 1}`}
                         className="absolute inset-0 h-full w-full object-contain"
-                        loading="lazy"
+                        loading={index < preloadedGalleryImages.length ? 'eager' : 'lazy'}
                         decoding="async"
+                        fetchPriority={index === 0 ? 'high' : 'low'}
                       />
                     </div>
                     <div className="flex items-center justify-between border-t border-gray-100 px-2 py-1 text-[11px] text-gray-500">

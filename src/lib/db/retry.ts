@@ -1,38 +1,84 @@
 const TRANSIENT_DATABASE_ERROR_PATTERNS = [
-  'EMAXCONNSESSION',
+  'emaxconnsession',
   'max clients reached',
   'too many clients already',
   'remaining connection slots are reserved',
   'timeout exceeded when trying to connect',
-  'Connection terminated unexpectedly',
-  'Connection closed',
-  'Connection error',
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'ETIMEDOUT',
+  'timed out fetching a new connection from the connection pool',
+  'connection terminated unexpectedly',
+  'connection closed',
+  'connection error',
+  'econnreset',
+  'econnrefused',
+  'etimedout',
   'fetch failed',
-  'P1001',
-  'Can\'t reach database server',
+  'p1001',
+  'p2024',
+  'p2037',
+  "can't reach database server",
+  'too many database connections opened',
 ] as const;
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
+const MAX_RETRY_LOG_FRAGMENTS = 3;
+const MAX_RETRY_LOG_FRAGMENT_LENGTH = 160;
+
+function collectErrorFragments(error: unknown, seen = new Set<unknown>(), depth = 0): string[] {
+  if (error == null || depth > 4 || seen.has(error)) {
+    return [];
   }
 
-  return typeof error === 'string' ? error : '';
+  if (typeof error === 'string') {
+    return [error];
+  }
+
+  if (typeof error !== 'object') {
+    return [];
+  }
+
+  seen.add(error);
+
+  if (error instanceof Error) {
+    return [
+      error.name,
+      error.message,
+      ...collectErrorFragments((error as Error & { cause?: unknown }).cause, seen, depth + 1),
+    ].filter(Boolean);
+  }
+
+  const record = error as Record<string, unknown>;
+  return [
+    typeof record.name === 'string' ? record.name : '',
+    typeof record.message === 'string' ? record.message : '',
+    typeof record.code === 'string' ? record.code : '',
+    ...collectErrorFragments(record.cause, seen, depth + 1),
+    ...collectErrorFragments(record.meta, seen, depth + 1),
+  ].filter(Boolean);
 }
 
 export function isTransientDatabaseError(error: unknown) {
-  const message = getErrorMessage(error);
-  return TRANSIENT_DATABASE_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+  const haystack = collectErrorFragments(error).join('\n').toLowerCase();
+  return TRANSIENT_DATABASE_ERROR_PATTERNS.some((pattern) => haystack.includes(pattern));
+}
+
+export function summarizeDatabaseError(error: unknown) {
+  const fragments = collectErrorFragments(error)
+    .map((fragment) => fragment.trim())
+    .filter(Boolean)
+    .slice(0, MAX_RETRY_LOG_FRAGMENTS)
+    .map((fragment) =>
+      fragment.length > MAX_RETRY_LOG_FRAGMENT_LENGTH
+        ? `${fragment.slice(0, MAX_RETRY_LOG_FRAGMENT_LENGTH - 1)}…`
+        : fragment,
+    );
+
+  return fragments.join(' | ') || 'unknown database error';
 }
 
 function wait(delayMs: number) {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-export async function withDatabaseRetry<T>(operation: () => Promise<T>, attempts = 3) {
+export async function withDatabaseRetry<T>(operation: () => Promise<T>, attempts = 3, label = 'database operation') {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -40,11 +86,20 @@ export async function withDatabaseRetry<T>(operation: () => Promise<T>, attempts
       return await operation();
     } catch (error) {
       lastError = error;
-      if (!isTransientDatabaseError(error) || attempt === attempts - 1) {
+      const transient = isTransientDatabaseError(error);
+      if (!transient) {
         break;
       }
 
-      await wait(120 * (attempt + 1));
+      const delayMs = 120 * (attempt + 1);
+      const summary = summarizeDatabaseError(error);
+      if (attempt === attempts - 1) {
+        console.error(`[db] ${label} failed after ${attempts} attempts: ${summary}`);
+        break;
+      }
+
+      console.warn(`[db] ${label} transient failure on attempt ${attempt + 1}/${attempts}; retrying in ${delayMs}ms: ${summary}`);
+      await wait(delayMs);
     }
   }
 
