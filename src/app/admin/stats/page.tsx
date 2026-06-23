@@ -19,7 +19,7 @@ export default async function AdminStatsPage() {
           <div key={item.label} className="bg-white border border-gray-200 rounded p-4 text-center">
             <p className="text-[11px] text-gray-500 mb-1">{item.label}</p>
             <p className="text-2xl font-black text-gray-800">{item.value.toLocaleString()}</p>
-            <p className="text-[10px] mt-1 font-bold text-gray-400">{item.helperText}</p>
+            <p className={`text-[10px] mt-1 font-bold ${item.delta >= 0 ? 'text-green-500' : 'text-red-500'}`}>{item.helperText}</p>
           </div>
         ))}
       </div>

@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getAdminStatsData } from '@/lib/server/admin-stats';
 
-test('getAdminStatsData uses DB-side distinct session counts and preserves the admin stats shape', async () => {
+test('getAdminStatsData computes period-over-period deltas from DB-side distinct session counts', async () => {
   const originalQueryRaw = prisma.$queryRaw.bind(prisma);
   const originalUserCount = prisma.user.count.bind(prisma.user);
   const originalPageViewCount = prisma.pageViewEvent.count.bind(prisma.pageViewEvent);
@@ -14,16 +14,25 @@ test('getAdminStatsData uses DB-side distinct session counts and preserves the a
 
   const capturedQueries: Prisma.Sql[] = [];
 
-  prisma.user.count = (async () => 7) as typeof prisma.user.count;
-  prisma.pageViewEvent.count = (async () => 321) as typeof prisma.pageViewEvent.count;
+  // Today signups gte-only -> 8; yesterday gte+lt -> 4.
+  prisma.user.count = (async (args?: { where?: { createdAt?: { lt?: Date } } }) =>
+    args?.where?.createdAt?.lt ? 4 : 8) as unknown as typeof prisma.user.count;
+
+  // Total pageviews (no args) -> 321; this month (gte only) -> 200; last month (gte+lt) -> 100.
+  prisma.pageViewEvent.count = (async (args?: { where?: { createdAt?: { lt?: Date } } }) => {
+    if (!args?.where) {
+      return 321;
+    }
+    return args.where.createdAt?.lt ? 100 : 200;
+  }) as unknown as typeof prisma.pageViewEvent.count;
+
+  // First window query = today/yesterday visitors; second = this month/last month visitors.
   prisma.$queryRaw = (async (query) => {
     capturedQueries.push(query as Prisma.Sql);
-
     if (capturedQueries.length === 1) {
-      return [{ count: 12n }];
+      return [{ current: 12n, previous: 10n }];
     }
-
-    return [{ count: 98n }];
+    return [{ current: 90n, previous: 60n }];
   }) as typeof prisma.$queryRaw;
 
   prisma.pageViewEvent.groupBy = (async (args) => {
@@ -47,18 +56,19 @@ test('getAdminStatsData uses DB-side distinct session counts and preserves the a
 
     assert.equal(capturedQueries.length, 2);
     for (const query of capturedQueries) {
-      assert.ok(query.strings.join('').includes('COUNT(DISTINCT'));
-      assert.ok(query.strings.join('').includes('FROM "page_view_events"'));
-      assert.ok(query.strings.join('').includes('"created_at" >= '));
-      assert.equal(query.values.length, 1);
-      assert.ok(query.values[0] instanceof Date);
+      const text = query.strings.join('');
+      assert.ok(text.includes('COUNT(DISTINCT'));
+      assert.ok(text.includes('FROM "page_view_events"'));
+      assert.ok(text.includes('FILTER'));
+      assert.equal(query.values.length, 4);
+      assert.ok(query.values.every((value) => value instanceof Date));
     }
 
     assert.deepEqual(stats.summary, [
-      { label: '오늘 방문자', value: 12, helperText: '전월 대비 +12%' },
-      { label: '이번 달 방문자', value: 98, helperText: '전월 대비 +8%' },
-      { label: '총 페이지뷰', value: 321, helperText: '전월 대비 +21%' },
-      { label: '오늘 회원가입', value: 7, helperText: '전월 대비 -4%' },
+      { label: '오늘 방문자', value: 12, helperText: '전일 대비 +20%', delta: 20 },
+      { label: '이번 달 방문자', value: 90, helperText: '전월 대비 +50%', delta: 50 },
+      { label: '총 페이지뷰', value: 321, helperText: '전월 대비 +100%', delta: 100 },
+      { label: '오늘 회원가입', value: 8, helperText: '전일 대비 +100%', delta: 100 },
     ]);
     assert.deepEqual(stats.topShops, [
       { id: 'shop-b', name: 'Shop B', regionLabel: '부산', viewCount: 20 },

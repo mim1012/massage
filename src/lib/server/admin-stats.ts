@@ -8,6 +8,7 @@ export type AdminStatsData = {
     label: string;
     value: number;
     helperText: string;
+    delta: number;
   }>;
   topShops: Array<{
     id: string;
@@ -41,53 +42,74 @@ function getKstStartOfMonth(baseDate = new Date()) {
   return new Date(utcMonthStart - KST_OFFSET_MS);
 }
 
-async function countDistinctSessionsSince(startDate: Date) {
-  const [result] = await withDatabaseRetry(() =>
-    prisma.$queryRaw<Array<{ count: bigint | number }>>(Prisma.sql`
-      SELECT COUNT(DISTINCT "session_id")::bigint AS "count"
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function formatDelta(current: number, previous: number, basisLabel: string) {
+  const delta = previous > 0 ? Math.round(((current - previous) / previous) * 100) : current > 0 ? 100 : 0;
+  return { delta, helperText: `${basisLabel} 대비 ${delta >= 0 ? '+' : ''}${delta}%` };
+}
+
+async function countSessionWindow(currentStart: Date, previousStart: Date) {
+  const [row] = await withDatabaseRetry(() =>
+    prisma.$queryRaw<Array<{ current: bigint | number; previous: bigint | number }>>(Prisma.sql`
+      SELECT
+        COUNT(DISTINCT "session_id") FILTER (WHERE "created_at" >= ${currentStart}) AS "current",
+        COUNT(DISTINCT "session_id") FILTER (WHERE "created_at" >= ${previousStart} AND "created_at" < ${currentStart}) AS "previous"
       FROM "page_view_events"
-      WHERE "created_at" >= ${startDate}
+      WHERE "created_at" >= ${previousStart}
     `),
   );
 
-  return Number(result?.count ?? 0);
+  return {
+    current: Number(row?.current ?? 0),
+    previous: Number(row?.previous ?? 0),
+  };
 }
 
 export async function getAdminStatsData(): Promise<AdminStatsData> {
   const startOfTodayKst = getKstStartOfDay();
+  const startOfYesterdayKst = new Date(startOfTodayKst.getTime() - DAY_MS);
   const startOfMonthKst = getKstStartOfMonth();
+  const startOfLastMonthKst = getKstStartOfMonth(new Date(startOfMonthKst.getTime() - 1));
 
-  const todaySignups = await withDatabaseRetry(() =>
-    prisma.user.count({
-      where: {
-        createdAt: { gte: startOfTodayKst },
-      },
-    }),
-  );
+  const [todaySignups, yesterdaySignups] = await Promise.all([
+    withDatabaseRetry(() => prisma.user.count({ where: { createdAt: { gte: startOfTodayKst } } })),
+    withDatabaseRetry(() => prisma.user.count({ where: { createdAt: { gte: startOfYesterdayKst, lt: startOfTodayKst } } })),
+  ]);
+  const signupCard = {
+    label: '오늘 회원가입',
+    value: todaySignups,
+    ...formatDelta(todaySignups, yesterdaySignups, '전일'),
+  };
 
   try {
-    const [todayVisitors, monthlyVisitors, totalPageViews, topShopViewCounts] = await Promise.all([
-      countDistinctSessionsSince(startOfTodayKst),
-      countDistinctSessionsSince(startOfMonthKst),
-      withDatabaseRetry(() => prisma.pageViewEvent.count()),
-      withDatabaseRetry(() =>
-        prisma.pageViewEvent.groupBy({
-          by: ['shopId'],
-          where: {
-            shopId: { not: null },
-          },
-          _count: {
-            shopId: true,
-          },
-          orderBy: {
-            _count: {
-              shopId: 'desc',
+    const [visitorsToday, visitorsMonth, totalPageViews, thisMonthPageViews, lastMonthPageViews, topShopViewCounts] =
+      await Promise.all([
+        countSessionWindow(startOfTodayKst, startOfYesterdayKst),
+        countSessionWindow(startOfMonthKst, startOfLastMonthKst),
+        withDatabaseRetry(() => prisma.pageViewEvent.count()),
+        withDatabaseRetry(() => prisma.pageViewEvent.count({ where: { createdAt: { gte: startOfMonthKst } } })),
+        withDatabaseRetry(() =>
+          prisma.pageViewEvent.count({ where: { createdAt: { gte: startOfLastMonthKst, lt: startOfMonthKst } } }),
+        ),
+        withDatabaseRetry(() =>
+          prisma.pageViewEvent.groupBy({
+            by: ['shopId'],
+            where: {
+              shopId: { not: null },
             },
-          },
-          take: 5,
-        }),
-      ),
-    ]);
+            _count: {
+              shopId: true,
+            },
+            orderBy: {
+              _count: {
+                shopId: 'desc',
+              },
+            },
+            take: 5,
+          }),
+        ),
+      ]);
 
     const topShopIds = topShopViewCounts
       .map((entry) => entry.shopId)
@@ -110,10 +132,10 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     return {
       summary: [
-        { label: '오늘 방문자', value: todayVisitors, helperText: '전월 대비 +12%' },
-        { label: '이번 달 방문자', value: monthlyVisitors, helperText: '전월 대비 +8%' },
-        { label: '총 페이지뷰', value: totalPageViews, helperText: '전월 대비 +21%' },
-        { label: '오늘 회원가입', value: todaySignups, helperText: '전월 대비 -4%' },
+        { label: '오늘 방문자', value: visitorsToday.current, ...formatDelta(visitorsToday.current, visitorsToday.previous, '전일') },
+        { label: '이번 달 방문자', value: visitorsMonth.current, ...formatDelta(visitorsMonth.current, visitorsMonth.previous, '전월') },
+        { label: '총 페이지뷰', value: totalPageViews, ...formatDelta(thisMonthPageViews, lastMonthPageViews, '전월') },
+        signupCard,
       ],
       topShops: topShopViewCounts
         .map((entry) => {
@@ -140,10 +162,10 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
 
     return {
       summary: [
-        { label: '오늘 방문자', value: 0, helperText: '전월 대비 +12%' },
-        { label: '이번 달 방문자', value: 0, helperText: '전월 대비 +8%' },
-        { label: '총 페이지뷰', value: 0, helperText: '전월 대비 +21%' },
-        { label: '오늘 회원가입', value: todaySignups, helperText: '전월 대비 -4%' },
+        { label: '오늘 방문자', value: 0, ...formatDelta(0, 0, '전일') },
+        { label: '이번 달 방문자', value: 0, ...formatDelta(0, 0, '전월') },
+        { label: '총 페이지뷰', value: 0, ...formatDelta(0, 0, '전월') },
+        signupCard,
       ],
       topShops: [],
     };
