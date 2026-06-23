@@ -4,14 +4,16 @@ import { useMemo, useState } from 'react';
 import { Loader2, PenLine, Star } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthSession } from '@/lib/use-auth-session';
+import type { Review } from '@/lib/types';
 
 interface ShopReviewFormProps {
   shopId: string;
   shopName: string;
   onRequireLogin?: () => void;
+  onCreated?: (review: Review) => void;
 }
 
-export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: ShopReviewFormProps) {
+export default function ShopReviewForm({ shopId, shopName, onRequireLogin, onCreated }: ShopReviewFormProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -55,7 +57,7 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
         body: JSON.stringify({ shopId, rating, content }),
       });
 
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; review?: Review };
       if (!response.ok) {
         throw new Error(result.error ?? '후기를 등록하지 못했습니다.');
       }
@@ -63,6 +65,9 @@ export default function ShopReviewForm({ shopId, shopName, onRequireLogin }: Sho
       setContent('');
       setRating(5);
       setIsExpanded(false);
+      if (result.review) {
+        onCreated?.(result.review);
+      }
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '후기를 등록하지 못했습니다.');

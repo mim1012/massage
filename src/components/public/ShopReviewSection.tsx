@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Star } from 'lucide-react';
@@ -76,7 +76,7 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
     }
 
     if (initialReviewCount === 0) {
-      setReviews([]);
+      setReviews((prev) => prev ?? []);
       setIsLoadingReviews(false);
       return;
     }
@@ -223,6 +223,16 @@ if (!authChecked) {
   );
 }
 
+const handleCreated = useCallback((created: Review) => {
+  setReviews((prev) => {
+    const base = prev ?? [];
+    if (base.some((review) => review.id === created.id)) {
+      return base;
+    }
+    return [created, ...base];
+  });
+}, []);
+
 return (
   <div className="rounded-lg border border-gray-200 bg-white p-4">
     <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
@@ -242,7 +252,7 @@ return (
       )}
     </div>
 
-    <ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} />
+    <ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} onCreated={handleCreated} />
 
     {reviewBody}
 
