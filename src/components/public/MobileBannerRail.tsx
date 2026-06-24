@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import AdBannerSlot from '@/components/public/AdBannerSlot';
 
 export default function MobileBannerRail() {
   return (
@@ -39,11 +40,13 @@ export default function MobileBannerRail() {
         <div className="inline-block rounded-full bg-[var(--portal-gnb)] px-2 py-0.5 text-[10px] font-bold text-white">모집중 &gt;</div>
       </Link>
 
-      <div className="flex h-[96px] flex-col items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--portal-brand-soft)] text-[var(--color-text-secondary)] shadow-sm">
-        <div className="mb-1 text-xl">🎯</div>
-        <span className="text-xs font-bold">배너 슬롯</span>
-        <span className="text-[10px]">모바일 하단 영역</span>
-      </div>
+      <AdBannerSlot slot="mobile" heightClass="h-[96px]">
+        <div className="flex h-[96px] flex-col items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--portal-brand-soft)] text-[var(--color-text-secondary)] shadow-sm">
+          <div className="mb-1 text-xl">🎯</div>
+          <span className="text-xs font-bold">배너 슬롯</span>
+          <span className="text-[10px]">모바일 하단 영역</span>
+        </div>
+      </AdBannerSlot>
     </div>
   );
 }

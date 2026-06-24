@@ -9,6 +9,7 @@ import ScrollToTopOnMount from '@/components/public/ScrollToTopOnMount';
 import ShopBrowseBreadcrumbs from '@/components/public/ShopBrowseBreadcrumbs';
 import ShopMediaSection from '@/components/public/ShopMediaSection';
 import ShopReviewSection from '@/components/public/ShopReviewSection';
+import AdBannerSlot from '@/components/public/AdBannerSlot';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -208,13 +209,15 @@ export default async function ShopDetailPage({ params }: Props) {
               <ChevronRight className="h-4 w-4 text-gray-400" />
             </Link>
 
-            <div className="ad-slot h-[200px] rounded">
-              <div className="text-center">
-                <span>광고 배너 영역</span>
-                <br />
-                <span className="text-[10px]">280×200</span>
+            <AdBannerSlot slot="detail" heightClass="h-[200px]">
+              <div className="ad-slot h-[200px] rounded">
+                <div className="text-center">
+                  <span>광고 배너 영역</span>
+                  <br />
+                  <span className="text-[10px]">280×200</span>
+                </div>
               </div>
-            </div>
+            </AdBannerSlot>
           </div>
         </div>
       </div>

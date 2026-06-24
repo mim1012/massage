@@ -293,3 +293,13 @@ model PageViewEvent {
   @@index([userId, createdAt(sort: Desc)])
   @@map("page_view_events")
 }
+
+model AdBanner {
+  slot      String   @id
+  imageUrl  String   @map("image_url")
+  linkUrl   String?  @map("link_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ad_banners")
+}

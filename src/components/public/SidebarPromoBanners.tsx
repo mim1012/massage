@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import clsx from 'clsx';
+import AdBannerSlot from '@/components/public/AdBannerSlot';
 
 type SidebarPromoBannersProps = {
   mode?: 'sidebar' | 'inline';
@@ -41,11 +42,13 @@ export default function SidebarPromoBanners({ mode = 'sidebar', onNavigate }: Si
         <div className="inline-block rounded-full bg-[var(--portal-brand)] px-3 py-0.5 text-[10px] font-black text-white">상담 신청하기 &gt;</div>
       </Link>
 
-      <div className="flex h-[150px] flex-col items-center justify-center rounded border border-[var(--color-border)] bg-[var(--portal-brand-soft)] text-[var(--color-text-secondary)]">
-        <div className="mb-1 text-xl">🎯</div>
-        <span className="text-xs font-bold">배너 슬롯</span>
-        <span className="text-[10px]">180×150</span>
-      </div>
+      <AdBannerSlot slot="sidebar" heightClass="h-[150px]">
+        <div className="flex h-[150px] flex-col items-center justify-center rounded border border-[var(--color-border)] bg-[var(--portal-brand-soft)] text-[var(--color-text-secondary)]">
+          <div className="mb-1 text-xl">🎯</div>
+          <span className="text-xs font-bold">배너 슬롯</span>
+          <span className="text-[10px]">180×150</span>
+        </div>
+      </AdBannerSlot>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type { AdminShopListItem } from '@/lib/communityTypes';
 import type { PremiumBoardData } from '@/lib/communityTypes';
 import { REGIONS } from '@/lib/types';
 import clsx from 'clsx';
+import AdBannerManager from '@/components/admin/AdBannerManager';
 
 const MAX_PER_REGION = 4;
 
@@ -267,6 +268,8 @@ export default function AdminPremiumPage() {
           })}
         </div>
       </div>
+
+      <AdBannerManager />
     </div>
   );
 }
