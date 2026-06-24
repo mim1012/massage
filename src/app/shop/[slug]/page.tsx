@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone, Star } from 'lucide-react';
-import { formatRating } from '@/lib/utils';
+import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone } from 'lucide-react';
+import ShopRatingBadge from '@/components/public/ShopRatingBadge';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
 import { getShopBySlug, getShopMetadataBySlug, listVisibleShopSlugs } from '@/lib/server/shop-store';
 import ScrollToTopOnMount from '@/components/public/ScrollToTopOnMount';
@@ -100,18 +100,7 @@ export default async function ShopDetailPage({ params }: Props) {
                 ) : null}
                 <h1 className="mb-1 text-2xl font-black text-gray-900">{shop.name}</h1>
                 <p className="mb-3 text-sm text-gray-600">{shop.tagline}</p>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <Star
-                      key={value}
-                      className={`h-4 w-4 ${
-                        value <= Math.round(shop.rating) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                  <span className="ml-1 text-sm font-bold text-gray-700">{formatRating(shop.rating)}</span>
-                  <span className="text-xs text-gray-500">({shop.reviewCount}개 후기)</span>
-                </div>
+                <ShopRatingBadge slug={shop.slug} rating={shop.rating} reviewCount={shop.reviewCount} />
               </div>
             </div>
 

@@ -8,6 +8,7 @@ import ShopReviewForm from '@/components/public/ShopReviewForm';
 import { useAuthSession } from '@/lib/use-auth-session';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { publishShopReviewStats } from '@/components/public/shop-review-stats';
 
 type ShopReviewSectionProps = {
   slug: string;
@@ -114,6 +115,16 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
       controller.abort();
     };
   }, [authChecked, initialReviewCount, slug, user]);
+
+  useEffect(() => {
+    if (!user || reviews === null) {
+      return;
+    }
+
+    const count = reviews.length;
+    const rating = count ? reviews.reduce((sum, review) => sum + review.rating, 0) / count : 0;
+    publishShopReviewStats(slug, { rating, reviewCount: count });
+  }, [reviews, user, slug]);
 
 const visibleReviewCount = user ? (reviews?.length ?? initialReviewCount) : initialReviewCount;
 
