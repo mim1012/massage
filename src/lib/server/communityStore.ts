@@ -662,7 +662,7 @@ export async function listManagedShopsPage(
 
   try {
     const [shops, total] = await withDatabaseRetry(() =>
-      prisma.$transaction([
+      Promise.all([
         prisma.shop.findMany({
           where,
           select: managedShopListSelect,

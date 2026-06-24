@@ -415,7 +415,7 @@ export async function listUsersPage(filters: UserListFilters = {}): Promise<User
 
   try {
     const [users, total] = await withDatabaseRetry(() =>
-      prisma.$transaction([
+      Promise.all([
         prisma.user.findMany({
           where,
           include: { ownerProfile: true },
