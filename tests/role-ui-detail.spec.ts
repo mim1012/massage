@@ -373,8 +373,11 @@ test.describe('역할별 UI 버튼 디테일', () => {
       await page.waitForURL(`**/owner/shops/${shopRecord.id}`, { timeout: 20_000 });
       await expect(page.getByRole('heading', { name: '업소 수정' })).toBeVisible();
 
+      await expect(page.getByPlaceholder('예: 강남 힐링스파')).toHaveValue(businessName);
       await page.getByRole('button', { name: /다음/ }).click();
-      await page.getByPlaceholder('010-0000-0000').fill(updatedPhone);
+      const phoneField = page.getByPlaceholder('010-0000-0000');
+      await expect(phoneField).toHaveValue('010-1234-5678');
+      await phoneField.fill(updatedPhone);
       await page.getByRole('button', { name: /다음/ }).click();
       await page.getByRole('button', { name: /다음/ }).click();
       await page.getByRole('button', { name: /다음/ }).click();

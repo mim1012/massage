@@ -2126,6 +2126,7 @@ export async function createAdminShop(input: Shop) {
   );
 
   invalidatePublicShopCaches();
+  invalidateManagedAdminCaches();
 
   return mapShop(shop);
 }
@@ -2186,6 +2187,7 @@ export async function updateAdminShop(id: string, input: Shop, access?: { ownerI
     }
 
     invalidatePublicShopCaches();
+    invalidateManagedAdminCaches();
 
     return mapShop(shop);
   } catch (error) {
