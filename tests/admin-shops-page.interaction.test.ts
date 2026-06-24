@@ -101,7 +101,7 @@ async function renderHarness(options?: {
   const root = createRoot(container);
 
   await act(async () => {
-    root.render(React.createElement(AdminShopsPageClient, { initialShops: shops }));
+    root.render(React.createElement(AdminShopsPageClient, { initialData: { shops, total: shops.length, page: 1, pageSize: 20, totalPages: 1 } }));
   });
 
   await act(async () => {
