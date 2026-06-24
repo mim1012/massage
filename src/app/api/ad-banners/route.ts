@@ -6,10 +6,7 @@ export const preferredRegion = 'sin1';
 export async function GET() {
   try {
     const banners = await listActiveAdBanners();
-    return Response.json(
-      { banners },
-      { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' } },
-    );
+    return Response.json({ banners }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return errorResponse(error);
   }
