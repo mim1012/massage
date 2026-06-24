@@ -1,4 +1,4 @@
-import { revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import {
   Prisma,
   QnaCommentRole,
@@ -1608,13 +1608,20 @@ export async function createReview(input: {
         rating: input.rating,
         content: input.content.trim(),
       },
-      include: { shop: { select: { name: true } } },
+      include: { shop: { select: { name: true, slug: true } } },
     }),
   );
 
   await withDatabaseRetry(() => refreshShopReviewRating(input.shopId));
   invalidatePublicShopCaches();
   invalidatePublicBoardCaches();
+  try {
+    if (review.shop?.slug) {
+      revalidatePath(`/shop/${review.shop.slug}`);
+    }
+  } catch {
+    // best-effort detail route revalidation; ignored outside a request scope
+  }
   return mapReview(review);
 }
 

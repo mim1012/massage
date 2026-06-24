@@ -75,12 +75,6 @@ export default function ShopReviewSection({ slug, shopId, shopName, initialRevie
       return;
     }
 
-    if (initialReviewCount === 0) {
-      setReviews((prev) => prev ?? []);
-      setIsLoadingReviews(false);
-      return;
-    }
-
     const controller = new AbortController();
     let cancelled = false;
     setIsLoadingReviews(true);
