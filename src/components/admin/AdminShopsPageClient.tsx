@@ -1,11 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit2, Crown, Store } from 'lucide-react';
 import type { AdminShopListItem } from '@/lib/communityTypes';
 import { REGIONS, REGION_MAP } from '@/lib/types';
+import { clampPage, getTotalPages, paginateItems } from '@/lib/pagination';
+import PaginationControls from '@/components/public/PaginationControls';
 import clsx from 'clsx';
+
+const SHOPS_PAGE_SIZE = 20;
 
 export default function AdminShopsPageClient({ initialShops }: { initialShops: AdminShopListItem[] }) {
   const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
@@ -14,6 +18,7 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
   const [actionError, setActionError] = useState<string | null>(null);
   const pendingRef = useRef<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
 function getActionErrorMessage(result: unknown, fallback: string) {
   if (result && typeof result === 'object' && 'error' in result && typeof result.error === 'string') {
@@ -32,6 +37,14 @@ function getActionErrorMessage(result: unknown, fallback: string) {
     const matchesSearch = !search || shop.name.includes(search) || shop.phone.includes(search);
     return matchesRegion && matchesSearch;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, regionFilter]);
+
+  const totalPages = getTotalPages(filtered.length, SHOPS_PAGE_SIZE);
+  const safePage = clampPage(page, totalPages);
+  const pageShops = paginateItems(filtered, safePage, SHOPS_PAGE_SIZE);
 
   const toggleVisibility = async (id: string) => {
     if (pendingRef.current.has(id)) return;
@@ -147,7 +160,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((shop) => (
+              {pageShops.map((shop) => (
                 <tr key={shop.id} className="transition-colors hover:bg-gray-100">
                   <td data-label="노출" className="px-4 py-2 text-center">
                     <button
@@ -220,6 +233,8 @@ function getActionErrorMessage(result: unknown, fallback: string) {
           {filtered.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div> : null}
         </div>
       </div>
+
+      <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={setPage} />
 
     </div>
   );
