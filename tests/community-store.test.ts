@@ -24,6 +24,7 @@ import {
   listManagedReviews,
   listManagedShopOptions,
   listManagedShops,
+  listManagedShopsPage,
   listNotices,
   listPartnershipInquiries,
   listQna,
@@ -467,6 +468,33 @@ dbTest('managed shop options stay lightweight while preserving owner fallback ac
   assert.equal(options.some((shop) => shop.id === primaryShop.id), true);
   assert.equal(options.some((shop) => shop.id === fallbackShop.id), true);
   assert.deepEqual(Object.keys(options[0] ?? {}).sort(), ['id', 'name']);
+});
+
+dbTest('managed shops page paginates, clamps page size, and scopes to the owner', async (t) => {
+  const owner = await getSeedOwner();
+  const originalManagedShopId = owner.managedShopId;
+  const ownShop = await createTempShop({ ownerId: owner.id, name: `Pager Owned ${uniqueSuffix()}` });
+  const otherShop = await createTempShop({ ownerId: null, name: `Pager Other ${uniqueSuffix()}` });
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({ where: { id: { in: [ownShop.id, otherShop.id] } } });
+    await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: originalManagedShopId } });
+  });
+
+  await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: null } });
+
+  const result = await listManagedShopsPage({ id: owner.id, role: 'OWNER' }, { page: 1, pageSize: 20 });
+  assert.equal(result.page, 1);
+  assert.equal(result.pageSize, 20);
+  assert.ok(result.shops.length <= 20);
+  assert.equal(result.totalPages, Math.max(1, Math.ceil(result.total / 20)));
+  assert.equal(result.shops.some((shop) => shop.id === ownShop.id), true);
+  assert.equal(result.shops.some((shop) => shop.id === otherShop.id), false);
+
+  const clampedSmall = await listManagedShopsPage({ id: owner.id, role: 'OWNER' }, { page: 1, pageSize: 1 });
+  assert.equal(clampedSmall.pageSize, 10);
+  const clampedBig = await listManagedShopsPage({ id: owner.id, role: 'OWNER' }, { page: 1, pageSize: 999 });
+  assert.equal(clampedBig.pageSize, 100);
 });
 
 dbTest('public site content reads normalize legacy values without writing during requests', async () => {

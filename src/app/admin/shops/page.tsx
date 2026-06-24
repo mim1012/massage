@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import AdminShopsPageClient from '@/components/admin/AdminShopsPageClient';
 import { getSessionUser } from '@/lib/auth/guards';
-import { listManagedShops } from '@/lib/server/communityStore';
+import { listManagedShopsPage } from '@/lib/server/communityStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,5 +20,5 @@ export default async function AdminShopsPage() {
     redirect('/');
   }
 
-  return <AdminShopsPageClient initialShops={await listManagedShops(user)} />;
+  return <AdminShopsPageClient initialData={await listManagedShopsPage(user, { page: 1, pageSize: 20 })} />;
 }

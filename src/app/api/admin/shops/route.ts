@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse } from '@/lib/auth/http';
 import { normalizeShopInputForSave } from '@/lib/server/admin-shop-access';
-import { createAdminShop, listManagedShopOptions, listManagedShops } from '@/lib/server/communityStore';
+import { createAdminShop, listManagedShopOptions, listManagedShops, listManagedShopsPage } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 
 export async function GET(request: Request) {
@@ -13,6 +13,15 @@ export async function GET(request: Request) {
       q: searchParams.get('q') ?? undefined,
     };
     const view = searchParams.get('view');
+    const pageParam = searchParams.get('page');
+    if (pageParam !== null) {
+      const result = await listManagedShopsPage(user, {
+        ...filters,
+        page: Number(pageParam) || 1,
+        pageSize: Number(searchParams.get('pageSize')) || 20,
+      });
+      return Response.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
+    }
     return Response.json({ shops: view === 'options' ? await listManagedShopOptions(user, filters) : await listManagedShops(user, filters) });
   } catch (error) {
     return errorResponse(error);

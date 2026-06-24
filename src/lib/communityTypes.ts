@@ -59,3 +59,11 @@ export interface AdminStatsData {
     viewCount: number;
   }>;
 }
+
+export interface AdminShopPageResult {
+  shops: AdminShopListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

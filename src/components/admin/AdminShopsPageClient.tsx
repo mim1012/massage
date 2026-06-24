@@ -1,24 +1,30 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Edit2, Crown, Store } from 'lucide-react';
-import type { AdminShopListItem } from '@/lib/communityTypes';
+import { Search, Plus, Edit2, Crown, Store, RefreshCw } from 'lucide-react';
+import type { AdminShopListItem, AdminShopPageResult } from '@/lib/communityTypes';
 import { REGIONS, REGION_MAP } from '@/lib/types';
-import { clampPage, getTotalPages, paginateItems } from '@/lib/pagination';
+
 import PaginationControls from '@/components/public/PaginationControls';
 import clsx from 'clsx';
 
 const SHOPS_PAGE_SIZE = 20;
 
-export default function AdminShopsPageClient({ initialShops }: { initialShops: AdminShopListItem[] }) {
-  const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
+export default function AdminShopsPageClient({ initialData }: { initialData: AdminShopPageResult }) {
+  const [shops, setShops] = useState<AdminShopListItem[]>(initialData.shops);
+  const [total, setTotal] = useState(initialData.total);
+  const [totalPages, setTotalPages] = useState(initialData.totalPages);
+  const [page, setPage] = useState(initialData.page);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const pendingRef = useRef<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
+  const requestSeq = useRef(0);
+  const skipNextLoad = useRef(true);
 
 function getActionErrorMessage(result: unknown, fallback: string) {
   if (result && typeof result === 'object' && 'error' in result && typeof result.error === 'string') {
@@ -28,23 +34,60 @@ function getActionErrorMessage(result: unknown, fallback: string) {
   return fallback;
 }
 
-  const filtered = shops.filter((shop) => {
-    let matchesRegion = regionFilter === 'all';
-    if (!matchesRegion) {
-      const mapped = REGION_MAP[regionFilter];
-      matchesRegion = mapped ? shop.region === mapped : shop.region === regionFilter;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const loadShops = useCallback(async () => {
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
+    setIsLoading(true);
+    setActionError(null);
+
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: String(SHOPS_PAGE_SIZE) });
+      if (debouncedSearch) params.set('q', debouncedSearch);
+      if (regionFilter !== 'all') params.set('region', REGION_MAP[regionFilter] ?? regionFilter);
+
+      const res = await fetch(`/api/admin/shops?${params.toString()}`, { cache: 'no-store', credentials: 'same-origin' });
+      const payload = (await res.json()) as AdminShopPageResult & { error?: string };
+
+      if (requestSeq.current !== requestId) {
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(payload.error ?? '업소 목록을 불러오지 못했습니다.');
+      }
+
+      setShops(payload.shops ?? []);
+      setTotal(payload.total ?? 0);
+      setTotalPages(payload.totalPages ?? 1);
+    } catch (caughtError) {
+      if (requestSeq.current !== requestId) {
+        return;
+      }
+
+      setActionError(caughtError instanceof Error ? caughtError.message : '업소 목록을 불러오지 못했습니다.');
+    } finally {
+      if (requestSeq.current === requestId) {
+        setIsLoading(false);
+      }
     }
-    const matchesSearch = !search || shop.name.includes(search) || shop.phone.includes(search);
-    return matchesRegion && matchesSearch;
-  });
+  }, [page, debouncedSearch, regionFilter]);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, regionFilter]);
+    if (skipNextLoad.current) {
+      skipNextLoad.current = false;
+      return;
+    }
 
-  const totalPages = getTotalPages(filtered.length, SHOPS_PAGE_SIZE);
-  const safePage = clampPage(page, totalPages);
-  const pageShops = paginateItems(filtered, safePage, SHOPS_PAGE_SIZE);
+    void loadShops();
+  }, [loadShops]);
 
   const toggleVisibility = async (id: string) => {
     if (pendingRef.current.has(id)) return;
@@ -129,7 +172,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
         </div>
         <select
           value={regionFilter}
-          onChange={(event) => setRegionFilter(event.target.value)}
+          onChange={(event) => { setRegionFilter(event.target.value); setPage(1); }}
           className="rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#D4A373]"
         >
           {REGIONS.map((region) => (
@@ -138,6 +181,11 @@ function getActionErrorMessage(result: unknown, fallback: string) {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="flex items-center justify-between px-1 text-xs text-gray-500">
+        <span>총 {total.toLocaleString()}개</span>
+        {isLoading ? <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3 animate-spin" /> 불러오는 중...</span> : <span>페이지당 {SHOPS_PAGE_SIZE}개</span>}
       </div>
 
       {actionError ? (
@@ -160,7 +208,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {pageShops.map((shop) => (
+              {shops.map((shop) => (
                 <tr key={shop.id} className="transition-colors hover:bg-gray-100">
                   <td data-label="노출" className="px-4 py-2 text-center">
                     <button
@@ -230,11 +278,11 @@ function getActionErrorMessage(result: unknown, fallback: string) {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div> : null}
+          {!isLoading && shops.length === 0 ? <div className="py-6 text-center text-sm text-gray-400">목록이 없습니다.</div> : null}
         </div>
       </div>
 
-      <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={setPage} />
+      <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
     </div>
   );

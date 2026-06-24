@@ -639,6 +639,54 @@ async function loadManagedShops(
   return shops.map(mapManagedShopRecordForAdmin);
 }
 
+export async function listManagedShopsPage(
+  user: { id: string; role: UserRole; managedShopId?: string },
+  filters: { region?: string; q?: string; page?: number; pageSize?: number } = {},
+) {
+  const page = Math.max(1, Math.floor(filters.page ?? 1));
+  const pageSize = Math.min(100, Math.max(10, Math.floor(filters.pageSize ?? 20)));
+
+  const and: Prisma.ShopWhereInput[] = [];
+  if (user.role === 'OWNER') {
+    and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
+  }
+  const region = filters.region?.trim();
+  if (region && region !== 'all') {
+    and.push({ region });
+  }
+  const q = filters.q?.trim();
+  if (q) {
+    and.push({ OR: [{ name: buildContainsFilter(q) }, { phone: buildContainsFilter(q) }] });
+  }
+  const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
+
+  try {
+    const [shops, total] = await withDatabaseRetry(() =>
+      prisma.$transaction([
+        prisma.shop.findMany({
+          where,
+          select: managedShopListSelect,
+          orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        prisma.shop.count({ where }),
+      ]),
+    );
+
+    return {
+      shops: shops.map(mapManagedShopRecordForAdmin),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  } catch (error) {
+    console.error('Failed to list managed shops page:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
+
 const getCachedManagedShops = unstable_cache(
   async (
     userId: string,
