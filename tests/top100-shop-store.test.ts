@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
-import { listTopShops, type ShopListRecord } from '@/lib/server/shop-store';
+import { listDirectoryShops, listTopShops, type ShopListRecord } from '@/lib/server/shop-store';
 
 function makeShopListRecord(partial: Partial<ShopListRecord> & Pick<ShopListRecord, 'id' | 'slug' | 'name'>): ShopListRecord {
   return {
@@ -71,5 +71,38 @@ test('listTopShops uses a limited ranking query and preserves ranked ids when hy
   } finally {
     prisma.$queryRaw = originalQueryRaw;
     prisma.shop.findMany = originalFindMany;
+  }
+});
+test('popular directory regular rows use db ordering and pagination', async () => {
+  const originalFindMany = prisma.shop.findMany.bind(prisma.shop);
+  const originalCount = prisma.shop.count.bind(prisma.shop);
+  const capturedFindManyArgs: Array<Parameters<typeof prisma.shop.findMany>[0]> = [];
+
+  prisma.shop.findMany = (async (args) => {
+    capturedFindManyArgs.push(args);
+    return [];
+  }) as typeof prisma.shop.findMany;
+
+  prisma.shop.count = (async () => 12) as typeof prisma.shop.count;
+
+  try {
+    const result = await listDirectoryShops({
+      sort: 'popular',
+      regularOffset: 20,
+      regularLimit: 10,
+      query: `source-guard-${Date.now()}`,
+    });
+
+    const regularQuery = capturedFindManyArgs.find((args) => args?.where && 'isPremium' in args.where && args.where.isPremium === false);
+
+    assert.ok(regularQuery, 'expected a regular shop query');
+    assert.deepEqual(regularQuery.orderBy, [{ reviewCount: 'desc' }, { rating: 'desc' }, { createdAt: 'desc' }]);
+    assert.equal(regularQuery.skip, 20);
+    assert.equal(regularQuery.take, 10);
+    assert.deepEqual(result.regularShops, []);
+    assert.equal(result.regularTotal, 12);
+  } finally {
+    prisma.shop.findMany = originalFindMany;
+    prisma.shop.count = originalCount;
   }
 });

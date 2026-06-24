@@ -88,7 +88,8 @@ export default function ReviewManagementPage({ scope, initialReviews = [], initi
     const loadShops = async () => {
       setShopsLoading(true);
       try {
-        const response = await fetch('/api/admin/shops', { cache: 'no-store' });
+        const response = await fetch('/api/admin/shops?view=options', { cache: 'no-store' });
+
         const result = (await response.json()) as {
           shops?: Array<{ id?: string; name?: string }>;
           error?: string;

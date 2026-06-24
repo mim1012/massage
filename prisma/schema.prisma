@@ -109,6 +109,8 @@ model Shop {
   pageViewEvents PageViewEvent[]
 
   @@index([isVisible, isPremium, premiumOrder, createdAt(sort: Desc)])
+  @@index([isVisible, isPremium, createdAt(sort: Desc)])
+  @@index([isVisible, reviewCount(sort: Desc), rating(sort: Desc), createdAt(sort: Desc)])
   @@index([isVisible, region, isPremium, premiumOrder, createdAt(sort: Desc)])
   @@index([isVisible, region, subRegion, isPremium, premiumOrder, createdAt(sort: Desc)])
   @@index([isVisible, theme, isPremium, premiumOrder, createdAt(sort: Desc)])

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import QnaManagementPage from '@/components/admin/QnaManagementPage';
 import { getSessionUser } from '@/lib/auth/guards';
-import { listManagedShops, listQna } from '@/lib/server/communityStore';
+import { listQna } from '@/lib/server/communityStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +16,7 @@ export default async function AdminQnaPage() {
     redirect(user.role === 'OWNER' ? '/owner/qna' : '/');
   }
 
-  const [initialShops, initialQnaList] = await Promise.all([
-    listManagedShops(user),
-    listQna({ viewer: user }),
-  ]);
+  const initialQnaList = await listQna({ viewer: user });
 
-  return <QnaManagementPage scope="admin" initialQnaList={initialQnaList} initialShops={initialShops} initialDataLoaded />;
+  return <QnaManagementPage scope="admin" initialQnaList={initialQnaList} initialDataLoaded loadShopsOnDemand />;
 }

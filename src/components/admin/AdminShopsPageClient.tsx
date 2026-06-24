@@ -11,9 +11,17 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
   const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
-  const [editId, setEditId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const pendingRef = useRef<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+
+function getActionErrorMessage(result: unknown, fallback: string) {
+  if (result && typeof result === 'object' && 'error' in result && typeof result.error === 'string') {
+    return result.error;
+  }
+
+  return fallback;
+}
 
   const filtered = shops.filter((shop) => {
     let matchesRegion = regionFilter === 'all';
@@ -31,15 +39,22 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
     if (!shop) return;
     pendingRef.current.add(id);
     setPendingIds(new Set(pendingRef.current));
+    setActionError(null);
     try {
       const res = await fetch(`/api/admin/shops/${id}/visibility`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isVisible: !shop.isVisible }),
       });
-      if (res.ok) {
-        setShops((prev) => prev.map((entry) => (entry.id === id ? { ...entry, isVisible: !entry.isVisible } : entry)));
+      const result = (await res.json().catch(() => ({}))) as { shop?: AdminShopListItem; error?: string };
+      if (!res.ok || !result.shop) {
+        setActionError(getActionErrorMessage(result, '노출 상태 변경에 실패했습니다.'));
+        return;
       }
+
+      setShops((prev) => prev.map((entry) => (entry.id === id ? { ...entry, isVisible: result.shop?.isVisible ?? !entry.isVisible } : entry)));
+    } catch {
+      setActionError('노출 상태 변경에 실패했습니다.');
     } finally {
       pendingRef.current.delete(id);
       setPendingIds(new Set(pendingRef.current));
@@ -52,15 +67,22 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
     if (!shop) return;
     pendingRef.current.add(id);
     setPendingIds(new Set(pendingRef.current));
+    setActionError(null);
     try {
       const res = await fetch(`/api/admin/shops/${id}/premium`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPremium: !shop.isPremium }),
       });
-      if (res.ok) {
-        setShops((prev) => prev.map((entry) => (entry.id === id ? { ...entry, isPremium: !entry.isPremium } : entry)));
+      const result = (await res.json().catch(() => ({}))) as { shop?: AdminShopListItem; error?: string };
+      if (!res.ok || !result.shop) {
+        setActionError(getActionErrorMessage(result, 'AD 상태 변경에 실패했습니다.'));
+        return;
       }
+
+      setShops((prev) => prev.map((entry) => (entry.id === id ? { ...entry, isPremium: result.shop?.isPremium ?? !entry.isPremium, premiumOrder: result.shop?.premiumOrder } : entry)));
+    } catch {
+      setActionError('AD 상태 변경에 실패했습니다.');
     } finally {
       pendingRef.current.delete(id);
       setPendingIds(new Set(pendingRef.current));
@@ -105,6 +127,12 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
         </select>
       </div>
 
+      {actionError ? (
+        <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {actionError}
+        </div>
+      ) : null}
+
       <div className="table-wrap overflow-hidden rounded border border-gray-200 bg-white">
         <div className="overflow-x-auto">
           <table className="table-responsive w-full whitespace-nowrap text-left text-sm">
@@ -123,7 +151,10 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
                 <tr key={shop.id} className="transition-colors hover:bg-gray-100">
                   <td data-label="노출" className="px-4 py-2 text-center">
                     <button
+                      type="button"
                       onClick={() => toggleVisibility(shop.id)}
+                      aria-pressed={shop.isVisible}
+                      aria-label={shop.isVisible ? `${shop.name} 노출 끄기` : `${shop.name} 노출 켜기`}
                       disabled={pendingIds.has(shop.id)}
                       className={clsx(
                         'toggle-switch inline-block',
@@ -140,7 +171,10 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
                   </td>
                   <td data-label="AD" className="px-4 py-2 text-center">
                     <button
+                      type="button"
                       onClick={() => togglePremium(shop.id)}
+                      aria-pressed={shop.isPremium}
+                      aria-label={shop.isPremium ? `${shop.name} AD 해제` : `${shop.name} AD 등록`}
                       disabled={pendingIds.has(shop.id)}
                       className={clsx(
                         'rounded p-1 text-white transition-colors',
@@ -166,12 +200,12 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
                     {shop.phone}
                   </td>
                   <td data-label="관리" className="px-4 py-2 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => setEditId(shop.id)}
+                    <Link
+                      href={`/admin/shops/${shop.id}`}
                       className="inline-flex items-center gap-1 rounded border border-[#D4A373]/30 bg-white px-2 py-1 text-xs font-bold text-[#D4A373] shadow-sm hover:bg-[#FEFAE0]"
                     >
-                      <Edit2 className="h-3 w-3" /> 버튼 수정
-                    </button>
+                      <Edit2 className="h-3 w-3" /> 수정
+                    </Link>
                     <Link
                       href={`/admin/shops/${shop.id}`}
                       className="ml-1.5 inline-flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
@@ -187,49 +221,6 @@ export default function AdminShopsPageClient({ initialShops }: { initialShops: A
         </div>
       </div>
 
-      {editId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
-            <h2 className="mb-4 border-b pb-2 text-lg font-black text-gray-900">업소 정보 (빠른 수정)</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">업소명</label>
-                <input
-                  type="text"
-                  defaultValue={shops.find((shop) => shop.id === editId)?.name}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[#D4A373] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-bold text-gray-600">연락처</label>
-                <input
-                  type="text"
-                  defaultValue={shops.find((shop) => shop.id === editId)?.phone}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[#D4A373] focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setEditId(null)}
-                className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-200"
-              >
-                취소
-              </button>
-              <button
-                autoFocus
-                onClick={() => {
-                  alert('수정된 기존 정보가 성공적으로 저장되었습니다.');
-                  setEditId(null);
-                }}
-                className="rounded-lg bg-[#D4A373] px-4 py-2 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#C29262]"
-              >
-                저장 완료
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

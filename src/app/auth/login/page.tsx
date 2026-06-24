@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Store, User } from 'lucide-react';
 import clsx from 'clsx';
 import { getPostLoginRedirect } from '@/lib/auth/redirects';
@@ -16,6 +16,7 @@ type LoginResult = {
 };
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = useMemo(() => {
     const target = searchParams.get('redirect') ?? searchParams.get('next');
@@ -43,8 +44,9 @@ function LoginContent() {
     }
 
     setRedirecting(true);
-    window.location.replace(getPostLoginRedirect(user.role, redirectTo));
-  }, [authChecked, loading, redirectTo, redirecting, user]);
+    router.replace(getPostLoginRedirect(user.role, redirectTo));
+    router.refresh();
+  }, [authChecked, loading, redirectTo, redirecting, router, user]);
 
   const resetFormState = (tab: 'user' | 'owner') => {
     setActiveTab(tab);
@@ -81,7 +83,11 @@ function LoginContent() {
 
       storeSessionUser(result.user);
       setRedirecting(true);
-      window.location.assign(getPostLoginRedirect(result.user.role, redirectTo));
+      router.replace(getPostLoginRedirect(result.user.role, redirectTo));
+      router.refresh();
+      return;
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : '로그인에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -172,8 +178,7 @@ function LoginContent() {
                 </button>
               </div>
               <button
-                type="button"
-                onClick={() => void submitLogin()}
+                type="submit"
                 disabled={!formReady || loading || redirecting}
                 className="w-full rounded bg-red-600 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >

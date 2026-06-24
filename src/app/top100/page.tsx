@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import Top100PageClient from '@/components/public/Top100PageClient';
-import { getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
+import { buildDirectorySearchParams, getDirectoryCanonicalRedirect, parseDirectoryQuery } from '@/lib/directory-mode';
 import { listTopShops } from '@/lib/server/shop-store';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 120;
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -42,7 +42,21 @@ export default async function Top100Page({ searchParams }: PageProps) {
     redirect(canonicalRedirect);
   }
 
-  const shops: Awaited<ReturnType<typeof listTopShops>> = [];
+  const directorySearchParams = buildDirectorySearchParams({
+    mode: directoryQuery.mode,
+    region: directoryQuery.region,
+    subRegion: directoryQuery.subRegion,
+    theme: directoryQuery.theme,
+    q: directoryQuery.q,
+    sort: directoryQuery.sort,
+  });
+
+  const shops = await listTopShops({
+    region: directorySearchParams.get('region') ?? undefined,
+    subRegion: directorySearchParams.get('subRegion') ?? undefined,
+    theme: directorySearchParams.get('theme') ?? undefined,
+    query: directorySearchParams.get('q') ?? undefined,
+  });
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>

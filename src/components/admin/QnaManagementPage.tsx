@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { CheckCircle, MessageCircle, Search, Send, Trash2 } from 'lucide-react';
-import type { AdminShopListItem } from '@/lib/communityTypes';
+import type { AdminShopOption } from '@/lib/communityTypes';
 import type { QnA } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
@@ -19,8 +19,9 @@ import {
 type Props = {
   scope: 'admin' | 'owner';
   initialQnaList?: QnA[];
-  initialShops?: AdminShopListItem[];
+  initialShops?: AdminShopOption[];
   initialDataLoaded?: boolean;
+  loadShopsOnDemand?: boolean;
 };
 
 type TabKey = 'all' | 'pending' | 'done';
@@ -36,14 +37,21 @@ const TABS = [
   { key: 'done', label: '댓글 등록됨' },
 ] satisfies Array<{ key: TabKey; label: string }>;
 
-export default function QnaManagementPage({ scope, initialQnaList = [], initialShops = [], initialDataLoaded = false }: Props) {
+export default function QnaManagementPage({
+  scope,
+  initialQnaList = [],
+  initialShops = [],
+  initialDataLoaded = false,
+  loadShopsOnDemand = false,
+}: Props) {
   const [qnaList, setQnaList] = useState<QnA[]>(initialQnaList);
-  const [shops, setShops] = useState<AdminShopListItem[]>(initialShops);
+  const [shops, setShops] = useState<AdminShopOption[]>(initialShops);
   const [tab, setTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
   const [activeComposerId, setActiveComposerId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!initialDataLoaded && initialQnaList.length === 0 && initialShops.length === 0);
+  const [loadingShops, setLoadingShops] = useState(false);
   const [submittingIds, setSubmittingIds] = useState<string[]>([]);
   const submittingIdsRef = useRef<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
@@ -54,7 +62,6 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
   const [newShopId, setNewShopId] = useState('');
   const [editingQnaId, setEditingQnaId] = useState<string | null>(null);
   const [editingQuestionText, setEditingQuestionText] = useState('');
-
   useEffect(() => {
     if (initialDataLoaded || initialQnaList.length > 0 || initialShops.length > 0) {
       return;
@@ -70,11 +77,11 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
         if (scope === 'owner') {
           const [meResponse, shopsResponse] = await Promise.all([
             fetch('/api/auth/me', { cache: 'no-store' }),
-            fetch('/api/admin/shops', { cache: 'no-store' }),
+            fetch('/api/admin/shops?view=options', { cache: 'no-store' }),
           ]);
 
           const meResult = (await meResponse.json()) as { user?: SessionUser | null };
-          const shopsResult = (await shopsResponse.json()) as { shops?: AdminShopListItem[]; error?: string };
+          const shopsResult = (await shopsResponse.json()) as { shops?: AdminShopOption[]; error?: string };
 
           if (!meResponse.ok || !meResult.user || meResult.user.role !== 'OWNER') {
             throw new Error('오너 계정 정보를 불러오지 못했습니다.');
@@ -109,6 +116,45 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
 
     void load();
   }, [initialDataLoaded, initialQnaList, initialShops, scope]);
+
+  useEffect(() => {
+    if (!loadShopsOnDemand || !showCreateForm || shops.length > 0 || loadingShops) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadShopOptions = async () => {
+      setLoadingShops(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/admin/shops?view=options', { cache: 'no-store' });
+        const result = (await response.json()) as { shops?: AdminShopOption[]; error?: string };
+        if (!response.ok || !result.shops) {
+          throw new Error(result.error ?? '업소 목록을 불러오지 못했습니다.');
+        }
+
+        if (!cancelled) {
+          setShops(result.shops);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : '업소 목록을 불러오지 못했습니다.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingShops(false);
+        }
+      }
+    };
+
+    void loadShopOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadShopsOnDemand, loadingShops, shops.length, showCreateForm]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -300,16 +346,16 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
         </h1>
         <div className="flex items-center gap-2">
           {canCreateQna ? (
-            <button
-              type="button"
-              onClick={() => {
-                setShowCreateForm((current) => !current);
-                setError(null);
-              }}
-              className="rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"
-            >
-              {showCreateForm ? '작성 취소' : '질문 작성'}
-            </button>
+<button
+  type="button"
+  onClick={() => {
+    setShowCreateForm((current) => !current);
+    setError(null);
+  }}
+  className="rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"
+>
+  {showCreateForm ? '작성 취소' : '질문 작성'}
+</button>
           ) : null}
           <div className="rounded bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">검색 결과 {filtered.length}건 / 전체 {qnaList.length}건</div>
         </div>
@@ -320,18 +366,20 @@ export default function QnaManagementPage({ scope, initialQnaList = [], initialS
           <h3 className="text-sm font-bold text-gray-800">새 Q&A 질문 등록</h3>
           <div>
             <label className="mb-1 block text-[11px] font-bold text-gray-500">관련 업소 선택 (선택 사항)</label>
-            <select
-              value={newShopId}
-              onChange={(event) => setNewShopId(event.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-1.5 text-xs outline-none focus:border-red-500 bg-white"
-            >
-              <option value="">일반 문의 (업소 선택 안함)</option>
-              {shops.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.name}
-                </option>
-              ))}
-            </select>
+<select
+  value={newShopId}
+  onChange={(event) => setNewShopId(event.target.value)}
+  disabled={loadingShops}
+  className="w-full rounded border border-gray-300 px-3 py-1.5 text-xs outline-none focus:border-red-500 bg-white disabled:bg-gray-100"
+>
+  <option value="">{loadingShops ? '업소 목록 불러오는 중...' : '일반 문의 (업소 선택 안함)'}</option>
+  {shops.map((shop) => (
+    <option key={shop.id} value={shop.id}>
+      {shop.name}
+    </option>
+  ))}
+</select>
+            {loadingShops ? <p className="mt-1 text-[11px] text-gray-400">업소 목록을 불러오는 중입니다.</p> : null}
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-bold text-gray-500">질문 내용</label>

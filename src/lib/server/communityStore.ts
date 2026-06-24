@@ -21,7 +21,7 @@ import type {
   SiteSettings,
   UserRole,
 } from '@/lib/types';
-import type { AdminDashboardData, AdminShopListItem, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
+import type { AdminDashboardData, AdminShopListItem, AdminShopOption, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
 import { clampPage, getTotalPages } from '@/lib/pagination';
@@ -54,8 +54,17 @@ const managedShopListSelect = {
   updatedAt: true,
 } satisfies Prisma.ShopSelect;
 
+const managedShopOptionSelect = {
+  id: true,
+  name: true,
+} satisfies Prisma.ShopSelect;
+
 type ManagedShopListRecord = Prisma.ShopGetPayload<{
   select: typeof managedShopListSelect;
+}>;
+
+type ManagedShopOptionRecord = Prisma.ShopGetPayload<{
+  select: typeof managedShopOptionSelect;
 }>;
 
 const SITE_SETTINGS_ID = 'default';
@@ -63,6 +72,8 @@ const PUBLIC_SITE_CONTENT_CACHE_TAG = 'public-site-content';
 
 const ADMIN_DASHBOARD_CACHE_TAG = 'admin-dashboard';
 const PUBLIC_BOARD_CACHE_TAG = 'public-board';
+const MANAGED_SHOPS_CACHE_TAG = 'managed-shops';
+const MANAGED_QNA_CACHE_TAG = 'managed-qna';
 let cachedPublicSiteContentPromise:
   | Promise<{
       siteSettings: SiteSettings;
@@ -116,9 +127,15 @@ function safeRevalidateTag(tag: string) {
   }
 }
 
+function invalidateManagedAdminCaches() {
+  safeRevalidateTag(MANAGED_SHOPS_CACHE_TAG);
+  safeRevalidateTag(MANAGED_QNA_CACHE_TAG);
+}
+
 function invalidatePublicBoardCaches() {
   safeRevalidateTag(PUBLIC_BOARD_CACHE_TAG);
   safeRevalidateTag(ADMIN_DASHBOARD_CACHE_TAG);
+  safeRevalidateTag(MANAGED_QNA_CACHE_TAG);
 }
 
 function mapManagedShopRecordForAdmin(shop: ManagedShopListRecord): AdminShopListItem {
@@ -140,6 +157,14 @@ function mapManagedShopRecordForAdmin(shop: ManagedShopListRecord): AdminShopLis
     updatedAt: shop.updatedAt.toISOString(),
   };
 }
+
+function mapManagedShopRecordToOption(shop: ManagedShopOptionRecord): AdminShopOption {
+  return {
+    id: shop.id,
+    name: shop.name,
+  };
+}
+
 
 type ViewerContext = {
   id: string;
@@ -583,38 +608,155 @@ function buildOwnerShopPayload(input: Shop) {
   return payload;
 }
 
+async function loadManagedShops(
+  user: { id: string; role: UserRole; managedShopId?: string },
+  filters: { region?: string; q?: string } = {},
+) {
+  const and: Prisma.ShopWhereInput[] = [];
+
+  if (user.role === 'OWNER') {
+    and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
+  }
+
+  if (filters.region && filters.region !== 'all') {
+    and.push({ region: filters.region });
+  }
+
+  if (filters.q) {
+    and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });
+  }
+
+  const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
+
+  const shops = await withDatabaseRetry(() =>
+    prisma.shop.findMany({
+      where,
+      select: managedShopListSelect,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+    }),
+  );
+
+  return shops.map(mapManagedShopRecordForAdmin);
+}
+
+const getCachedManagedShops = unstable_cache(
+  async (
+    userId: string,
+    role: UserRole,
+    managedShopId?: string,
+    region?: string,
+    q?: string,
+  ) => loadManagedShops({ id: userId, role, managedShopId }, { region, q }),
+  [MANAGED_SHOPS_CACHE_TAG, 'list'],
+  {
+    revalidate: 30,
+    tags: [MANAGED_SHOPS_CACHE_TAG],
+  },
+);
+
+async function loadManagedShopOptions(
+  user: { id: string; role: UserRole; managedShopId?: string },
+  filters: { region?: string; q?: string } = {},
+) {
+  const and: Prisma.ShopWhereInput[] = [];
+
+  if (user.role === 'OWNER') {
+    and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
+  }
+
+  if (filters.region && filters.region !== 'all') {
+    and.push({ region: filters.region });
+  }
+
+  if (filters.q) {
+    and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });
+  }
+
+  const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
+  const shops = await withDatabaseRetry(() =>
+    prisma.shop.findMany({
+      where,
+      select: managedShopOptionSelect,
+      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+    }),
+  );
+
+  return shops.map(mapManagedShopRecordToOption);
+}
+
+const getCachedManagedShopOptions = unstable_cache(
+  async (
+    userId: string,
+    role: UserRole,
+    managedShopId?: string,
+    region?: string,
+    q?: string,
+  ) => loadManagedShopOptions({ id: userId, role, managedShopId }, { region, q }),
+  [MANAGED_SHOPS_CACHE_TAG, 'options'],
+  {
+    revalidate: 30,
+    tags: [MANAGED_SHOPS_CACHE_TAG],
+  },
+);
+
 export async function listManagedShops(
   user: { id: string; role: UserRole; managedShopId?: string },
   filters: { region?: string; q?: string } = {},
 ) {
+  const normalizedFilters = {
+    region: filters.region?.trim() || undefined,
+    q: filters.q?.trim() || undefined,
+  };
+
   try {
-    const and: Prisma.ShopWhereInput[] = [];
+    try {
+      return await getCachedManagedShops(
+        user.id,
+        user.role,
+        user.managedShopId,
+        normalizedFilters.region,
+        normalizedFilters.q,
+      );
+    } catch (error) {
+      if (!isMissingNextCacheContextError(error)) {
+        throw error;
+      }
 
-    if (user.role === 'OWNER') {
-      and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
+      return await loadManagedShops(user, normalizedFilters);
     }
-
-    if (filters.region && filters.region !== 'all') {
-      and.push({ region: filters.region });
-    }
-
-    if (filters.q) {
-      and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });
-    }
-
-    const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
-
-    const shops = await withDatabaseRetry(() =>
-      prisma.shop.findMany({
-        where,
-        select: managedShopListSelect,
-        orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-      }),
-    );
-
-    return shops.map(mapManagedShopRecordForAdmin);
   } catch (error) {
     console.error('Failed to list managed shops:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
+
+export async function listManagedShopOptions(
+  user: { id: string; role: UserRole; managedShopId?: string },
+  filters: { region?: string; q?: string } = {},
+) {
+  const normalizedFilters = {
+    region: filters.region?.trim() || undefined,
+    q: filters.q?.trim() || undefined,
+  };
+
+  try {
+    try {
+      return await getCachedManagedShopOptions(
+        user.id,
+        user.role,
+        user.managedShopId,
+        normalizedFilters.region,
+        normalizedFilters.q,
+      );
+    } catch (error) {
+      if (!isMissingNextCacheContextError(error)) {
+        throw error;
+      }
+
+      return await loadManagedShopOptions(user, normalizedFilters);
+    }
+  } catch (error) {
+    console.error('Failed to list managed shop options:', error);
     throw new Error('DATABASE_ERROR');
   }
 }
@@ -645,6 +787,7 @@ export async function updatePremiumOrder(orderedIds: string[], visibilityById: R
     ]),
   );
   invalidatePublicShopCaches();
+  invalidateManagedAdminCaches();
 
   return await getPremiumBoardData();
 }
@@ -1002,12 +1145,11 @@ export async function listPublicQnaPage(
   }
 }
 
-export async function listQna(options: string | QnaListOptions = {}) {
-  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
-  const shopId = normalizedOptions.shopId?.trim();
-  const shopOwnerId = normalizedOptions.shopOwnerId?.trim();
-  const search = normalizedOptions.search?.trim();
-  const where = buildQnaWhere(shopId, search, shopOwnerId, normalizedOptions.publicVisibleOnly);
+async function loadQnaEntries(options: QnaListOptions = {}) {
+  const shopId = options.shopId?.trim();
+  const shopOwnerId = options.shopOwnerId?.trim();
+  const search = options.search?.trim();
+  const where = buildQnaWhere(shopId, search, shopOwnerId, options.publicVisibleOnly);
 
   try {
     const entries = await withDatabaseRetry(() =>
@@ -1015,23 +1157,84 @@ export async function listQna(options: string | QnaListOptions = {}) {
         where,
         include: qnaInclude,
         orderBy: { createdAt: 'desc' },
-        ...normalizeManagedPagination(normalizedOptions),
+        ...normalizeManagedPagination(options),
       }),
     );
 
-    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+    return entries.map((entry) => mapQna(entry, options.viewer));
   } catch (error) {
     if (!isQnaCommentStorageUnavailable(error)) {
       throw error;
     }
 
-    const legacyWhere = buildLegacyQnaWhere(shopId, search, shopOwnerId, normalizedOptions.publicVisibleOnly);
-
+    const legacyWhere = buildLegacyQnaWhere(shopId, search, shopOwnerId, options.publicVisibleOnly);
     const entries = await withDatabaseRetry(() =>
-      loadLegacyQnaRecords(legacyWhere, normalizeManagedPagination(normalizedOptions)),
+      loadLegacyQnaRecords(legacyWhere, normalizeManagedPagination(options)),
     );
-    return entries.map((entry) => mapQna(entry, normalizedOptions.viewer));
+    return entries.map((entry) => mapQna(entry, options.viewer));
   }
+}
+
+function shouldUseManagedQnaCache(options: QnaListOptions) {
+  return Boolean(
+    options.viewer &&
+      !options.publicVisibleOnly &&
+      (options.viewer.role === 'ADMIN' || options.viewer.role === 'OWNER'),
+  );
+}
+
+const getCachedManagedQna = unstable_cache(
+  async (
+    shopId: string | undefined,
+    shopOwnerId: string | undefined,
+    search: string | undefined,
+    viewerId: string,
+    viewerRole: UserRole,
+    page?: number,
+    pageSize?: number,
+  ) =>
+    loadQnaEntries({
+      shopId,
+      shopOwnerId,
+      search,
+      viewer: { id: viewerId, role: viewerRole },
+      page,
+      pageSize,
+    }),
+  [MANAGED_QNA_CACHE_TAG, 'list'],
+  {
+    revalidate: 15,
+    tags: [MANAGED_QNA_CACHE_TAG],
+  },
+);
+
+export async function listQna(options: string | QnaListOptions = {}) {
+  const normalizedOptions = typeof options === 'string' ? { shopId: options } : options;
+
+  if (shouldUseManagedQnaCache(normalizedOptions)) {
+    const viewer = normalizedOptions.viewer as ViewerContext;
+    const shopId = normalizedOptions.shopId?.trim() || undefined;
+    const shopOwnerId = normalizedOptions.shopOwnerId?.trim() || undefined;
+    const search = normalizedOptions.search?.trim() || undefined;
+
+    try {
+      return await getCachedManagedQna(
+        shopId,
+        shopOwnerId,
+        search,
+        viewer.id,
+        viewer.role,
+        normalizedOptions.page,
+        normalizedOptions.pageSize,
+      );
+    } catch (error) {
+      if (!isMissingNextCacheContextError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  return await loadQnaEntries(normalizedOptions);
 }
 
 type BoardLandingOptions = {

@@ -28,7 +28,7 @@ test('db stability hot paths keep conservative Supabase pooling and retry wrappe
   assert.equal(prismaConfigSource.includes('return isSupabase ? Math.min(configured, DEFAULT_SUPABASE_MAX_LIFETIME_SECONDS) : configured;'), true);
   assert.equal(prismaConfigSource.includes('idleTimeoutMillis: supabaseHost ? DEFAULT_SUPABASE_IDLE_TIMEOUT_MS : DEFAULT_POOL_IDLE_TIMEOUT_MS,'), true);
   assert.equal(prismaConfigSource.includes("pool.on('error'"), true);
-  assert.equal(adminStatsSource.includes('withDatabaseRetry(() => prisma.pageViewEvent.count())'), true);
+  assert.equal(adminStatsSource.includes('await withDatabaseRetry(() =>'), true);
   assert.equal(themeStoreSource.includes('withDatabaseRetry(() => prisma.theme.findMany'), true);
   assert.equal(shopStoreSource.includes('const shop = await withDatabaseRetry(() =>'), true);
   assert.equal(shopStoreSource.includes('const reviews = await withDatabaseRetry(() =>'), true);

@@ -45,14 +45,15 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export function resolvePoolMax(url: URL, env: NodeJS.ProcessEnv = process.env) {
+  const supabaseHost = isSupabaseHost(url.hostname);
   const configuredMax =
     env.PGPOOL_MAX ?? url.searchParams.get('pool_max') ?? url.searchParams.get('connection_limit') ?? url.searchParams.get('pool_size');
   const parsed = parsePositiveNumber(configuredMax);
   if (parsed) {
-    return parsed;
+    return supabaseHost ? Math.min(parsed, DEFAULT_SUPABASE_POOL_MAX) : parsed;
   }
 
-  if (isSupabaseHost(url.hostname)) {
+  if (supabaseHost) {
     return DEFAULT_SUPABASE_POOL_MAX;
   }
 

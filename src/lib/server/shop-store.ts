@@ -229,6 +229,8 @@ export function invalidatePublicShopCaches() {
   invalidatePublicShopDetailCache();
   try {
     revalidateTag('admin-dashboard', 'max');
+    revalidateTag('managed-shops', 'max');
+    revalidateTag('managed-qna', 'max');
   } catch (error) {
     if (!isMissingNextCacheContextError(error)) {
       throw error;
@@ -492,12 +494,12 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
   };
 }
 
+
 function sortByPopularity(left: ShopListItem, right: ShopListItem) {
   if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
   if (right.rating !== left.rating) return right.rating - left.rating;
   return right.createdAt.localeCompare(left.createdAt);
 }
-
 function balancePremiumShops(shops: ShopListItem[], region?: string) {
   if (region && region !== 'all') {
     return [...shops].sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
@@ -530,6 +532,10 @@ function balancePremiumShops(shops: ShopListItem[], region?: string) {
 }
 
 function getRegularOrderBy(sort?: string): Prisma.ShopOrderByWithRelationInput[] {
+  if (sort === 'popular') {
+    return [{ reviewCount: 'desc' }, { rating: 'desc' }, { createdAt: 'desc' }];
+  }
+
   if (sort === 'new') {
     return [{ createdAt: 'desc' }];
   }
@@ -624,10 +630,6 @@ export async function listTopShops(filters: ShopFilters = {}, limit = 100) {
 }
 
 async function listDirectoryShopsUncached(filters: DirectoryShopFilters = {}): Promise<ShopListResponse> {
-  if (filters.sort === 'popular') {
-    return listShopsUncached(filters);
-  }
-
   const regularOffset = Math.max(0, filters.regularOffset ?? 0);
   const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
   const includePremium = filters.includePremium !== false;

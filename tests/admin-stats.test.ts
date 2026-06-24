@@ -5,64 +5,56 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getAdminStatsData } from '@/lib/server/admin-stats';
 
-test('getAdminStatsData computes period-over-period deltas from DB-side distinct session counts', async () => {
+test('getAdminStatsData computes stats with two optimized aggregate queries', async () => {
   const originalQueryRaw = prisma.$queryRaw.bind(prisma);
-  const originalUserCount = prisma.user.count.bind(prisma.user);
-  const originalPageViewCount = prisma.pageViewEvent.count.bind(prisma.pageViewEvent);
-  const originalPageViewGroupBy = prisma.pageViewEvent.groupBy.bind(prisma.pageViewEvent);
-  const originalShopFindMany = prisma.shop.findMany.bind(prisma.shop);
-
   const capturedQueries: Prisma.Sql[] = [];
 
-  // Today signups gte-only -> 8; yesterday gte+lt -> 4.
-  prisma.user.count = (async (args?: { where?: { createdAt?: { lt?: Date } } }) =>
-    args?.where?.createdAt?.lt ? 4 : 8) as unknown as typeof prisma.user.count;
-
-  // Total pageviews (no args) -> 321; this month (gte only) -> 200; last month (gte+lt) -> 100.
-  prisma.pageViewEvent.count = (async (args?: { where?: { createdAt?: { lt?: Date } } }) => {
-    if (!args?.where) {
-      return 321;
-    }
-    return args.where.createdAt?.lt ? 100 : 200;
-  }) as unknown as typeof prisma.pageViewEvent.count;
-
-  // First window query = today/yesterday visitors; second = this month/last month visitors.
   prisma.$queryRaw = (async (query) => {
     capturedQueries.push(query as Prisma.Sql);
-    if (capturedQueries.length === 1) {
-      return [{ current: 12n, previous: 10n }];
-    }
-    return [{ current: 90n, previous: 60n }];
-  }) as typeof prisma.$queryRaw;
 
-  prisma.pageViewEvent.groupBy = (async (args) => {
-    if (Array.isArray(args.by) && args.by.includes('sessionId')) {
-      throw new Error('sessionId visitor counts should not use groupBy');
+    if (capturedQueries.length === 1) {
+      return [
+        {
+          today_visitors: 12n,
+          yesterday_visitors: 10n,
+          month_visitors: 90n,
+          last_month_visitors: 60n,
+          total_page_views: 321n,
+          this_month_page_views: 200n,
+          last_month_page_views: 100n,
+          today_signups: 8n,
+          yesterday_signups: 4n,
+        },
+      ];
     }
 
     return [
-      { shopId: 'shop-b', _count: { shopId: 20 } },
-      { shopId: 'shop-a', _count: { shopId: 10 } },
+      { id: 'shop-b', name: 'Shop B', region_label: '부산', view_count: 20n },
+      { id: 'shop-a', name: 'Shop A', region_label: '서울', view_count: 10n },
     ];
-  }) as typeof prisma.pageViewEvent.groupBy;
-
-  prisma.shop.findMany = (async () => [
-    { id: 'shop-a', name: 'Shop A', regionLabel: '서울' },
-    { id: 'shop-b', name: 'Shop B', regionLabel: '부산' },
-  ]) as typeof prisma.shop.findMany;
+  }) as typeof prisma.$queryRaw;
 
   try {
     const stats = await getAdminStatsData();
 
     assert.equal(capturedQueries.length, 2);
-    for (const query of capturedQueries) {
-      const text = query.strings.join('');
-      assert.ok(text.includes('COUNT(DISTINCT'));
-      assert.ok(text.includes('FROM "page_view_events"'));
-      assert.ok(text.includes('FILTER'));
-      assert.equal(query.values.length, 4);
-      assert.ok(query.values.every((value) => value instanceof Date));
-    }
+
+    const summaryQuery = capturedQueries[0];
+    const summaryText = summaryQuery.strings.join('');
+    assert.ok(summaryText.includes('WITH page_stats AS'));
+    assert.ok(summaryText.includes('user_stats AS'));
+    assert.ok(summaryText.includes('COUNT(DISTINCT "session_id") FILTER'));
+    assert.ok(summaryText.includes('COUNT(*) FILTER'));
+    assert.ok(summaryText.includes('FROM "page_view_events"'));
+    assert.ok(summaryText.includes('FROM "users"'));
+    assert.equal(summaryQuery.values.length, 13);
+    assert.ok(summaryQuery.values.every((value) => value instanceof Date));
+
+    const topShopText = capturedQueries[1].strings.join('');
+    assert.ok(topShopText.includes('INNER JOIN "shops" AS s ON s."id" = p."shop_id"'));
+    assert.ok(topShopText.includes('GROUP BY s."id", s."name", s."region_label"'));
+    assert.ok(topShopText.includes('ORDER BY COUNT(*) DESC'));
+    assert.ok(topShopText.includes('LIMIT 5'));
 
     assert.deepEqual(stats.summary, [
       { label: '오늘 방문자', value: 12, helperText: '전일 대비 +20%', delta: 20 },
@@ -76,10 +68,6 @@ test('getAdminStatsData computes period-over-period deltas from DB-side distinct
     ]);
   } finally {
     prisma.$queryRaw = originalQueryRaw;
-    prisma.user.count = originalUserCount;
-    prisma.pageViewEvent.count = originalPageViewCount;
-    prisma.pageViewEvent.groupBy = originalPageViewGroupBy;
-    prisma.shop.findMany = originalShopFindMany;
   }
 });
 
@@ -87,6 +75,7 @@ test('admin stats backend exposes a cached admin route and matching page-view in
   const routeSource = readFileSync('src/app/api/admin/stats/route.ts', 'utf8');
   assert.match(routeSource, /requireRole\('ADMIN'\)/);
   assert.match(routeSource, /getCachedAdminStatsData/);
+  assert.match(routeSource, /Cache-Control': 'private, no-store'/);
 
   const providerSource = readFileSync('src/lib/server/admin-stats.ts', 'utf8');
   assert.match(providerSource, /unstable_cache/);
@@ -98,4 +87,14 @@ test('admin stats backend exposes a cached admin route and matching page-view in
   const migrationSource = readFileSync('prisma/migrations/0009_page_view_stats_indexes/migration.sql', 'utf8');
   assert.match(migrationSource, /page_view_events_created_at_session_id_idx/);
   assert.match(migrationSource, /\"created_at\" DESC, \"session_id\"/);
+});
+test('admin stats page renders cached server state and refreshes through admin API client', () => {
+  const pageSource = readFileSync('src/app/admin/stats/page.tsx', 'utf8');
+  const clientSource = readFileSync('src/components/admin/AdminStatsPageClient.tsx', 'utf8');
+
+  assert.match(pageSource, /<AdminStatsPageClient initialStats=\{initialStats\} \/>/);
+  assert.match(clientSource, /fetch\('\/api\/admin\/stats'/);
+  assert.match(clientSource, /credentials: 'same-origin'/);
+  assert.match(clientSource, /cache: 'no-store'/);
+  assert.match(clientSource, /새로고침/);
 });

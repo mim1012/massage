@@ -20,7 +20,7 @@ test('shop detail page delegates review loading to a client section after the sh
   assert.equal(pageSource.includes('<ShopReviewSection'), true);
   assert.equal(pageSource.includes('getSessionUser'), false);
   assert.equal(pageSource.includes("export const dynamic = 'force-dynamic';"), false);
-  assert.equal(sectionSource.includes("<ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} />"), true);
+  assert.equal(sectionSource.includes("<ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} onCreated={handleCreated} />"), true);
   assert.equal(sectionSource.includes('let reviewBody: React.ReactNode;'), true);
   assert.equal(sectionSource.includes('useAuthSession'), true);
   assert.equal(sectionSource.includes("fetch(`/api/shops/${encodeURIComponent(slug)}/reviews`"), true);

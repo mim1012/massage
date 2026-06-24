@@ -125,15 +125,20 @@ test('public directory performance indexes and theme cache are kept in sync', as
   const schemaSource = await readProjectFile('prisma/schema.prisma');
   const migrationSource = await readProjectFile('prisma/migrations/0011_public_directory_filter_indexes/migration.sql');
   const searchMigrationSource = await readProjectFile('prisma/migrations/0013_shop_search_text_index/migration.sql');
+  const sortMigrationSource = await readProjectFile('prisma/migrations/0014_public_directory_sort_indexes/migration.sql');
   const themeStoreSource = await readProjectFile('src/lib/server/theme-store.ts');
 
   assert.equal(schemaSource.includes('@@index([isVisible, region, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
   assert.equal(schemaSource.includes('@@index([isVisible, region, subRegion, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
   assert.equal(schemaSource.includes('@@index([isVisible, theme, isPremium, premiumOrder, createdAt(sort: Desc)])'), true);
+  assert.equal(schemaSource.includes('@@index([isVisible, isPremium, createdAt(sort: Desc)])'), true);
+  assert.equal(schemaSource.includes('@@index([isVisible, reviewCount(sort: Desc), rating(sort: Desc), createdAt(sort: Desc)])'), true);
   assert.equal(schemaSource.includes('searchText     String          @default("") @map("search_text")'), true);
   assert.equal(migrationSource.includes('shops_visible_region_premium_order_idx'), true);
   assert.equal(migrationSource.includes('shops_visible_region_sub_region_premium_order_idx'), true);
   assert.equal(migrationSource.includes('shops_visible_theme_premium_order_idx'), true);
+  assert.equal(sortMigrationSource.includes('shops_visible_regular_created_at_idx'), true);
+  assert.equal(sortMigrationSource.includes('shops_visible_popular_order_idx'), true);
   assert.equal(searchMigrationSource.includes('shops_search_text_trgm_idx'), true);
   assert.equal(searchMigrationSource.includes('ADD COLUMN "search_text" TEXT NOT NULL DEFAULT'), true);
   assert.equal(themeStoreSource.includes('unstable_cache'), true);
@@ -277,11 +282,15 @@ test('shop card thumbnails preserve full scraped images without backdrop artifac
   assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
   assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
   assert.equal(shopCardSource.includes('fetchPriority="low"'), true);
+  assert.equal(shopCardSource.includes('width={320}'), true);
+  assert.equal(shopCardSource.includes('height={320}'), true);
   assert.equal(shopCardSource.includes("onError={() => setImageFailed(true)}"), true);
   assert.equal(homeClientSource.includes('const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, \'premium-card\');'), true);
   assert.equal(homeClientSource.includes('loading={index === 0 ? "eager" : "lazy"}'), true);
   assert.equal(homeClientSource.includes('decoding="async"'), true);
   assert.equal(homeClientSource.includes('fetchPriority={index === 0 ? "high" : "low"}'), true);
+  assert.equal(homeClientSource.includes('width={480}'), true);
+  assert.equal(homeClientSource.includes('height={480}'), true);
   assert.equal(homeClientSource.includes('{themeEmoji[shop.theme] ?? "✨"}'), true);
 });
 
@@ -300,12 +309,18 @@ test('shop detail media preserves full scraped images while deferring heavier ga
   assert.equal(shopStoreSource.includes("buildShopBannerProxyUrl(record.slug, record.updatedAt, 'hero')"), true);
   assert.equal(shopStoreSource.includes("buildShopGalleryImageProxyUrl(record.slug, record.updatedAt, 0, 'hero')"), true);
   assert.equal(mediaSource.includes('previewImage?: string;'), true);
-  assert.equal(mediaSource.includes('const PRELOADED_GALLERY_IMAGES = INITIAL_VISIBLE_GALLERY_IMAGES;'), true);
-  assert.equal(mediaSource.includes('const hasSeparatePreviewImage = Boolean(previewImageUrl) && previewImageUrl !== primaryImage;'), true);
+  assert.equal(mediaSource.includes('const PRELOADED_GALLERY_IMAGES = INITIAL_VISIBLE_GALLERY_IMAGES;'), false);
+  assert.equal(mediaSource.includes('const hasSeparatePreviewImage = Boolean(previewImageUrl) && previewImageUrl !== primaryImageUrl;'), true);
   assert.equal(mediaSource.includes("transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}"), true);
   assert.equal(mediaSource.includes('loading="eager"'), true);
   assert.equal(mediaSource.includes('fetchPriority="high"'), true);
-  assert.equal(mediaSource.includes("loading={index < preloadedGalleryImages.length ? 'eager' : 'lazy'}"), true);
+  assert.equal(mediaSource.includes('width={960}'), true);
+  assert.equal(mediaSource.includes('height={960}'), true);
+  assert.equal(mediaSource.includes('aria-hidden="true" className="pointer-events-none h-0 overflow-hidden opacity-0"'), false);
+  assert.equal(mediaSource.includes('loading="lazy"'), true);
+  assert.equal(mediaSource.includes('fetchPriority="low"'), true);
+  assert.equal(mediaSource.includes('width={560}'), true);
+  assert.equal(mediaSource.includes('height={560}'), true);
   assert.equal(mediaSource.includes('추가 사진 {dedupedGalleryImages.length}장 불러오기'), true);
   assert.equal(mediaSource.includes('사진 {remainingImageCount}장 더 보기'), true);
   assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
@@ -453,15 +468,15 @@ test('shop list and detail payloads proxy heavy shop images through cached, size
   assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
   assert.equal(galleryRouteSource.includes("searchParams.get('size')"), true);
   assert.equal(homeClientSource.includes('const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, \'premium-card\');'), true);
-  assert.equal(homeClientSource.includes('const leadPremiumHeroImage = premiumShops[0]?.detailImageUrl?.trim() || premiumShops[0]?.bannerUrl?.trim() || (premiumShops[0] ? withShopMediaVariant(premiumShops[0].thumbnailUrl, \'hero\') : \'\');'), true);
-  assert.equal(homeClientSource.includes('fetchPriority="high" />'), true);
-  assert.equal(homeClientSource.includes("const detailHeroUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || withShopMediaVariant(shop.thumbnailUrl, 'hero');"), true);
-  assert.equal(homeClientSource.includes('premiumShops.slice(0, 2).map((shop) => ({'), true);
-  assert.equal(homeClientSource.includes('warmPremiumDetailAssets(leadPremium.detailHref, leadPremium.detailHeroUrl);'), true);
-  assert.equal(homeClientSource.includes('warmPremiumDetailAssets(detailHref, detailHeroUrl);'), true);
-  assert.equal(shopCardSource.includes("const detailImageUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || thumbnailUrl;"), true);
+  assert.equal(homeClientSource.includes('const leadPremiumHeroImage ='), false);
+  assert.equal(homeClientSource.includes('aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"'), false);
+  assert.equal(homeClientSource.includes("const detailHeroUrl = withShopMediaVariant(shop.detailImageUrl || shop.bannerUrl || shop.thumbnailUrl, 'hero');"), true);
+  assert.equal(homeClientSource.includes('premiumShops.slice(0, 1).map((shop) => ({'), true);
+  assert.equal(homeClientSource.includes('const prefetchLeadPremiumRoutes = () => {'), true);
+  assert.equal(homeClientSource.includes('onMouseEnter={() => warmPremiumDetailAssets(detailHref, detailHeroUrl)}'), true);
+  assert.equal(shopCardSource.includes("const detailImageUrl = withShopMediaVariant(shop.detailImageUrl || shop.bannerUrl || rawThumbnailUrl, 'hero');"), true);
   assert.equal(shopCardSource.includes('detailImage.fetchPriority = \'high\';'), true);
-  assert.equal(shopCardSource.includes('warmDetailAssets();'), true);
+  assert.equal(shopCardSource.includes('onMouseEnter={warmDetailAssets}'), true);
 })
 test('directory cache prewarm cron covers common public list routes', async () => {
   const vercelConfig = await readProjectFile('vercel.json');

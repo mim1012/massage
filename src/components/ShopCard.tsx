@@ -39,6 +39,19 @@ const gradients = [
   'from-white to-[color-mix(in_srgb,var(--portal-brand)_10%,white)]',
 ];
 
+function withShopMediaVariant(source: string | undefined, variant: 'card' | 'hero') {
+  const normalizedSource = source?.trim() ?? '';
+  if (!normalizedSource || normalizedSource.startsWith('data:')) {
+    return normalizedSource;
+  }
+
+  if (/([?&])size=[^&]*/.test(normalizedSource)) {
+    return normalizedSource.replace(/([?&])size=[^&]*/, `$1size=${variant}`);
+  }
+
+  return `${normalizedSource}${normalizedSource.includes('?') ? '&' : '?'}size=${variant}`;
+}
+
 function ShopCard({
   shop,
   variant = 'regular',
@@ -66,8 +79,9 @@ function ShopCard({
     router.prefetch(detailHref);
   }, [detailHref, router]);
 
-  const thumbnailUrl = shop.thumbnailUrl?.trim();
-  const detailImageUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || thumbnailUrl;
+  const rawThumbnailUrl = shop.thumbnailUrl?.trim();
+  const thumbnailUrl = withShopMediaVariant(rawThumbnailUrl, 'card');
+  const detailImageUrl = withShopMediaVariant(shop.detailImageUrl || shop.bannerUrl || rawThumbnailUrl, 'hero');
   const warmDetailAssets = useCallback(() => {
     prefetchDetail();
 
@@ -106,7 +120,7 @@ function ShopCard({
       const observer = new window.IntersectionObserver(
         (entries) => {
           if (entries.some((entry) => entry.isIntersecting)) {
-            warmDetailAssets();
+            prefetchDetail();
             observer.disconnect();
           }
         },
@@ -119,7 +133,7 @@ function ShopCard({
 
     if (typeof window.requestIdleCallback === 'function') {
       const idleHandle = window.requestIdleCallback(() => {
-        warmDetailAssets();
+        prefetchDetail();
       }, { timeout: 1500 });
 
       return () => {
@@ -130,11 +144,11 @@ function ShopCard({
     }
 
     const timeoutHandle = window.setTimeout(() => {
-      warmDetailAssets();
+      prefetchDetail();
     }, 900);
 
     return () => window.clearTimeout(timeoutHandle);
-  }, [prefetchStrategy, warmDetailAssets]);
+  }, [prefetchStrategy, prefetchDetail]);
 
 
 
@@ -169,6 +183,8 @@ function ShopCard({
           <img
             src={thumbnailUrl}
             alt={shop.name}
+            width={320}
+            height={320}
             className="absolute inset-0 h-full w-full bg-white object-contain transition-opacity duration-300 group-hover:opacity-95"
             loading="lazy"
             decoding="async"

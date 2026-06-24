@@ -16,6 +16,11 @@ export interface AdminShopListItem {
   updatedAt: string;
 }
 
+export interface AdminShopOption {
+  id: string;
+  name: string;
+}
+
 export interface DashboardSummaryItem {
   label: string;
   value: number;

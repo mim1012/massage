@@ -22,6 +22,22 @@ type SessionPayload = {
   sessionVersion: number;
 };
 
+type UserListFilters = {
+  page?: number;
+  pageSize?: number;
+  query?: string;
+  role?: UserRole;
+  status?: UserStatus;
+};
+
+export type UserListResult = {
+  users: User[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 function normalizeEmail(email: string) {
   const trimmed = email.trim().toLowerCase();
   if (trimmed && !trimmed.includes('@')) {
@@ -357,6 +373,25 @@ export async function listOwnerApprovals() {
   }
 }
 
+function buildUserListWhere(filters: UserListFilters): Prisma.UserWhereInput {
+  const query = filters.query?.trim();
+
+  return {
+    ...(filters.role ? { role: filters.role } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(query
+      ? {
+          OR: [
+            { email: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query, mode: 'insensitive' } },
+            { ownerProfile: { is: { businessName: { contains: query, mode: 'insensitive' } } } },
+          ],
+        }
+      : {}),
+  };
+}
+
 export async function listUsers() {
   try {
     const users = await withDatabaseRetry(() =>
@@ -369,6 +404,124 @@ export async function listUsers() {
     return users.map(sanitizeUser);
   } catch (error) {
     console.error('Failed to list users:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
+
+export async function listUsersPage(filters: UserListFilters = {}): Promise<UserListResult> {
+  const page = Math.max(1, Math.floor(filters.page ?? 1));
+  const pageSize = Math.min(100, Math.max(10, Math.floor(filters.pageSize ?? 20)));
+  const where = buildUserListWhere(filters);
+
+  try {
+    const [users, total] = await withDatabaseRetry(() =>
+      prisma.$transaction([
+        prisma.user.findMany({
+          where,
+          include: { ownerProfile: true },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        prisma.user.count({ where }),
+      ]),
+    );
+
+    return {
+      users: users.map(sanitizeUser),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  } catch (error) {
+    console.error('Failed to list users page:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
+
+export async function updateManagedUser(
+  userId: string,
+  input: {
+    name?: string;
+    phone?: string | null;
+    status?: NonNullable<User['status']>;
+  },
+) {
+  const data: Prisma.UserUpdateInput = {};
+  const trimmedName = input.name?.trim();
+  const trimmedPhone = input.phone?.trim();
+  if (input.name !== undefined && !trimmedName) {
+    throw new Error('USER_NAME_REQUIRED');
+  }
+
+  if (trimmedName) {
+    data.name = trimmedName;
+  }
+
+  if (input.phone !== undefined) {
+    data.phone = trimmedPhone || null;
+  }
+
+  if (input.status) {
+    data.status =
+      input.status === 'pending'
+        ? UserStatus.PENDING
+        : input.status === 'rejected'
+          ? UserStatus.REJECTED
+          : UserStatus.APPROVED;
+    data.sessionVersion = { increment: 1 };
+  }
+
+  if (Object.keys(data).length === 0) {
+    return null;
+  }
+
+  try {
+    return await withDatabaseRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const targetUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { role: true },
+        });
+
+        if (!targetUser) {
+          return null;
+        }
+
+        if (input.status && targetUser.role !== UserRole.OWNER) {
+          throw new Error('USER_STATUS_NOT_MANAGED');
+        }
+
+        await tx.user.update({
+          where: { id: userId },
+          data,
+        });
+
+        if (input.status && targetUser.role === UserRole.OWNER) {
+          await tx.ownerProfile.updateMany({
+            where: { userId },
+            data:
+              input.status === 'approved'
+                ? { approvedAt: new Date() }
+                : { approvedAt: null, approvedBy: null },
+          });
+        }
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: userId },
+          include: { ownerProfile: true },
+        });
+
+        return updatedUser ? sanitizeUser(updatedUser) : null;
+      }),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === 'USER_STATUS_NOT_MANAGED') {
+      throw error;
+    }
+
+    console.error('Failed to update managed user:', error);
     throw new Error('DATABASE_ERROR');
   }
 }

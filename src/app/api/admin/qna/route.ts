@@ -9,12 +9,16 @@ export async function GET(request: Request) {
     const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
     const shopId = user.role !== 'OWNER' ? (url.searchParams.get('shopId') ?? undefined) : undefined;
     const shopOwnerId = user.role === 'OWNER' ? user.id : undefined;
+    const page = Number(url.searchParams.get('page') ?? Number.NaN);
+    const pageSize = Number(url.searchParams.get('pageSize') ?? Number.NaN);
 
     const qnaList = await listQna({
       search: search?.trim() || undefined,
       shopId,
       shopOwnerId,
       viewer: { id: user.id, role: user.role },
+      page: Number.isInteger(page) && page > 0 ? page : undefined,
+      pageSize: Number.isInteger(pageSize) && pageSize > 0 ? pageSize : undefined,
     });
 
     return Response.json({ qnaList });

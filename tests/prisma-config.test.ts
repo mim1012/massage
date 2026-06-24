@@ -14,9 +14,10 @@ test('resolveDatabaseUrl fails closed in strict production deploy environments',
   );
 });
 
-test('resolvePoolMax keeps Supabase pools conservative unless overridden', () => {
+test('resolvePoolMax keeps Supabase pools conservative even when env overrides request more connections', () => {
   const poolMax = resolvePoolMax(new URL('postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require'), {
     NODE_ENV: 'development',
+    PGPOOL_MAX: '4',
   } as NodeJS.ProcessEnv);
 
   assert.equal(poolMax, 1);

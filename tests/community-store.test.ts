@@ -22,6 +22,7 @@ import {
   getQnaShopOwnerId,
   getSiteContent,
   listManagedReviews,
+  listManagedShopOptions,
   listManagedShops,
   listNotices,
   listPartnershipInquiries,
@@ -88,10 +89,11 @@ async function getSeedOwner() {
   return owner;
 }
 
-async function createTempShop(partial: Partial<Shop> = {}) {
+async function createTempShop(partial: Partial<Shop> & { ownerId?: string | null } = {}) {
   const suffix = uniqueSuffix();
   return prisma.shop.create({
     data: {
+      ownerId: partial.ownerId ?? null,
       name: partial.name ?? `Test Shop ${suffix}`,
       slug: partial.slug ?? `test-shop-${suffix}`,
       region: partial.region ?? 'seoul',
@@ -444,6 +446,27 @@ dbTest('createAdminShop backfills managedShopId and owner managed list falls bac
   const managedShops = await listManagedShops({ id: owner.id, role: 'OWNER', managedShopId: legacyFallbackShop.id });
   assert.equal(managedShops.some((shop) => shop.id === legacyFallbackShop.id), true);
   assert.equal(managedShops.some((shop) => shop.id === createdShop.id), true);
+});
+
+dbTest('managed shop options stay lightweight while preserving owner fallback access', async (t) => {
+  const owner = await getSeedOwner();
+  const originalManagedShopId = owner.managedShopId;
+  const primaryShop = await createTempShop({ ownerId: owner.id, name: `Owner Primary ${uniqueSuffix()}` });
+  const fallbackShop = await createTempShop({ ownerId: null, name: `Owner Fallback ${uniqueSuffix()}` });
+
+  await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: primaryShop.id } });
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({ where: { id: { in: [primaryShop.id, fallbackShop.id] } } });
+    await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: originalManagedShopId } });
+  });
+
+  await prisma.user.update({ where: { id: owner.id }, data: { managedShopId: fallbackShop.id } });
+
+  const options = await listManagedShopOptions({ id: owner.id, role: 'OWNER', managedShopId: fallbackShop.id });
+  assert.equal(options.some((shop) => shop.id === primaryShop.id), true);
+  assert.equal(options.some((shop) => shop.id === fallbackShop.id), true);
+  assert.deepEqual(Object.keys(options[0] ?? {}).sort(), ['id', 'name']);
 });
 
 dbTest('public site content reads normalize legacy values without writing during requests', async () => {

@@ -63,15 +63,16 @@ const themeEmoji: Record<string, string> = {
 const REGULAR_PAGE_SIZE = 30;
 
 function withShopMediaVariant(source: string, variant: 'premium-card' | 'hero') {
-  if (!source.trim()) {
-    return '';
+  const normalizedSource = source.trim();
+  if (!normalizedSource || normalizedSource.startsWith('data:')) {
+    return normalizedSource;
   }
 
-  if (/([?&])size=[^&]*/.test(source)) {
-    return source.replace(/([?&])size=[^&]*/, `$1size=${variant}`);
+  if (/([?&])size=[^&]*/.test(normalizedSource)) {
+    return normalizedSource.replace(/([?&])size=[^&]*/, `$1size=${variant}`);
   }
 
-  return `${source}${source.includes('?') ? '&' : '?'}size=${variant}`;
+  return `${normalizedSource}${normalizedSource.includes('?') ? '&' : '?'}size=${variant}`;
 }
 
 
@@ -118,7 +119,6 @@ export default function HomePageClient({
   const prefetchedDetailHrefs = useRef(new Set<string>());
   const warmedDetailImages = useRef(new Set<string>());
   const bootstrappedFromUrl = useRef(false);
-  const leadPremiumHeroImage = premiumShops[0]?.detailImageUrl?.trim() || premiumShops[0]?.bannerUrl?.trim() || (premiumShops[0] ? withShopMediaVariant(premiumShops[0].thumbnailUrl, 'hero') : '');
 
 
   const warmPremiumDetailAssets = useCallback(
@@ -158,45 +158,38 @@ export default function HomePageClient({
       return;
     }
 
-    const leadPremiumShops = premiumShops.slice(0, 2).map((shop) => ({
+    const leadPremiumShops = premiumShops.slice(0, 1).map((shop) => ({
       detailHref: buildShopDetailHref(shop.slug, {
         mode: directoryMode,
         region: selectedRegion !== "all" ? selectedRegion : undefined,
         subRegion: selectedSubRegion !== "all" ? selectedSubRegion : undefined,
         theme: selectedTheme !== "all" ? selectedTheme : undefined,
       }),
-      detailHeroUrl: shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || withShopMediaVariant(shop.thumbnailUrl, 'hero'),
     }));
 
-    const warmLeadPremiumShops = () => {
-      leadPremiumShops.forEach(({ detailHref, detailHeroUrl }) => {
-        warmPremiumDetailAssets(detailHref, detailHeroUrl);
+    const prefetchLeadPremiumRoutes = () => {
+      leadPremiumShops.forEach(({ detailHref }) => {
+        if (!prefetchedDetailHrefs.current.has(detailHref)) {
+          prefetchedDetailHrefs.current.add(detailHref);
+          router.prefetch(detailHref);
+        }
       });
     };
 
-    const frameHandle = window.requestAnimationFrame(() => {
-      const leadPremium = leadPremiumShops[0];
-      if (leadPremium) {
-        warmPremiumDetailAssets(leadPremium.detailHref, leadPremium.detailHeroUrl);
-      }
-    });
-
     if (typeof window.requestIdleCallback === 'function') {
-      const idleHandle = window.requestIdleCallback(warmLeadPremiumShops, { timeout: 1200 });
+      const idleHandle = window.requestIdleCallback(prefetchLeadPremiumRoutes, { timeout: 3000 });
       return () => {
-        window.cancelAnimationFrame(frameHandle);
         if (typeof window.cancelIdleCallback === 'function') {
           window.cancelIdleCallback(idleHandle);
         }
       };
     }
 
-    const timeoutHandle = window.setTimeout(warmLeadPremiumShops, 350);
+    const timeoutHandle = window.setTimeout(prefetchLeadPremiumRoutes, 2500);
     return () => {
-      window.cancelAnimationFrame(frameHandle);
       window.clearTimeout(timeoutHandle);
     };
-  }, [directoryMode, premiumShops, selectedRegion, selectedSubRegion, selectedTheme, warmPremiumDetailAssets]);
+  }, [directoryMode, premiumShops, router, selectedRegion, selectedSubRegion, selectedTheme]);
 
 
   const loadShops = useCallback(
@@ -626,11 +619,6 @@ export default function HomePageClient({
 
           {premiumShops.length > 0 && (
             <div className="premium-box mb-4 p-3">
-              {leadPremiumHeroImage ? (
-                <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0">
-                  <img src={leadPremiumHeroImage} alt="" loading="eager" decoding="async" fetchPriority="high" />
-                </div>
-              ) : null}
               <div className="mb-3 flex items-center gap-2">
                 <span className="text-[var(--portal-brand)] text-base">👑</span>
                 <span className="text-sm font-black text-[var(--portal-brand-dark)]">
@@ -657,7 +645,7 @@ export default function HomePageClient({
                   });
 
                   const premiumThumbnailUrl = withShopMediaVariant(shop.thumbnailUrl, 'premium-card');
-                  const detailHeroUrl = shop.detailImageUrl?.trim() || shop.bannerUrl?.trim() || withShopMediaVariant(shop.thumbnailUrl, 'hero');
+                  const detailHeroUrl = withShopMediaVariant(shop.detailImageUrl || shop.bannerUrl || shop.thumbnailUrl, 'hero');
 
                   return (
                     <Link
@@ -676,6 +664,8 @@ export default function HomePageClient({
                           <img
                             src={premiumThumbnailUrl}
                             alt={shop.name}
+                            width={480}
+                            height={480}
                             className="absolute inset-0 h-full w-full bg-white object-contain"
                             loading={index === 0 ? "eager" : "lazy"}
                             decoding="async"

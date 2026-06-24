@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { getShopMediaVariant, proxyShopMediaSource } from '@/lib/server/shop-media';
 
 const ONE_BY_ONE_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+pQ6kAAAAASUVORK5CYII=';
 const ONE_BY_ONE_PNG_DATA_URL = `data:image/png;base64,${ONE_BY_ONE_PNG_BASE64}`;
+
+const SHOP_MEDIA_SECTION_SOURCE = readFileSync(new URL('../src/components/public/ShopMediaSection.tsx', import.meta.url), 'utf8');
+const HOME_PAGE_CLIENT_SOURCE = readFileSync(new URL('../src/components/public/HomePageClient.tsx', import.meta.url), 'utf8');
+const SHOP_CARD_SOURCE = readFileSync(new URL('../src/components/ShopCard.tsx', import.meta.url), 'utf8');
 
 test('getShopMediaVariant falls back to card and keeps known presets', () => {
   assert.equal(getShopMediaVariant(undefined), 'card');
@@ -96,4 +101,22 @@ test('proxyShopMediaSource reuses cached upstream media for repeated gallery req
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test('public image loading stays bounded and uses explicit media variants', () => {
+  assert.doesNotMatch(SHOP_MEDIA_SECTION_SOURCE, /aria-hidden="true"[\s\S]*preload-/);
+  assert.doesNotMatch(SHOP_MEDIA_SECTION_SOURCE, /loading=\{index < /);
+  assert.match(SHOP_MEDIA_SECTION_SOURCE, /withShopMediaVariant\(value, 'gallery'\)/);
+  assert.match(SHOP_MEDIA_SECTION_SOURCE, /withShopMediaVariant\(primaryImage, 'hero'\)/);
+
+  assert.doesNotMatch(HOME_PAGE_CLIENT_SOURCE, /leadPremiumHeroImage/);
+  assert.match(HOME_PAGE_CLIENT_SOURCE, /premiumShops\.slice\(0, 1\)/);
+  assert.match(HOME_PAGE_CLIENT_SOURCE, /withShopMediaVariant\(shop\.thumbnailUrl, 'premium-card'\)/);
+
+  assert.match(SHOP_CARD_SOURCE, /withShopMediaVariant\(rawThumbnailUrl, 'card'\)/);
+  assert.match(SHOP_CARD_SOURCE, /withShopMediaVariant\(shop\.detailImageUrl \|\| shop\.bannerUrl \|\| rawThumbnailUrl, 'hero'\)/);
+  const leadPrefetchEffect =
+    SHOP_CARD_SOURCE.match(/useEffect\(\(\) => \{\s*if \(prefetchStrategy !== 'lead'\)[\s\S]*?\}, \[prefetchStrategy, prefetchDetail\]\);/)?.[0] ?? '';
+  assert.match(leadPrefetchEffect, /prefetchDetail\(\)/);
+  assert.doesNotMatch(leadPrefetchEffect, /warmDetailAssets\(\)|new window\.Image|fetchPriority = 'high'/);
 });

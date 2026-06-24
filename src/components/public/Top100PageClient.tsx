@@ -22,7 +22,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
   const directoryMode = getDirectoryMode(searchParams.get('view'));
 
   const [shops, setShops] = useState<ShopListItem[]>(initialShops);
-  const [isRefreshing, setIsRefreshing] = useState(initialShops.length === 0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const updateData = useCallback(async () => {
@@ -36,7 +36,7 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
     });
 
     try {
-      const response = await fetch(`/api/shops/top?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/shops/top?${params.toString()}`);
       const result = (await response.json()) as ShopListItem[];
 
       if (!response.ok) {
@@ -54,16 +54,9 @@ export default function Top100PageClient({ initialShops }: { initialShops: ShopL
 
   useEffect(() => {
     setShops(initialShops);
-    setIsRefreshing(initialShops.length === 0);
+    setIsRefreshing(false);
   }, [initialShops]);
 
-  useEffect(() => {
-    if (initialShops.length > 0) {
-      return;
-    }
-
-    void updateData();
-  }, [initialShops.length, updateData]);
 
   const regionLabel = useMemo(
     () => REGIONS.find((region) => region.code === selectedRegion)?.label ?? '전체',

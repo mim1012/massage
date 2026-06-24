@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getPostLoginRedirect } from '@/lib/auth/redirects';
+import { getPostLoginRedirect, normalizeSafeRedirectPath } from '@/lib/auth/redirects';
 
 test('getPostLoginRedirect keeps admins on allowed admin routes', () => {
   assert.equal(getPostLoginRedirect('ADMIN', '/admin/approvals'), '/admin/approvals');
@@ -17,4 +17,13 @@ test('getPostLoginRedirect blocks privileged redirects for general users', () =>
   assert.equal(getPostLoginRedirect('USER', '/shop/test-shop'), '/shop/test-shop');
   assert.equal(getPostLoginRedirect('USER', '/admin/shops'), '/');
   assert.equal(getPostLoginRedirect('USER', '/owner/shops'), '/');
+});
+
+test('normalizeSafeRedirectPath rejects external and protocol-relative redirects', () => {
+  assert.equal(normalizeSafeRedirectPath('//evil.example/admin'), null);
+  assert.equal(normalizeSafeRedirectPath('/\\evil.example'), null);
+  assert.equal(normalizeSafeRedirectPath('/admin\\evil'), null);
+  assert.equal(normalizeSafeRedirectPath('https://evil.example/admin'), null);
+  assert.equal(normalizeSafeRedirectPath('/admin/users?page=1#top'), '/admin/users?page=1#top');
+  assert.equal(getPostLoginRedirect('ADMIN', '//evil.example/admin'), '/');
 });
