@@ -131,11 +131,20 @@ const visibleReviewCount = user ? (reviews?.length ?? initialReviewCount) : init
 let reviewBody: React.ReactNode;
 
 if (!authChecked) {
-  reviewBody = <p className="py-6 text-center text-sm text-gray-400">후기 목록을 준비하는 중입니다.</p>;
+  reviewBody = <p className="py-3 text-center text-sm text-gray-400">후기 목록을 준비하는 중입니다.</p>;
 } else if (!user) {
   reviewBody =
     initialReviewCount === 0 ? (
-      <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>
+      <div className="py-2 text-center">
+        <p className="mb-2 text-xs text-gray-500">아직 등록된 후기가 없습니다. 로그인 후 첫 후기를 남겨보세요.</p>
+        <button
+          type="button"
+          onClick={() => setGateIntent('write')}
+          className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 transition-colors hover:border-[var(--portal-brand)] hover:text-[var(--portal-brand)]"
+        >
+          📝 후기 작성
+        </button>
+      </div>
     ) : (
       <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/70">
         <div className="pointer-events-none select-none divide-y divide-gray-100 blur-sm">
@@ -161,7 +170,7 @@ if (!authChecked) {
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center bg-white/65 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-[280px] rounded-2xl bg-white px-5 py-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
+          <div className="w-full max-w-[280px] rounded-2xl bg-white px-5 py-4 text-center shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
             <p className="text-lg font-black text-gray-900">후기는 회원만 확인 가능합니다.</p>
             <button
               type="button"
@@ -199,7 +208,7 @@ if (!authChecked) {
     </div>
   );
 } else if (!reviews || reviews.length === 0) {
-  reviewBody = <p className="py-6 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>;
+  reviewBody = <p className="py-3 text-center text-sm text-gray-400">아직 후기가 없습니다.</p>;
 } else {
   reviewBody = (
     <div className="divide-y divide-gray-100">
@@ -239,7 +248,7 @@ const handleCreated = useCallback((created: Review) => {
 }, []);
 
 return (
-  <div className="rounded-lg border border-gray-200 bg-white p-4">
+  <div className="rounded-lg border border-gray-200 bg-white p-3">
     <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
       <h2 className="text-sm font-black text-gray-800">⭐ 방문 후기 ({visibleReviewCount})</h2>
       {user ? (
@@ -257,7 +266,9 @@ return (
       )}
     </div>
 
-    <ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} onCreated={handleCreated} />
+    <div className={(!user && initialReviewCount === 0) ? 'hidden' : 'block'}>
+      <ShopReviewForm shopId={shopId} shopName={shopName} onRequireLogin={() => setGateIntent('write')} onCreated={handleCreated} />
+    </div>
 
     {reviewBody}
 
