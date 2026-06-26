@@ -110,7 +110,7 @@ export default function ShopMediaSection({ shopName, previewImage = '', primaryI
             <img
               src={previewImageUrl}
               alt={`${shopName} 미리보기 이미지`}
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              className="absolute inset-0 h-full w-full object-contain object-center"
               loading="eager"
               decoding="async"
               fetchPriority="low"
@@ -120,7 +120,7 @@ export default function ShopMediaSection({ shopName, previewImage = '', primaryI
             <img
               src={primaryImageUrl}
               alt={`${shopName} 대표 이미지`}
-              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"
@@ -142,7 +142,7 @@ export default function ShopMediaSection({ shopName, previewImage = '', primaryI
                 <img
                   src={imageUrl}
                   alt={`${shopName} 갤러리 ${index + 1}`}
-                  className="absolute inset-0 h-full w-full object-cover object-center"
+                  className="absolute inset-0 h-full w-full object-contain object-center"
                   loading="lazy"
                   decoding="async"
                   fetchPriority="low"
