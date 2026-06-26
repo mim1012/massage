@@ -185,7 +185,7 @@ function ShopCard({
             alt={shop.name}
             width={320}
             height={320}
-            className="absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 group-hover:opacity-95"
+            className="absolute inset-0 h-full w-full object-fill transition-opacity duration-300 group-hover:opacity-95"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
