@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { ChevronRight, Clock, Crown, MapPin, MessageCircle, Phone } from 'lucide-react';
 import ShopRatingBadge from '@/components/public/ShopRatingBadge';
 import { sanitizeShopDescriptionHtml, stripShopDescriptionToText } from '@/lib/shop-description';
-import { getShopBySlug, getShopMetadataBySlug, listVisibleShopSlugs } from '@/lib/server/shop-store';
+import { getShopBySlug, getShopMetadataBySlug } from '@/lib/server/shop-store';
 import ScrollToTopOnMount from '@/components/public/ScrollToTopOnMount';
 import ShopBrowseBreadcrumbs from '@/components/public/ShopBrowseBreadcrumbs';
 import ShopMediaSection from '@/components/public/ShopMediaSection';
@@ -17,13 +17,8 @@ interface Props {
 
 export const revalidate = 120;
 
-export async function generateStaticParams() {
-  try {
-    const slugs = await listVisibleShopSlugs();
-    return slugs.map((slug) => ({ slug }));
-  } catch {
-    return [];
-  }
+export function generateStaticParams() {
+  return [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
