@@ -1,5 +1,5 @@
 import { errorResponse } from '@/lib/auth/http';
-import { applyRateLimitHeaders, checkAuthRateLimit } from '@/lib/security/rate-limit';
+import { applyRateLimitHeaders, checkAuthRateLimit, type AuthRateLimitChecker } from '@/lib/security/rate-limit';
 import { registerUser } from '@/lib/server/auth-store';
 
 type RegisterUserBody = {
@@ -9,7 +9,7 @@ type RegisterUserBody = {
 };
 
 type UserRegisterPostDeps = {
-  checkRateLimit?: typeof checkAuthRateLimit;
+  checkRateLimit?: AuthRateLimitChecker;
   registerUser?: typeof registerUser;
   errorResponse?: typeof errorResponse;
 };
@@ -19,7 +19,7 @@ export async function handleUserRegisterPost(request: Request, deps: UserRegiste
   const registerUserWithStore = deps.registerUser ?? registerUser;
   const respondWithError = deps.errorResponse ?? errorResponse;
 
-  const rateLimitResult = checkRateLimit(request, 'auth:register:user');
+  const rateLimitResult = await checkRateLimit(request, 'auth:register:user');
   if (rateLimitResult.limited) {
     return rateLimitResult.response;
   }

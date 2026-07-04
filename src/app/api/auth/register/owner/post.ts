@@ -1,6 +1,6 @@
 import { errorResponse } from '@/lib/auth/http';
 import { registerOwnerRoute } from '@/lib/auth/owner-registration';
-import { applyRateLimitHeaders, checkAuthRateLimit } from '@/lib/security/rate-limit';
+import { applyRateLimitHeaders, checkAuthRateLimit, type AuthRateLimitChecker } from '@/lib/security/rate-limit';
 import { registerOwner } from '@/lib/server/auth-store';
 
 type RegisterOwnerBody = {
@@ -13,7 +13,7 @@ type RegisterOwnerBody = {
 };
 
 type OwnerRegisterPostDeps = {
-  checkRateLimit?: typeof checkAuthRateLimit;
+  checkRateLimit?: AuthRateLimitChecker;
   registerOwnerRoute?: typeof registerOwnerRoute;
   registerOwner?: typeof registerOwner;
   errorResponse?: typeof errorResponse;
@@ -25,7 +25,7 @@ export async function handleOwnerRegisterPost(request: Request, deps: OwnerRegis
   const registerOwnerWithStore = deps.registerOwner ?? registerOwner;
   const respondWithError = deps.errorResponse ?? errorResponse;
 
-  const rateLimitResult = checkRateLimit(request, 'auth:register:owner');
+  const rateLimitResult = await checkRateLimit(request, 'auth:register:owner');
   if (rateLimitResult.limited) {
     return rateLimitResult.response;
   }

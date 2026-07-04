@@ -159,10 +159,10 @@ test('login rate limiting applies separate credential and IP ceilings', async ()
   });
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    assert.equal(checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' }).limited, false);
+    assert.equal((await checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' })).limited, false);
   }
 
-  const credentialBlocked = checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' });
+  const credentialBlocked = await checkAuthRateLimit(request, 'auth:login:credential', { credential: 'user@example.com' });
   assert.equal(credentialBlocked.limited, true);
   if (!credentialBlocked.limited) {
     assert.fail('expected the sixth credential attempt to be rate limited');
@@ -170,10 +170,10 @@ test('login rate limiting applies separate credential and IP ceilings', async ()
   assert.equal(credentialBlocked.response.headers.get('X-RateLimit-Limit'), '5');
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    assert.equal(checkAuthRateLimit(request, 'auth:login:ip').limited, false);
+    assert.equal((await checkAuthRateLimit(request, 'auth:login:ip')).limited, false);
   }
 
-  const ipBlocked = checkAuthRateLimit(request, 'auth:login:ip');
+  const ipBlocked = await checkAuthRateLimit(request, 'auth:login:ip');
   assert.equal(ipBlocked.limited, true);
   if (!ipBlocked.limited) {
     assert.fail('expected the thirty-first IP attempt to be rate limited');

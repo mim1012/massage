@@ -1,6 +1,6 @@
 import { errorResponse } from '@/lib/auth/http';
 import { setSessionCookie } from '@/lib/auth/session';
-import { applyRateLimitHeaders, checkAuthRateLimit } from '@/lib/security/rate-limit';
+import { applyRateLimitHeaders, checkAuthRateLimit, type AuthRateLimitChecker } from '@/lib/security/rate-limit';
 import { login } from '@/lib/server/auth-store';
 
 type LoginBody = {
@@ -12,7 +12,7 @@ type LoginAudience = 'user' | 'owner';
 
 
 type LoginPostDeps = {
-  checkRateLimit?: typeof checkAuthRateLimit;
+  checkRateLimit?: AuthRateLimitChecker;
   login?: typeof login;
   setSessionCookie?: typeof setSessionCookie;
   errorResponse?: typeof errorResponse;
@@ -24,7 +24,7 @@ export async function handleLoginPost(request: Request, deps: LoginPostDeps = {}
   const setCookie = deps.setSessionCookie ?? setSessionCookie;
   const respondWithError = deps.errorResponse ?? errorResponse;
 
-  const ipRateLimitResult = checkRateLimit(request, 'auth:login:ip');
+  const ipRateLimitResult = await checkRateLimit(request, 'auth:login:ip');
   if (ipRateLimitResult.limited) {
     return ipRateLimitResult.response;
   }
@@ -38,7 +38,7 @@ export async function handleLoginPost(request: Request, deps: LoginPostDeps = {}
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitHeaders);
     }
 
-    const credentialRateLimitResult = checkRateLimit(request, 'auth:login:credential', { credential: body.email });
+    const credentialRateLimitResult = await checkRateLimit(request, 'auth:login:credential', { credential: body.email });
     if (credentialRateLimitResult.limited) {
       return credentialRateLimitResult.response;
     }

@@ -9,7 +9,7 @@ type RateLimitBucket = {
   resetAt: number;
 };
 
-type RateLimitCheckResult =
+export type RateLimitCheckResult =
   | {
       limited: false;
       headers: Headers;
@@ -18,6 +18,12 @@ type RateLimitCheckResult =
       limited: true;
       response: Response;
     };
+
+export type AuthRateLimitChecker = (
+  request: Pick<Request, 'headers'>,
+  routeKey: string,
+  options?: { credential?: string },
+) => RateLimitCheckResult | Promise<RateLimitCheckResult>;
 
 const DEFAULT_LIMIT = 10;
 const DEFAULT_WINDOW_MS = 60_000;
@@ -129,6 +135,93 @@ const authLoginCredentialRateLimiter = createMemoryRateLimiter({
   windowMs: AUTH_LOGIN_WINDOW_MS,
 });
 
+const SHARED_RATE_LIMIT_TIMEOUT_MS = 2_000;
+
+type AuthRouteLimit = {
+  limiter: ReturnType<typeof createMemoryRateLimiter>;
+  limit: number;
+  windowMs: number;
+};
+
+function resolveAuthRouteLimit(routeKey: string): AuthRouteLimit {
+  if (routeKey === 'auth:login:ip') {
+    return { limiter: authLoginIpRateLimiter, limit: AUTH_LOGIN_IP_LIMIT, windowMs: AUTH_LOGIN_WINDOW_MS };
+  }
+
+  if (routeKey === 'auth:login:credential') {
+    return { limiter: authLoginCredentialRateLimiter, limit: AUTH_LOGIN_CREDENTIAL_LIMIT, windowMs: AUTH_LOGIN_WINDOW_MS };
+  }
+
+  return { limiter: authRateLimiter, limit: DEFAULT_LIMIT, windowMs: DEFAULT_WINDOW_MS };
+}
+
+function getSharedRateLimitConfig() {
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+  return url && token ? { url, token } : null;
+}
+
+function buildSharedRateLimitHeaders(limit: number, count: number, resetAt: number) {
+  const headers = new Headers();
+  headers.set('Cache-Control', 'no-store');
+  headers.set('Retry-After', String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
+  headers.set('X-RateLimit-Limit', String(limit));
+  headers.set('X-RateLimit-Remaining', String(Math.max(0, limit - count)));
+  headers.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)));
+  headers.set('X-RateLimit-Scope', 'shared');
+  return headers;
+}
+
+// Upstash REST 파이프라인으로 고정 윈도우 카운트: INCR 후 첫 증가에만 TTL을 걸고(PEXPIRE NX) 남은 TTL을 읽는다.
+async function checkSharedRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+  config: { url: string; token: string },
+): Promise<RateLimitCheckResult | null> {
+  const redisKey = `rl:${key}`;
+  const response = await fetch(`${config.url}/pipeline`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify([
+      ['INCR', redisKey],
+      ['PEXPIRE', redisKey, String(windowMs), 'NX'],
+      ['PTTL', redisKey],
+    ]),
+    signal: AbortSignal.timeout(SHARED_RATE_LIMIT_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const results = (await response.json()) as Array<{ result?: unknown; error?: string }>;
+  const count = Number(results?.[0]?.result);
+  const remainingTtlMs = Number(results?.[2]?.result);
+  if (!Number.isFinite(count) || !Number.isFinite(remainingTtlMs) || remainingTtlMs < 0) {
+    return null;
+  }
+
+  const resetAt = Date.now() + remainingTtlMs;
+  if (count > limit) {
+    return {
+      limited: true,
+      response: Response.json(
+        { error: TOO_MANY_REQUESTS_MESSAGE },
+        { status: 429, headers: buildSharedRateLimitHeaders(limit, count, resetAt) },
+      ),
+    };
+  }
+
+  return {
+    limited: false,
+    headers: buildSharedRateLimitHeaders(limit, count, resetAt),
+  };
+}
+
 function normalizeCredential(credential: string) {
   return credential.trim().toLowerCase();
 }
@@ -148,20 +241,27 @@ export function buildAuthRateLimitKey(
   return keyParts.join(':');
 }
 
-export function checkAuthRateLimit(
+export async function checkAuthRateLimit(
   request: Pick<Request, 'headers'>,
   routeKey: string,
   options: AuthRateLimitOptions = {},
-) {
-  if (routeKey === 'auth:login:ip') {
-    return authLoginIpRateLimiter.check(buildAuthRateLimitKey(request, routeKey));
+): Promise<RateLimitCheckResult> {
+  const { limiter, limit, windowMs } = resolveAuthRouteLimit(routeKey);
+  const key = buildAuthRateLimitKey(request, routeKey, options);
+
+  const sharedConfig = getSharedRateLimitConfig();
+  if (sharedConfig) {
+    try {
+      const sharedResult = await checkSharedRateLimit(key, limit, windowMs, sharedConfig);
+      if (sharedResult) {
+        return sharedResult;
+      }
+    } catch (error) {
+      console.error('Shared rate limiter unavailable, falling back to per-instance limiter:', error);
+    }
   }
 
-  if (routeKey === 'auth:login:credential') {
-    return authLoginCredentialRateLimiter.check(buildAuthRateLimitKey(request, routeKey, options));
-  }
-
-  return authRateLimiter.check(buildAuthRateLimitKey(request, routeKey, options));
+  return limiter.check(key);
 }
 
 export function applyRateLimitHeaders(response: Response, headers: Headers) {
