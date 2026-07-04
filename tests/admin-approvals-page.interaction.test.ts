@@ -60,7 +60,7 @@ async function renderHarness(options?: {
   const pendingUsers = options?.pendingUsers ?? [basePendingUser];
   const processedUsers = options?.processedUsers ?? [];
   const fetchCalls: Array<{ url: string; method: string }> = [];
-  const fetchImpl = options?.fetchImpl ?? (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const fetchImpl = options?.fetchImpl ?? (async (input: RequestInfo | URL) => {
     const url = String(input);
     const userId = url.includes('/owner-2/') ? 'owner-2' : 'owner-1';
     const status = url.endsWith('/approve') ? 'approved' : 'rejected';
@@ -149,9 +149,8 @@ test('rapid duplicate approval clicks trigger only one approve request for the s
   }
 });
 
-test('while one approval row is pending another row can still be rejected independently', async () => {
+test('while one approval row is pending every approval action is blocked until it resolves', async () => {
   let resolveApprove: (() => void) | null = null;
-  let resolveReject: (() => void) | null = null;
 
   const harness = await renderHarness({
     pendingUsers: [buildPendingUser({ id: 'owner-1' }), buildPendingUser({ id: 'owner-2', businessName: '테스트 업소 2', email: 'owner2@example.com' })],
@@ -165,9 +164,6 @@ test('while one approval row is pending another row can still be rejected indepe
       }
 
       if (url.endsWith('/owner-2/reject')) {
-        await new Promise<void>((resolve) => {
-          resolveReject = resolve;
-        });
         return Response.json({ user: buildPendingUser({ id: 'owner-2', status: 'rejected' }) }, { status: 200 });
       }
 
@@ -188,30 +184,28 @@ test('while one approval row is pending another row can still be rejected indepe
 
     assert.equal(approveButtons[0].disabled, true);
     assert.equal(rejectButtons[0].disabled, true);
-    assert.equal(approveButtons[1].disabled, false);
-    assert.equal(rejectButtons[1].disabled, false);
+    assert.equal(approveButtons[1].disabled, true);
+    assert.equal(rejectButtons[1].disabled, true);
 
     await act(async () => {
       rejectButtons[1].dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
     });
 
-    assert.equal(approveButtons[0].disabled, true);
-    assert.equal(rejectButtons[0].disabled, true);
-    assert.equal(approveButtons[1].disabled, true);
-    assert.equal(rejectButtons[1].disabled, true);
+    assert.equal(harness.fetchCalls.filter((call) => call.url.endsWith('/owner-2/reject')).length, 0);
 
-    resolveReject?.();
+    resolveApprove?.();
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
 
-    assert.equal(approveButtons[0].disabled, true);
-    assert.equal(rejectButtons[0].disabled, true);
+    const refreshedRejectButtons = harness.getButtonsByText('반려');
+    assert.equal(refreshedRejectButtons.length, 1);
+    assert.equal(refreshedRejectButtons[0].disabled, false);
 
-    resolveApprove?.();
     await act(async () => {
+      refreshedRejectButtons[0].dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -222,7 +216,6 @@ test('while one approval row is pending another row can still be rejected indepe
     assert.equal(rejectCalls.length, 1);
   } finally {
     resolveApprove?.();
-    resolveReject?.();
     await harness.cleanup();
   }
 });

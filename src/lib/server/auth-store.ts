@@ -1,10 +1,11 @@
 import crypto from 'node:crypto';
-import { Prisma, type OwnerProfile, type User as DbUser, UserRole, UserStatus } from '@prisma/client';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { getSessionSecret } from '@/lib/auth/session-secret';
 import type { User } from '@/lib/types';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
+import { getSharedInFlight } from '@/lib/server/in-flight';
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
@@ -12,15 +13,28 @@ function getSigningSecret() {
   return getSessionSecret();
 }
 
-type UserWithProfile = DbUser & {
-  ownerProfile: OwnerProfile | null;
-};
+const authUserSelect = {
+  id: true,
+  email: true,
+  passwordHash: true,
+  sessionVersion: true,
+  name: true,
+  role: true,
+  status: true,
+  phone: true,
+  managedShopId: true,
+  ownerProfile: true,
+} satisfies Prisma.UserSelect;
+
+type UserWithProfile = Prisma.UserGetPayload<{ select: typeof authUserSelect }>;
 
 type SessionPayload = {
   userId: string;
   expiresAt: number;
   sessionVersion: number;
 };
+
+const sessionUserInFlight = new Map<string, Promise<User | null>>();
 
 type UserListFilters = {
   page?: number;
@@ -137,7 +151,7 @@ export async function findUserByEmail(email: string) {
       () =>
         prisma.user.findUnique({
           where: { email: normalizeEmail(email) },
-          include: { ownerProfile: true },
+          select: authUserSelect,
         }),
       3,
       'find user by email',
@@ -275,6 +289,7 @@ export async function deleteSession(token: string | undefined) {
   if (!payload) {
     return;
   }
+  sessionUserInFlight.delete(token);
 
   try {
     await withDatabaseRetry(() =>
@@ -303,31 +318,33 @@ export async function getUserBySessionToken(token: string | undefined) {
     return null;
   }
 
-  try {
-    const user = await withDatabaseRetry(() =>
-      prisma.user.findUnique({
-        where: { id: payload.userId },
-        include: { ownerProfile: true },
-      }),
-    );
+  return getSharedInFlight(sessionUserInFlight, token, async () => {
+    try {
+      const user = await withDatabaseRetry(() =>
+        prisma.user.findUnique({
+          where: { id: payload.userId },
+          select: authUserSelect,
+        }),
+      );
 
-    if (!user) {
-      return null;
+      if (!user) {
+        return null;
+      }
+
+      if (user.sessionVersion !== payload.sessionVersion) {
+        return null;
+      }
+
+      if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
+        return null;
+      }
+
+      return sanitizeUser(user);
+    } catch (error) {
+      console.error('Error in getUserBySessionToken:', error);
+      throw new Error('DATABASE_ERROR');
     }
-
-    if (user.sessionVersion !== payload.sessionVersion) {
-      return null;
-    }
-
-    if (user.role === UserRole.OWNER && user.status !== UserStatus.APPROVED) {
-      return null;
-    }
-
-    return sanitizeUser(user);
-  } catch (error) {
-    console.error('Error in getUserBySessionToken:', error);
-    throw new Error('DATABASE_ERROR');
-  }
+  });
 }
 
 export async function login(input: { email: string; password: string }) {
@@ -528,11 +545,12 @@ export async function updateManagedUser(
 
 export async function updateOwnerStatus(userId: string, status: 'approved' | 'rejected') {
   const nextStatus = status === 'approved' ? UserStatus.APPROVED : UserStatus.REJECTED;
+  const db = prisma;
 
   try {
-    return await withDatabaseRetry(() =>
-      prisma.$transaction(async (tx) => {
-        const transition = await tx.user.updateMany({
+    return await withDatabaseRetry(
+      async () => {
+        const transition = await db.user.updateMany({
           where: {
             id: userId,
             role: UserRole.OWNER,
@@ -547,23 +565,30 @@ export async function updateOwnerStatus(userId: string, status: 'approved' | 're
         });
 
         if (transition.count === 0) {
-          return null;
+          const alreadyTransitionedUser = await db.user.findFirst({
+            where: { id: userId, role: UserRole.OWNER, status: nextStatus },
+            select: authUserSelect,
+          });
+
+          return alreadyTransitionedUser ? sanitizeUser(alreadyTransitionedUser) : null;
         }
 
         if (status === 'approved') {
-          await tx.ownerProfile.updateMany({
+          await db.ownerProfile.updateMany({
             where: { userId },
             data: { approvedAt: new Date() },
           });
         }
 
-        const updatedUser = await tx.user.findFirst({
-          where: { id: userId, role: UserRole.OWNER },
-          include: { ownerProfile: true },
+        const updatedUser = await db.user.findFirst({
+          where: { id: userId, role: UserRole.OWNER, status: nextStatus },
+          select: authUserSelect,
         });
 
         return updatedUser ? sanitizeUser(updatedUser) : null;
-      }),
+      },
+      5,
+      `update owner ${status} status`,
     );
   } catch (error) {
     console.error('Failed to update owner approval status:', error);

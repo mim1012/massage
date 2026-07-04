@@ -36,8 +36,11 @@ export function createCachedLegalDocumentGetter(loadDocument: LegalDocumentLoade
   return load;
 }
 
-export const getPublicLegalDocument = createCachedLegalDocumentGetter(getLegalDocument);
+export const getPublicLegalDocument: LegalDocumentLoader = getLegalDocument;
 
 export function invalidatePublicLegalDocument(slug?: LegalDocumentSlug) {
-  getPublicLegalDocument.clear(slug);
+  void slug;
+  // Public legal pages intentionally read the database on each dynamic request.
+  // A per-process promise cache can stay stale across serverless instances after
+  // admin edits, so invalidation is a compatibility no-op.
 }

@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import ReviewPageClient from '@/components/public/ReviewPageClient';
 import { getSessionUser } from '@/lib/auth/guards';
 import { listPublicReviewPage } from '@/lib/server/communityStore';
-import { listShops } from '@/lib/server/shop-store';
+import { listDirectoryShops } from '@/lib/server/shop-store';
 import { mapReviewsWithRegion } from '@/lib/public-page-data';
 import { normalizePageParam } from '@/lib/pagination';
 
@@ -46,7 +46,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
       searchType: searchType === 'shop' || searchType === 'author' || searchType === 'content' ? searchType : 'all',
       viewer: { id: user.id, role: user.role },
     }),
-    listShops({}),
+    listDirectoryShops({}),
   ]);
 
   const allShops = shopsData.allShops;

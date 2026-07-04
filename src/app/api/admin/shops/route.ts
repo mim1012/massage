@@ -4,6 +4,8 @@ import { normalizeShopInputForSave } from '@/lib/server/admin-shop-access';
 import { createAdminShop, listManagedShopOptions, listManagedShops, listManagedShopsPage } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 
+const ADMIN_PRIVATE_CACHE_CONTROL = 'private, no-store';
+
 export async function GET(request: Request) {
   try {
     const user = await requireRole('ADMIN', 'OWNER');
@@ -20,9 +22,12 @@ export async function GET(request: Request) {
         page: Number(pageParam) || 1,
         pageSize: Number(searchParams.get('pageSize')) || 20,
       });
-      return Response.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
+      return Response.json(result, { headers: { 'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL } });
     }
-    return Response.json({ shops: view === 'options' ? await listManagedShopOptions(user, filters) : await listManagedShops(user, filters) });
+    return Response.json(
+      { shops: view === 'options' ? await listManagedShopOptions(user, filters) : await listManagedShops(user, filters) },
+      { headers: { 'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL } },
+    );
   } catch (error) {
     return errorResponse(error);
   }

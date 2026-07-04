@@ -173,6 +173,7 @@ export default function Header() {
               <input
                 type="text"
                 placeholder="업소명, 테마 검색"
+                suppressHydrationWarning
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 className="flex-1 pl-3 pr-2 py-2 text-sm focus:outline-none bg-white min-w-0"
@@ -491,6 +492,7 @@ export default function Header() {
               <input
                 type="text"
                 placeholder="업소명, 테마 검색"
+                suppressHydrationWarning
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-[var(--portal-brand)] focus:outline-none"

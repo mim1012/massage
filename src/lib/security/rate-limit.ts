@@ -48,6 +48,20 @@ export function createMemoryRateLimiter(options: MemoryRateLimiterOptions = {}) 
   const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
   const now = options.now ?? (() => Date.now());
   const buckets = new Map<string, RateLimitBucket>();
+  let nextSweepAt = 0;
+
+  function sweepExpiredBuckets(currentTime: number) {
+    if (currentTime < nextSweepAt) {
+      return;
+    }
+
+    nextSweepAt = currentTime + windowMs;
+    for (const [key, bucket] of buckets) {
+      if (bucket.resetAt <= currentTime) {
+        buckets.delete(key);
+      }
+    }
+  }
 
   function buildHeaders(bucket: RateLimitBucket) {
     const remaining = Math.max(0, limit - bucket.count);
@@ -63,6 +77,7 @@ export function createMemoryRateLimiter(options: MemoryRateLimiterOptions = {}) 
   return {
     check(key: string): RateLimitCheckResult {
       const currentTime = now();
+      sweepExpiredBuckets(currentTime);
       const existingBucket = buckets.get(key);
       const bucket =
         !existingBucket || existingBucket.resetAt <= currentTime

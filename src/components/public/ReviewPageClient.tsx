@@ -82,7 +82,7 @@ function ReviewContent({
     searchParams.get('region') ??
     (initialShopId ? initialShops.find((shop) => shop.id === initialShopId)?.region ?? 'all' : 'all');
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);

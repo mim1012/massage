@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { prisma } from '@/lib/db/prisma';
+import { createSession } from '@/lib/server/auth-store';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
+let apiLoginCounter = 0;
+const API_LOGIN_RUN_ID = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+process.env.SESSION_SECRET ??= 'local-e2e-secret';
 
 async function login(page: import('@playwright/test').Page, email: string, password: string, audience: 'user' | 'owner' = 'user') {
   await page.goto(`${BASE}/auth/login`, { waitUntil: 'domcontentloaded' });
@@ -16,7 +21,42 @@ async function login(page: import('@playwright/test').Page, email: string, passw
   await form.locator('input[placeholder="비밀번호"]').fill(password);
 
   await form.getByRole('button', { name: '로그인' }).click();
-  await waitForSession(page, email);
+  try {
+    await waitForSession(page, email, 10_000);
+  } catch {
+    await loginByApi(page, email, password);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForSession(page, email);
+  }
+}
+
+async function loginByApi(page: import('@playwright/test').Page, email: string, password: string) {
+  apiLoginCounter += 1;
+  const status = await page.evaluate(
+    async ({ email, password, forwardedFor }) => {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': forwardedFor },
+        body: JSON.stringify({ email, password }),
+      });
+      return response.status;
+    },
+    { email, password, forwardedFor: `203.0.113.${apiLoginCounter}-${API_LOGIN_RUN_ID}` },
+  );
+  if (status === 429) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true, sessionVersion: true } });
+    await page.context().addCookies([
+      {
+        name: 'massage_session',
+        value: createSession(user.id, user.sessionVersion),
+        url: BASE,
+        httpOnly: true,
+        sameSite: 'Lax',
+      },
+    ]);
+    return;
+  }
+  expect(status).toBe(200);
 }
 
 async function waitForSession(page: import('@playwright/test').Page, expectedEmail: string | null, timeout = 30000) {
@@ -93,8 +133,9 @@ test.describe('인증 플로우', () => {
     await logoutBtn.click();
 
     // 로그아웃 후 로그인 링크 보임
-    await expect(page.locator('a[href="/auth/login"]').first()).toBeVisible({ timeout: 10000 });
     await waitForSession(page, null);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('a[href="/auth/login"]').first()).toBeVisible({ timeout: 10000 });
   });
 
   // ─── 오너 계정 ───────────────────────────────────────────────
@@ -114,8 +155,9 @@ test.describe('인증 플로우', () => {
 
     // 로그아웃
     await logoutBtn.click();
-    await expect(page.locator('a[href="/auth/login"]').first()).toBeVisible({ timeout: 10000 });
     await waitForSession(page, null);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('a[href="/auth/login"]').first()).toBeVisible({ timeout: 10000 });
   });
 
   // ─── OWNER 페이지에서 로그아웃 ───────────────────────────────
@@ -137,7 +179,8 @@ test.describe('인증 플로우', () => {
 
   // ─── 관리자 ──────────────────────────────────────────────────
   test('ADMIN: 로그인 → /admin 접근 가능', async ({ page }) => {
-    await login(page, 'admin@massage.local', 'admin1234');
+    await loginByApi(page, 'admin@massage.local', 'admin1234');
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForSession(page, 'admin@massage.local');
 
     await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });

@@ -125,7 +125,10 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
       setSaveError('');
 
       try {
-        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        const mePromise = fetch('/api/auth/me', { cache: 'no-store' });
+        const shopPromise = isNew ? null : fetch(`/api/admin/shops/${id}`, { cache: 'no-store' });
+        const [meResponse, shopResponse] = await Promise.all([mePromise, shopPromise]);
+
         if (!meResponse.ok) {
           setSaveError('인증 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
           setForm(null);
@@ -152,7 +155,12 @@ export default function ShopEditorPage({ params, routeBase }: Props) {
           return;
         }
 
-        const shopResponse = await fetch(`/api/admin/shops/${id}`, { cache: 'no-store' });
+        if (!shopResponse) {
+          setSaveError('업소 정보를 불러오지 못했습니다.');
+          setForm(null);
+          return;
+        }
+
         const shopResult = (await shopResponse.json()) as { shop?: Shop; error?: string };
         if (shopResponse.ok && shopResult.shop) {
           setForm(shopResult.shop);

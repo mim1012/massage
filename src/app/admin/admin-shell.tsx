@@ -97,6 +97,7 @@ export default function AdminShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onClick={() => setSidebarOpen(false)}
                 className={`mb-1 flex items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
                   isActive ? 'bg-[var(--portal-brand-soft)] font-bold text-[var(--portal-brand)]' : 'text-gray-600 hover:bg-gray-100'
@@ -110,7 +111,7 @@ export default function AdminShell({
         </nav>
 
         <div className="space-y-1 border-t border-gray-200 p-3">
-          <Link href="/" className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">
+          <Link href="/" prefetch={false} className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">
             <Eye className="h-4 w-4" />
             사이트 보기
           </Link>

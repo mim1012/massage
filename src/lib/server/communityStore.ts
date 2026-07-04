@@ -59,6 +59,11 @@ const managedShopOptionSelect = {
   name: true,
 } satisfies Prisma.ShopSelect;
 
+const adminShopDetailInclude = {
+  images: true,
+  courses: true,
+} satisfies Prisma.ShopInclude;
+
 type ManagedShopListRecord = Prisma.ShopGetPayload<{
   select: typeof managedShopListSelect;
 }>;
@@ -74,12 +79,41 @@ const ADMIN_DASHBOARD_CACHE_TAG = 'admin-dashboard';
 const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 const MANAGED_SHOPS_CACHE_TAG = 'managed-shops';
 const MANAGED_QNA_CACHE_TAG = 'managed-qna';
+
+type ManagedShopPageResult = {
+  shops: AdminShopListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+type ManagedReviewItem = Review & { shopRegionLabel: string };
+
+const managedShopPageInFlight = new Map<string, Promise<ManagedShopPageResult>>();
+const managedShopsInFlight = new Map<string, Promise<AdminShopListItem[]>>();
+const managedShopOptionsInFlight = new Map<string, Promise<AdminShopOption[]>>();
+const managedQnaInFlight = new Map<string, Promise<QnA[]>>();
+const managedReviewsInFlight = new Map<string, Promise<ManagedReviewItem[]>>();
+
 let cachedPublicSiteContentPromise:
   | Promise<{
       siteSettings: SiteSettings;
       homeSeo: HomeSeoContent;
     } | null>
   | null = null;
+
+function getInFlight<T>(store: Map<string, Promise<T>>, key: string, load: () => Promise<T>) {
+  const activeRequest = store.get(key);
+  if (activeRequest) {
+    return activeRequest;
+  }
+
+  const request = load().finally(() => {
+    store.delete(key);
+  });
+  store.set(key, request);
+  return request;
+}
 
 const getPersistentPublicSiteContent = unstable_cache(
   async () => {
@@ -604,7 +638,11 @@ function buildShopPayload(input: Shop, slug = input.slug) {
 }
 
 function buildOwnerShopPayload(input: Shop) {
-  const { ownerId: _ownerId, isPremium: _isPremium, premiumOrder: _premiumOrder, isVisible: _isVisible, ...payload } = buildShopPayload(input);
+  const { ownerId, isPremium, premiumOrder, isVisible, ...payload } = buildShopPayload(input);
+  void ownerId;
+  void isPremium;
+  void premiumOrder;
+  void isVisible;
   return payload;
 }
 
@@ -645,46 +683,57 @@ export async function listManagedShopsPage(
 ) {
   const page = Math.max(1, Math.floor(filters.page ?? 1));
   const pageSize = Math.min(100, Math.max(10, Math.floor(filters.pageSize ?? 20)));
-
-  const and: Prisma.ShopWhereInput[] = [];
-  if (user.role === 'OWNER') {
-    and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
-  }
   const region = filters.region?.trim();
-  if (region && region !== 'all') {
-    and.push({ region });
-  }
   const q = filters.q?.trim();
-  if (q) {
-    and.push({ OR: [{ name: buildContainsFilter(q) }, { phone: buildContainsFilter(q) }] });
-  }
-  const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
+  const cacheKey = JSON.stringify({
+    userId: user.id,
+    role: user.role,
+    managedShopId: user.managedShopId ?? '',
+    region: region || '',
+    q: q || '',
+    page,
+    pageSize,
+  });
 
-  try {
-    const [shops, total] = await withDatabaseRetry(() =>
-      Promise.all([
-        prisma.shop.findMany({
-          where,
-          select: managedShopListSelect,
-          orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
-        prisma.shop.count({ where }),
-      ]),
-    );
+  return getInFlight(managedShopPageInFlight, cacheKey, async () => {
+    const and: Prisma.ShopWhereInput[] = [];
+    if (user.role === 'OWNER') {
+      and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
+    }
+    if (region && region !== 'all') {
+      and.push({ region });
+    }
+    if (q) {
+      and.push({ OR: [{ name: buildContainsFilter(q) }, { phone: buildContainsFilter(q) }] });
+    }
+    const where: Prisma.ShopWhereInput = and.length > 0 ? { AND: and } : {};
 
-    return {
-      shops: shops.map(mapManagedShopRecordForAdmin),
-      total,
-      page,
-      pageSize,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    };
-  } catch (error) {
-    console.error('Failed to list managed shops page:', error);
-    throw new Error('DATABASE_ERROR');
-  }
+    try {
+      const [shops, total] = await withDatabaseRetry(() =>
+        Promise.all([
+          prisma.shop.findMany({
+            where,
+            select: managedShopListSelect,
+            orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { name: 'asc' }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+          prisma.shop.count({ where }),
+        ]),
+      );
+
+      return {
+        shops: shops.map(mapManagedShopRecordForAdmin),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    } catch (error) {
+      console.error('Failed to list managed shops page:', error);
+      throw new Error('DATABASE_ERROR');
+    }
+  });
 }
 
 const getCachedManagedShops = unstable_cache(
@@ -757,21 +806,24 @@ export async function listManagedShops(
   };
 
   try {
-    try {
-      return await getCachedManagedShops(
-        user.id,
-        user.role,
-        user.managedShopId,
-        normalizedFilters.region,
-        normalizedFilters.q,
-      );
-    } catch (error) {
-      if (!isMissingNextCacheContextError(error)) {
-        throw error;
-      }
+    const cacheKey = JSON.stringify({ userId: user.id, role: user.role, managedShopId: user.managedShopId ?? '', ...normalizedFilters });
+    return await getInFlight(managedShopsInFlight, cacheKey, async () => {
+      try {
+        return await getCachedManagedShops(
+          user.id,
+          user.role,
+          user.managedShopId,
+          normalizedFilters.region,
+          normalizedFilters.q,
+        );
+      } catch (error) {
+        if (!isMissingNextCacheContextError(error)) {
+          throw error;
+        }
 
-      return await loadManagedShops(user, normalizedFilters);
-    }
+        return await loadManagedShops(user, normalizedFilters);
+      }
+    });
   } catch (error) {
     console.error('Failed to list managed shops:', error);
     throw new Error('DATABASE_ERROR');
@@ -788,21 +840,24 @@ export async function listManagedShopOptions(
   };
 
   try {
-    try {
-      return await getCachedManagedShopOptions(
-        user.id,
-        user.role,
-        user.managedShopId,
-        normalizedFilters.region,
-        normalizedFilters.q,
-      );
-    } catch (error) {
-      if (!isMissingNextCacheContextError(error)) {
-        throw error;
-      }
+    const cacheKey = JSON.stringify({ userId: user.id, role: user.role, managedShopId: user.managedShopId ?? '', ...normalizedFilters });
+    return await getInFlight(managedShopOptionsInFlight, cacheKey, async () => {
+      try {
+        return await getCachedManagedShopOptions(
+          user.id,
+          user.role,
+          user.managedShopId,
+          normalizedFilters.region,
+          normalizedFilters.q,
+        );
+      } catch (error) {
+        if (!isMissingNextCacheContextError(error)) {
+          throw error;
+        }
 
-      return await loadManagedShopOptions(user, normalizedFilters);
-    }
+        return await loadManagedShopOptions(user, normalizedFilters);
+      }
+    });
   } catch (error) {
     console.error('Failed to list managed shop options:', error);
     throw new Error('DATABASE_ERROR');
@@ -1151,7 +1206,8 @@ export async function listPublicQnaPage(
           return mapped;
         }
 
-        const { canManage: _canManage, ...rest } = mapped;
+        const rest = { ...mapped };
+        delete rest.canManage;
         return rest;
       }),
       page,
@@ -1182,7 +1238,8 @@ export async function listPublicQnaPage(
           return mapped;
         }
 
-        const { canManage: _canManage, ...rest } = mapped;
+        const rest = { ...mapped };
+        delete rest.canManage;
         return rest;
       }),
       page,
@@ -1264,16 +1321,27 @@ export async function listQna(options: string | QnaListOptions = {}) {
     const shopId = normalizedOptions.shopId?.trim() || undefined;
     const shopOwnerId = normalizedOptions.shopOwnerId?.trim() || undefined;
     const search = normalizedOptions.search?.trim() || undefined;
+    const cacheKey = JSON.stringify({
+      shopId: shopId ?? '',
+      shopOwnerId: shopOwnerId ?? '',
+      search: search ?? '',
+      viewerId: viewer.id,
+      viewerRole: viewer.role,
+      page: normalizedOptions.page ?? '',
+      pageSize: normalizedOptions.pageSize ?? '',
+    });
 
     try {
-      return await getCachedManagedQna(
-        shopId,
-        shopOwnerId,
-        search,
-        viewer.id,
-        viewer.role,
-        normalizedOptions.page,
-        normalizedOptions.pageSize,
+      return await getInFlight(managedQnaInFlight, cacheKey, async () =>
+        getCachedManagedQna(
+          shopId,
+          shopOwnerId,
+          search,
+          viewer.id,
+          viewer.role,
+          normalizedOptions.page,
+          normalizedOptions.pageSize,
+        ),
       );
     } catch (error) {
       if (!isMissingNextCacheContextError(error)) {
@@ -1706,47 +1774,57 @@ export async function listReviews(options: number | ReviewListOptions = {}) {
 
 export async function listManagedReviews(user: { id: string; role: UserRole }, search?: string, pagination: { page?: number; pageSize?: number } = {}) {
   const normalizedSearch = search?.trim();
-  const reviewWhere =
-    user.role === 'ADMIN'
-      ? {
-          ...(normalizedSearch
-            ? {
-                OR: [
-                  { content: buildContainsFilter(normalizedSearch) },
-                  { authorName: buildContainsFilter(normalizedSearch) },
-                  { shop: { name: buildContainsFilter(normalizedSearch) } },
-                ],
-              }
-            : {}),
-        }
-      : {
-          shop: {
-            ownerId: user.id,
-          },
-          ...(normalizedSearch
-            ? {
-                OR: [
-                  { content: buildContainsFilter(normalizedSearch) },
-                  { authorName: buildContainsFilter(normalizedSearch) },
-                  { shop: { name: buildContainsFilter(normalizedSearch) } },
-                ],
-              }
-            : {}),
-        };
+  const cacheKey = JSON.stringify({
+    userId: user.id,
+    role: user.role,
+    search: normalizedSearch ?? '',
+    page: pagination.page ?? '',
+    pageSize: pagination.pageSize ?? '',
+  });
 
-  const reviews = await withDatabaseRetry(() =>
-    prisma.review.findMany({
-      where: reviewWhere,
-      include: { shop: { select: { name: true, regionLabel: true } } },
-      orderBy: { createdAt: 'desc' },
-      ...normalizeManagedPagination(pagination),
-    }),
-  );
+  return getInFlight(managedReviewsInFlight, cacheKey, async () => {
+    const reviewWhere =
+      user.role === 'ADMIN'
+        ? {
+            ...(normalizedSearch
+              ? {
+                  OR: [
+                    { content: buildContainsFilter(normalizedSearch) },
+                    { authorName: buildContainsFilter(normalizedSearch) },
+                    { shop: { name: buildContainsFilter(normalizedSearch) } },
+                  ],
+                }
+              : {}),
+          }
+        : {
+            shop: {
+              ownerId: user.id,
+            },
+            ...(normalizedSearch
+              ? {
+                  OR: [
+                    { content: buildContainsFilter(normalizedSearch) },
+                    { authorName: buildContainsFilter(normalizedSearch) },
+                    { shop: { name: buildContainsFilter(normalizedSearch) } },
+                  ],
+                }
+              : {}),
+          };
 
-  return reviews.map((review) => ({
-    ...mapReview(review),
-    shopRegionLabel: review.shop.regionLabel,
-  }));
+    const reviews = await withDatabaseRetry(() =>
+      prisma.review.findMany({
+        where: reviewWhere,
+        include: { shop: { select: { name: true, regionLabel: true } } },
+        orderBy: { createdAt: 'desc' },
+        ...normalizeManagedPagination(pagination),
+      }),
+    );
+
+    return reviews.map((review) => ({
+      ...mapReview(review),
+      shopRegionLabel: review.shop.regionLabel,
+    }));
+  });
 }
 
 export async function updateReview(
@@ -2066,11 +2144,11 @@ export async function getAdminShopById(id: string) {
   const shop = await withDatabaseRetry(() =>
     prisma.shop.findUnique({
       where: { id },
-      include: shopInclude,
+      include: adminShopDetailInclude,
     }),
   );
 
-  return shop ? mapShop(shop) : null;
+  return shop ? mapShop({ ...shop, reviews: [] }) : null;
 }
 
 export async function getQnaShopOwnerId(id: string) {
@@ -2499,4 +2577,3 @@ export async function getAdminStatsData(): Promise<AdminStatsData> {
     })),
   };
 }
-

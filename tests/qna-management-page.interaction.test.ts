@@ -28,6 +28,7 @@ async function renderHarness(options?: {
   confirm?: () => boolean;
   qnaList?: QnA[];
   fetchImpl?: typeof fetch;
+  scope?: 'admin' | 'owner';
 }) {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
     url: 'https://example.com/admin/qna',
@@ -75,7 +76,7 @@ async function renderHarness(options?: {
 
   await act(async () => {
     root.render(React.createElement(QnaManagementPage, {
-      scope: 'admin',
+      scope: options?.scope ?? 'admin',
       initialDataLoaded: true,
       initialQnaList: options?.qnaList ?? [baseQna],
       initialShops: [],
@@ -160,6 +161,29 @@ test('canceling delete confirmation does not fire a delete request', async () =>
 
     const deleteCalls = harness.fetchCalls.filter((call) => call.method === 'DELETE');
     assert.equal(deleteCalls.length, 0);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test('owner qna management keeps delete actions wired for owned customer questions', async () => {
+  const harness = await renderHarness({
+    scope: 'owner',
+  });
+
+  try {
+    const deleteButton = harness.getDeleteButtons()[0];
+    assert.ok(deleteButton, 'delete button should remain rendered for owner scope');
+    assert.equal(harness.getCommentButtons().length, 1);
+
+    await act(async () => {
+      deleteButton.dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const deleteCalls = harness.fetchCalls.filter((call) => call.method === 'DELETE');
+    assert.equal(deleteCalls.length, 1);
+    assert.equal(deleteCalls[0]?.url, '/api/admin/qna/qna-1');
   } finally {
     await harness.cleanup();
   }

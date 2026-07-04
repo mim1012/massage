@@ -321,12 +321,12 @@ test.describe('게시판 CRUD 권한 매트릭스', () => {
     await expectStatus('owner', 'patch', `/api/admin/qna/${ownerShopQnaId}`, 403, {
       question: `해당 점주 관리 수정 차단 ${RUN_ID}`,
     });
-    await expectStatus('admin', 'delete', `/api/admin/qna/${ownerShopQnaId}`, 204);
+    await expectStatus('owner', 'delete', `/api/admin/qna/${ownerShopQnaId}`, 204);
     cleanupIds.qna.delete(ownerShopQnaId);
 
     const otherShopQnaId = await createQnaAs('user', seed.otherShopId);
     await expectStatus('owner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 403);
-    await expectStatus('otherOwner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 403);
+    await expectStatus('otherOwner', 'delete', `/api/admin/qna/${otherShopQnaId}`, 204);
     cleanupIds.qna.delete(otherShopQnaId);
   });
 

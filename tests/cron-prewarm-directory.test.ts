@@ -64,5 +64,5 @@ test('prewarm-directory cron requires the configured bearer token', async (t) =>
 
   assert.equal(authorized.status, 200);
   assert.equal(body.ok, true);
-  assert.equal(fetchCalls, 8);
+  assert.equal(fetchCalls, 15);
 });

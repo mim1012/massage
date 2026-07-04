@@ -33,6 +33,7 @@ export default function OwnerShopsPageClient({ initialShops }: { initialShops: A
         </h1>
         <Link
           href="/owner/shops/new"
+          prefetch={false}
           className="flex items-center gap-1 rounded bg-red-600 px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-red-700"
         >
           <Plus className="h-4 w-4" />
@@ -90,6 +91,7 @@ export default function OwnerShopsPageClient({ initialShops }: { initialShops: A
                 <td className="px-4 py-2 text-center">
                   <Link
                     href={`/owner/shops/${shop.id}`}
+                    prefetch={false}
                     className="inline-flex items-center gap-1 rounded border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200"
                   >
                     <Edit2 className="h-3 w-3" />

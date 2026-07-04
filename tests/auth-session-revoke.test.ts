@@ -45,6 +45,42 @@ test('current valid token authenticates before revoke', async () => {
   }
 });
 
+test('concurrent valid token hydration shares one database lookup', async () => {
+  const originalFindUnique = prisma.user.findUnique;
+  let findUniqueCalls = 0;
+  let releaseLookup: (() => void) | null = null;
+  const lookupStarted = new Promise<void>((resolve) => {
+    prisma.user.findUnique = async () => {
+      findUniqueCalls += 1;
+      resolve();
+      await new Promise<void>((release) => {
+        releaseLookup = release;
+      });
+      return {
+        ...baseUser,
+        sessionVersion: 0,
+      };
+    };
+  });
+
+  try {
+    const token = createSession(baseUser.id, 0);
+    const requests = Array.from({ length: 5 }, () => getUserBySessionToken(token));
+    await lookupStarted;
+
+    assert.equal(findUniqueCalls, 1);
+    releaseLookup?.();
+
+    const users = await Promise.all(requests);
+    assert.deepEqual(
+      users.map((user) => user?.id),
+      Array.from({ length: 5 }, () => baseUser.id),
+    );
+  } finally {
+    prisma.user.findUnique = originalFindUnique;
+  }
+});
+
 test('deleteSession revokes the active token server-side', async () => {
   const originalFindUnique = prisma.user.findUnique;
   const originalUpdate = prisma.user.update;

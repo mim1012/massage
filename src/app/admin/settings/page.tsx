@@ -6,7 +6,6 @@ import { AlertCircle, CheckCircle2, Eye, FileText, Globe, Info, Layout, RotateCc
 import {
   DEFAULT_LEGAL_DOCUMENTS,
   parseLegalDocumentBody,
-  type EditableLegalDocument,
   type LegalDocumentSlug,
   type ResolvedLegalDocument,
 } from '@/lib/legal-documents';

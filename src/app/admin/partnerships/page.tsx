@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  ClipboardList, Search, Filter, MoreVertical, Eye,
-  CheckCircle, Clock, MessageCircle, Trash2, Calendar,
-  MapPin, Phone, User, Tag, Building2
+  ClipboardList, Search, Eye,
+  Trash2, Calendar,
+  MapPin, User, Tag, Building2
 } from 'lucide-react';
 import { PartnershipInquiry } from '@/lib/types';
 import { formatDate } from '@/lib/utils';

@@ -46,7 +46,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_: Request, context: Context) {
   try {
-    const user = await requireRole('ADMIN');
+    const user = await requireRole('ADMIN', 'OWNER');
     const { id } = await context.params;
     const deleted = await deleteManagedQna(user, id);
 

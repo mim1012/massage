@@ -33,7 +33,7 @@ test('ad banner schema and migration define the ad_banners table', async () => {
 test('public ad-banners route is cached and admin route is role-guarded', async () => {
   const publicRoute = await read('src/app/api/ad-banners/route.ts');
   assert.ok(publicRoute.includes('listActiveAdBanners'));
-  assert.ok(publicRoute.includes("'Cache-Control': 'no-store'"));
+  assert.ok(publicRoute.includes("'Cache-Control': PUBLIC_AD_BANNERS_CACHE_CONTROL"));
 
   const adminRoute = await read('src/app/api/admin/ad-banners/route.ts');
   assert.ok(adminRoute.includes("await requireRole('ADMIN')"));

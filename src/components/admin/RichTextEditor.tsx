@@ -7,7 +7,6 @@ import {
   AlignRight,
   Bold,
   ImagePlus,
-  Indent,
   Italic,
   Link as LinkIcon,
   List,

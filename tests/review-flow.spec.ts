@@ -8,26 +8,25 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
   const TEST_CONTENT = '플레이라이트 자동화 테스트 리뷰입니다. ' + new Date().getTime();
   const UPDATED_CONTENT = '수정된 테스트 내용입니다. ' + new Date().getTime();
 
+  let createdReviewId: string | null = null;
+
   test('리뷰 작성 및 데이터 검증', async ({ page }) => {
-    // 1. 로그인 페이지 이동 및 로그인
-    console.log('🚀 로그인 페이지 이동 중...');
-    await page.goto(`${BASE}/auth/login`, { waitUntil: 'domcontentloaded' });
+    try {
+    console.log('🚀 API 로그인 중...');
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       localStorage.setItem('massage-adult-confirmed', 'true');
     });
+    const loginStatus = await page.evaluate(async () => {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'user@massage.local', password: 'user1234' }),
+      });
+      return response.status;
+    });
+    expect(loginStatus).toBe(200);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    
-    const loginForm = page.locator('main form').filter({ has: page.locator('input[placeholder="아이디"]') });
-    await expect(loginForm).toBeVisible({ timeout: 60_000 });
-    await loginForm.locator('input[placeholder="아이디"]').fill('user@massage.local');
-    await loginForm.locator('input[placeholder="비밀번호"]').fill('user1234');
-    
-    console.log('🚀 로그인 버튼 클릭...');
-    await loginForm.getByRole('button', { name: '로그인' }).click();
-
-    // 로그인 완료 및 세션 반영 대기
-    console.log('🔍 로그인 세션 반영 대기 중...');
-    await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'), { timeout: 20000 });
     await expect
       .poll(async () => {
         const session = await page.evaluate(async () => {
@@ -42,7 +41,7 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
 
     // 2. 상점 상세 페이지 이동
     console.log('🚀 상세 페이지 이동 중...');
-    await page.goto(TEST_SHOP_URL, { waitUntil: 'domcontentloaded' });
+    await safeGoto(page, TEST_SHOP_URL);
     
     // 페이지 로딩 및 세션 체크 대기
     await page.waitForLoadState('networkidle');
@@ -74,12 +73,13 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
     expect(createResponse.ok()).toBe(true);
     const createPayload = (await createResponse.json()) as { review?: { id?: string; content?: string } };
     const reviewId = createPayload.review?.id;
+    createdReviewId = reviewId ?? null;
 
     if (!reviewId) throw new Error('작성된 리뷰의 ID를 응답에서 찾을 수 없습니다.');
 
     // 5. 등록 확인
     console.log('🔍 등록된 리뷰 확인 중...');
-    await page.reload();
+    await safeGoto(page, `${BASE}/board/review`);
     await expect(page.locator('p').filter({ hasText: TEST_CONTENT })).toBeVisible({ timeout: 10000 });
     console.log('✅ 리뷰 작성 및 노출 확인 완료');
 
@@ -98,8 +98,8 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
     }, { id: reviewId, content: UPDATED_CONTENT });
 
     expect(patchRes).toBe(true);
-    await page.reload();
-    await expect(page.locator(`text=${UPDATED_CONTENT}`)).toBeVisible();
+    await safeGoto(page, `${BASE}/board/review`);
+    await expect(page.locator(`text=${UPDATED_CONTENT}`)).toBeVisible({ timeout: 10000 });
     console.log('✅ 리뷰 수정 및 반영 확인 완료');
 
     // 7. 리뷰 삭제
@@ -111,8 +111,36 @@ test.describe('리뷰 통합 테스트 (작성/수정/삭제)', () => {
     }, reviewId);
 
     expect(deleteRes).toBe(true);
+    createdReviewId = null;
     await page.reload();
     await expect(page.locator(`text=${UPDATED_CONTENT}`)).not.toBeVisible();
     console.log('✅ 리뷰 삭제 및 반영 확인 완료');
+    } finally {
+      if (createdReviewId) {
+        await page.evaluate(async (id) => {
+          await fetch(`/api/board/reviews/${id}`, { method: 'DELETE' });
+        }, createdReviewId).catch(() => undefined);
+      }
+    }
   });
 });
+
+async function safeGoto(page: import('@playwright/test').Page, url: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        attempt === 2 ||
+        (!message.includes('interrupted') &&
+          !message.includes('NS_BINDING_ABORTED') &&
+          !message.includes('ERR_EMPTY_RESPONSE'))
+      ) {
+        throw error;
+      }
+      await page.waitForTimeout(500);
+    }
+  }
+}

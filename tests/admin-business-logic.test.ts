@@ -55,6 +55,42 @@ test('owner approval status can transition only once from pending', async () => 
     await cleanup({ userIds: [ownerId] });
   }
 });
+test('duplicate owner rejection returns the rejected owner without a database error', async () => {
+  const ownerId = 'test-owner-duplicate-reject';
+  await cleanup({ userIds: [ownerId] });
+
+  try {
+    await prisma.user.create({
+      data: {
+        id: ownerId,
+        email: `${ownerId}@example.com`,
+        passwordHash: 'hash',
+        name: '중복 반려 업주',
+        role: UserRole.OWNER,
+        status: UserStatus.PENDING,
+        ownerProfile: {
+          create: {
+            businessName: '중복 반려 테스트샵',
+            businessNumber: '111-22-33333',
+          },
+        },
+      },
+    });
+
+    const rejected = await updateOwnerStatus(ownerId, 'rejected');
+    assert.equal(rejected?.status, 'rejected');
+
+    const duplicateReject = await updateOwnerStatus(ownerId, 'rejected');
+    assert.equal(duplicateReject?.id, ownerId);
+    assert.equal(duplicateReject?.status, 'rejected');
+
+    const stored = await prisma.user.findUniqueOrThrow({ where: { id: ownerId } });
+    assert.equal(stored.status, UserStatus.REJECTED);
+    assert.equal(stored.sessionVersion, 1);
+  } finally {
+    await cleanup({ userIds: [ownerId] });
+  }
+});
 
 test('pending owner sessions are rejected during session hydration', async () => {
   const ownerId = 'test-owner-session-pending';

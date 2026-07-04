@@ -1,4 +1,8 @@
-# Repository Guidelines
+# PROJECT KNOWLEDGE BASE
+
+**Generated:** 2026-06-30
+**Commit:** 0c6383f
+**Branch:** main
 
 ## Project Overview
 
@@ -18,7 +22,7 @@ This is `massage-directory`, a Korean Next.js App Router application for discove
 
 - `src/app/` — App Router pages, layouts, middleware targets, and API route handlers.
 - `src/app/api/` — backend endpoints for shops, auth, admin, board, analytics, settings, themes.
-- `src/components/` — public/admin/owner React components and shared layout UI.
+- `src/components/` — public/admin/owner React components and shared layout UI; local guidance lives in `src/components/AGENTS.md`.
 - `src/lib/server/` — server-side stores, Prisma queries, data mapping, admin/community logic.
 - `src/lib/db/` — Prisma client and PostgreSQL pool setup.
 - `src/lib/auth/` — auth guards, session cookie/token utilities, password/session helpers, auth HTTP errors.
@@ -28,6 +32,33 @@ This is `massage-directory`, a Korean Next.js App Router application for discove
 - `tests/` — Node unit/route tests (`*.test.ts`) and Playwright specs (`*.spec.ts`, `tests/e2e/**`).
 - `scripts/` — custom test runner, alias registration, Vercel build wrapper, seed helpers.
 - `docs/` — backend integration and launch-readiness notes; useful context, but schema/code wins over stale docs.
+
+## Where To Look
+
+| Task | Location | Notes |
+|------|----------|-------|
+| Public directory/homepage behavior | `src/app/page.tsx`, `src/components/public/HomePageClient.tsx`, `src/lib/public-page-data.ts` | Query canonicalization belongs in `src/lib/directory-mode.ts`. |
+| Public shop list/detail APIs | `src/app/api/shops/**`, `src/lib/server/shop-store.ts` | Preserve cache tags and warmup behavior. |
+| Admin/owner management | `src/app/admin/**`, `src/app/api/admin/**`, `src/components/admin/**` | Page guards and API guards are separate. |
+| Public/client UI behavior | `src/components/**`, `src/app/**/page.tsx` client pages | Keep server imports out of client components; use real API routes. |
+| Auth/session behavior | `src/app/api/auth/**`, `src/lib/auth/**`, `src/lib/server/auth-store.ts` | Session cookie is `massage_session`. |
+| Community boards/reviews/Q&A | `src/app/board/**`, `src/app/api/board/**`, `src/lib/server/communityStore.ts` | Some store code is transitional but Prisma-backed paths are authoritative. |
+| Persistent model changes | `prisma/schema.prisma`, `prisma/migrations/**`, `prisma/seed.ts` | Schema/code wins over docs. |
+| Regression coverage | `tests/**/*.test.ts`, `tests/**/*.spec.ts`, `scripts/run-tests.mjs` | Node tests and Playwright specs share `tests/` but use different runners. |
+
+## Code Map
+
+| Symbol | Type | Location | Refs | Role |
+|--------|------|----------|------|------|
+| `HomePage` | Server page | `src/app/page.tsx` | public root | Public homepage orchestration and initial DTO hydration. |
+| `GET /api/shops` | Route handler | `src/app/api/shops/route.ts` | public API/tests | Public directory API, canonical redirects, cache headers, detail warmup. |
+| `listDirectoryShops` | Store query | `src/lib/server/shop-store.ts` | homepage/API/tests | Cached Prisma-backed shop listing. |
+| `invalidatePublicShopCaches` | Cache invalidator | `src/lib/server/shop-store.ts` | shop/review/admin writes | Required after shop/review/admin mutations. |
+| `communityStore` exports | Server store | `src/lib/server/communityStore.ts` | board/admin/API | Notices, Q&A, reviews, admin dashboard, managed shop flows. |
+| `requireRole` | Auth guard | `src/lib/auth/guards.ts` | protected APIs/pages | Real authorization boundary for API/server code. |
+| `assertOwnershipOrAdmin` | Auth guard | `src/lib/auth/guards.ts` | owner-scoped APIs | Owner scoping for admin/owner resources. |
+| `handleLoginPost` | Route helper | `src/app/api/auth/login/post.ts` | auth route/tests | Rate-limited login with dependency injection for tests. |
+| `run-tests.mjs` | Test runner | `scripts/run-tests.mjs` | npm test | Seeds and rewrites DB URL to `live_commerce_test`. |
 
 ## Development Commands
 
@@ -90,6 +121,7 @@ npm run prisma:deploy
 - **Next runtime:** Keep backend routes on Node runtime assumptions; Prisma, `pg`, crypto/session handling, and Next cache APIs are not Edge-safe by default.
 - **Bundler:** Development/build/typecheck force Webpack (`--webpack`). Do not reintroduce Turbopack config casually.
 - **Styling:** Tailwind CSS 4 with global styles in `src/app/globals.css`; preserve existing UI class patterns unless doing an explicit design task.
+- **Production warmup:** `vercel.json` schedules `/api/cron/prewarm-directory`; manual warmup uses `npm run prewarm:prod`.
 
 ## Testing & QA
 

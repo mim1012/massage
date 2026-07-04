@@ -8,6 +8,13 @@ const PREWARM_PATHS = [
   '/api/shops?view=theme&theme=swedish&regularOffset=0&regularLimit=30',
   '/api/shops?view=theme&theme=aroma&regularOffset=0&regularLimit=30',
   '/api/shops?view=theme&theme=thai&regularOffset=0&regularLimit=30',
+  '/api/shops?regularOffset=0&regularLimit=60',
+  '/api/shops?region=seoul&theme=swedish&sort=popular&regularOffset=0&regularLimit=30',
+  '/api/shops/top?region=seoul',
+  '/api/board/summary',
+  '/api/site-settings',
+  '/api/ad-banners',
+  '/api/shops/hongdae-aromatherapy',
   '/api/themes',
 ];
 const PREWARM_FETCH_CONCURRENCY = 2;

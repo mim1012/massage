@@ -2,6 +2,7 @@
 .omc
 .gstack
 .claude
+.gjc
 .next
 test-results
 playwright-report

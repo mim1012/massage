@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, Pin, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { getNoticeById } from '@/lib/server/communityStore';
 import { formatDate } from '@/lib/utils';
 

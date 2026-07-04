@@ -136,30 +136,6 @@ export default function Sidebar({ onDirectoryNavigate }: { onDirectoryNavigate?:
           </div>
         </div>
 
-        {/* 고객센터 */}
-        <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <Link
-            href="/board/qna"
-            prefetch={false}
-            className="block bg-[var(--portal-support)] px-3 py-2 text-xs font-bold text-white transition-colors hover:brightness-95"
-          >
-            📞 고객센터
-          </Link>
-          <div>
-            <Link href="/board/notice" prefetch={false} className="lnb-menu-item">
-              &rsaquo; 공지사항
-            </Link>
-            <Link href="/board/qna" prefetch={false} className="lnb-menu-item">
-              &rsaquo; Q&amp;A 문의
-            </Link>
-            <Link href="/board/review" prefetch={false} className="lnb-menu-item">
-              &rsaquo; 업소 후기
-            </Link>
-            <Link href="/ad" prefetch={false} className="lnb-menu-item font-bold text-amber-600">
-              &rsaquo; 📢 광고안내
-            </Link>
-          </div>
-        </div>
 
         {/* 광고/입점 배너 영역 */}
         <SidebarPromoBanners mode="sidebar" />

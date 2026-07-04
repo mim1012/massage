@@ -15,7 +15,8 @@
     "lint": "eslint",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "prewarm:prod": "node scripts/prewarm-production.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.10",
@@ -42,11 +43,17 @@
     "@types/react-dom": "^19",
     "@types/sanitize-html": "^2.16.1",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.7",
+    "eslint-config-next": "16.2.7",
     "jsdom": "^29.1.1",
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@babel/core": "^7.29.7",
+    "@hono/node-server": "^1.19.13",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "postcss": "^8.5.16"
   }
 }

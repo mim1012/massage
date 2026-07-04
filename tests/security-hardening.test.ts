@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import { test } from 'node:test';
 import nextConfig from '../next.config';
-import { getBaselineSecurityHeaders, sessionJsonResponse } from '@/lib/security/http';
+import { AuthError } from '@/lib/auth/guards';
+import { errorResponse } from '@/lib/auth/http';
+import { buildContentSecurityPolicy, getBaselineSecurityHeaders, sessionJsonResponse } from '@/lib/security/http';
 import {
   applyRateLimitHeaders,
   buildAuthRateLimitKey,
@@ -19,6 +22,15 @@ test('/api/auth/me responses carry private no-store cache headers', async () => 
   assert.equal(response.headers.get('Expires'), '0');
   assert.equal(response.headers.get('Vary'), 'Cookie');
   assert.deepEqual(await response.json(), { user: { id: 'user-1' } });
+});
+
+test('auth and validation error responses are not cacheable', async () => {
+  const authResponse = errorResponse(new AuthError('Authentication required.', 401));
+  const validationResponse = errorResponse(new Error('INVALID_CREDENTIALS'));
+
+  assert.match(authResponse.headers.get('Cache-Control') ?? '', /no-store/);
+  assert.equal(authResponse.headers.get('Vary'), 'Cookie');
+  assert.match(validationResponse.headers.get('Cache-Control') ?? '', /no-store/);
 });
 
 test('baseline security headers are applied through Next config', async () => {
@@ -41,6 +53,35 @@ test('baseline security headers are applied through Next config', async () => {
   assert.equal(headerMap.get('X-Content-Type-Options'), 'nosniff');
   assert.equal(headerMap.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
   assert.match(headerMap.get('Permissions-Policy') ?? '', /camera=\(\)/);
+});
+
+test('production content security policy blocks eval and broad remote scripts', () => {
+  const productionPolicy = buildContentSecurityPolicy({ allowDevelopmentEval: false });
+  const developmentPolicy = buildContentSecurityPolicy({ allowDevelopmentEval: true });
+
+  assert.doesNotMatch(productionPolicy, /'unsafe-eval'/);
+  assert.doesNotMatch(productionPolicy, /script-src[^;]*https:/);
+  assert.match(productionPolicy, /script-src 'self' 'unsafe-inline'/);
+  assert.match(developmentPolicy, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/);
+});
+
+test('nonce content security policy blocks unsafe inline scripts on dynamic protected pages', () => {
+  const noncePolicy = buildContentSecurityPolicy({
+    allowDevelopmentEval: false,
+    scriptNonce: 'nonce-value',
+  });
+
+  assert.match(noncePolicy, /script-src 'self' 'nonce-nonce-value' 'strict-dynamic'/);
+  assert.doesNotMatch(noncePolicy, /script-src[^;]*'unsafe-inline'/);
+});
+
+test('admin middleware forwards a nonce CSP for protected pages', async () => {
+  const middlewareSource = await fs.readFile(new URL('../src/middleware.ts', import.meta.url), 'utf8');
+
+  assert.match(middlewareSource, /buildContentSecurityPolicy/);
+  assert.match(middlewareSource, /scriptNonce: nonce/);
+  assert.match(middlewareSource, /requestHeaders\.set\('x-nonce', nonce\)/);
+  assert.match(middlewareSource, /response\.headers\.set\('Content-Security-Policy', contentSecurityPolicy\)/);
 });
 
 test('auth rate limiting is keyed by route and client IP and returns 429 after the limit', async () => {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Tag, ChevronRight } from 'lucide-react';
-import { REGIONS, RegionCode, ThemeCode } from '@/lib/types';
+import { MapPin, Tag } from 'lucide-react';
+import { REGIONS } from '@/lib/types';
 import { useThemes } from '@/lib/use-themes';
 import clsx from 'clsx';
 

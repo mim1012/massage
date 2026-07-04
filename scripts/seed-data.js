@@ -12,7 +12,7 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // 1. Site Settings
-  const siteSettings = await prisma.siteSettings.upsert({
+  await prisma.siteSettings.upsert({
     where: { id: 'default' },
     update: {},
     create: {
@@ -35,7 +35,7 @@ async function main() {
   console.log('✅ Site settings created');
 
   // 2. Create Admin User
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin@test.com' },
     update: {},
     create: {

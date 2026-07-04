@@ -25,13 +25,14 @@ test('public qna route keeps scoped edit/delete guards instead of generic admin 
   assert.match(source, /질문 상태가 변경되어 수정할 수 없습니다/);
   assert.match(source, /질문 상태가 변경되어 삭제할 수 없습니다/);
 });
-test('owner managed qna can answer/comment but cannot edit or delete customer questions', async () => {
+test('owner managed qna can answer/comment and delete owned customer questions without editing originals', async () => {
   const itemRoute = await readProjectFile('src/app/api/admin/qna/[id]/route.ts');
   const answerRoute = await readProjectFile('src/app/api/admin/qna/[id]/answer/route.ts');
   const commentsRoute = await readProjectFile('src/app/api/admin/qna/[id]/comments/route.ts');
 
   assert.match(itemRoute, /export async function PATCH[\s\S]*const user = await requireRole\('ADMIN'\)/);
-  assert.match(itemRoute, /export async function DELETE[\s\S]*const user = await requireRole\('ADMIN'\)/);
+  assert.match(itemRoute, /export async function DELETE[\s\S]*const user = await requireRole\('ADMIN', 'OWNER'\)/);
+  assert.match(itemRoute, /deleteManagedQna\(user, id\)/);
   assert.match(answerRoute, /requireRole\('ADMIN', 'OWNER'\)/);
   assert.match(answerRoute, /assertOwnershipOrAdmin\(user, qnaAccess\.ownerId\)/);
   assert.match(commentsRoute, /requireRole\('ADMIN', 'OWNER'\)/);

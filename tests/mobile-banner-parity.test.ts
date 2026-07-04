@@ -194,6 +194,7 @@ test('mobile header menu exposes region to district navigation and the same top-
   assert.equal(headerSource.includes("mode: 'region'"), true);
   assert.equal(headerSource.includes('mobileDistricts.map((district) => ('), true);
   assert.equal(headerSource.includes('const mobilePrimaryLinks = ['), true);
+  assert.equal(headerSource.match(/suppressHydrationWarning/g)?.length, 2);
   assert.equal(headerSource.includes('mobile-inline-'), true);
   assert.equal(headerSource.includes('key={`mobile-region-${region.code}`}'), true);
   assert.equal(headerSource.includes('key={`mobile-theme-${theme.code}`}'), true);
@@ -434,7 +435,8 @@ test('public list APIs send CDN cache headers for smooth repeated navigation', a
   const themeRouteSource = await readProjectFile('src/app/api/themes/route.ts');
   const shopStoreSource = await readProjectFile('src/lib/server/shop-store.ts');
 
-  assert.equal(shopRouteSource.includes('public, s-maxage=10, stale-while-revalidate=10'), true);
+  assert.equal(shopRouteSource.includes('public, s-maxage=60, stale-while-revalidate=300'), true);
+  assert.equal(shopRouteSource.includes("'Vercel-CDN-Cache-Control': PUBLIC_DIRECTORY_VERCEL_CDN_CACHE_CONTROL"), true);
   assert.equal(themeRouteSource.includes('public, s-maxage=300, stale-while-revalidate=600'), true);
   assert.equal(shopRouteSource.includes("'Cache-Control': cacheControl"), true);
   assert.equal(themeRouteSource.includes("'Cache-Control': PUBLIC_THEMES_CACHE_CONTROL"), true);
@@ -487,6 +489,10 @@ test('directory cache prewarm cron covers common public list routes', async () =
   assert.equal(prewarmRoute.includes('/api/shops?region=seoul&regularOffset=0&regularLimit=30'), true);
   assert.equal(prewarmRoute.includes('/api/shops?view=theme&theme=swedish&regularOffset=0&regularLimit=30'), true);
   assert.equal(prewarmRoute.includes('/api/themes'), true);
+  assert.equal(prewarmRoute.includes('/api/shops?regularOffset=0&regularLimit=60'), true);
+  assert.equal(prewarmRoute.includes('/api/shops/top?region=seoul'), true);
+  assert.equal(prewarmRoute.includes('/api/board/summary'), true);
+  assert.equal(prewarmRoute.includes('/api/shops/hongdae-aromatherapy'), true);
   assert.equal(prewarmRoute.includes("export const preferredRegion = 'sin1'"), true);
   assert.equal(prewarmRoute.includes('const PREWARM_FETCH_CONCURRENCY = 2;'), true);
   assert.equal(prewarmRoute.includes('runWithConcurrencyLimit('), true);

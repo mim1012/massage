@@ -153,6 +153,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
         </h1>
         <Link
           href="/admin/shops/new"
+          prefetch={false}
           className="flex items-center gap-1 rounded bg-[#D4A373] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[#C29262]"
         >
           <Plus className="h-4 w-4" /> 업소 등록
@@ -249,7 +250,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
                     </button>
                   </td>
                   <td data-label="업소명" className="px-4 py-2 font-bold text-gray-800">
-                    <Link href={`/admin/shops/${shop.id}`} className="hover:text-[#D4A373] hover:underline">
+                    <Link href={`/admin/shops/${shop.id}`} prefetch={false} className="hover:text-[#D4A373] hover:underline">
                       {shop.name}
                     </Link>
                     {!shop.isVisible ? <span className="ml-2 rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">숨김</span> : null}
@@ -263,12 +264,14 @@ function getActionErrorMessage(result: unknown, fallback: string) {
                   <td data-label="관리" className="px-4 py-2 text-center whitespace-nowrap">
                     <Link
                       href={`/admin/shops/${shop.id}`}
+                      prefetch={false}
                       className="inline-flex items-center gap-1 rounded border border-[#D4A373]/30 bg-white px-2 py-1 text-xs font-bold text-[#D4A373] shadow-sm hover:bg-[#FEFAE0]"
                     >
                       <Edit2 className="h-3 w-3" /> 수정
                     </Link>
                     <Link
                       href={`/admin/shops/${shop.id}`}
+                      prefetch={false}
                       className="ml-1.5 inline-flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
                     >
                       상세입력

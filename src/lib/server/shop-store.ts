@@ -7,6 +7,7 @@ import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
 import { runWithConcurrencyLimit } from '@/lib/async/run-with-concurrency-limit';
+import { getSharedInFlight } from '@/lib/server/in-flight';
 
 import type { ShopMediaVariant } from '@/lib/server/shop-media';
 
@@ -698,25 +699,28 @@ const getPersistentDirectoryShopList = unstable_cache(
   { revalidate: 120, tags: [PUBLIC_DIRECTORY_SHOPS_CACHE_TAG] },
 );
 
+const directoryShopListInFlight = new Map<string, Promise<ShopListResponse>>();
+
 export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
   const normalizedQuery = filters.query?.trim();
-  if (normalizedQuery) {
-    return listDirectoryShopsUncached({
-      ...filters,
-      query: normalizedQuery,
-    });
-  }
+  const normalizedFilters = normalizedQuery ? { ...filters, query: normalizedQuery } : filters;
+  const cacheKey = normalizeDirectoryShopListCacheKey(normalizedFilters);
 
-  const cacheKey = normalizeDirectoryShopListCacheKey(filters);
-  try {
-    return await getPersistentDirectoryShopList(cacheKey);
-  } catch (error) {
-    if (isMissingNextCacheContextError(error)) {
-      return listDirectoryShopsUncached(filters);
+  return getSharedInFlight(directoryShopListInFlight, cacheKey, async () => {
+    if (normalizedQuery) {
+      return listDirectoryShopsUncached(normalizedFilters);
     }
 
-    throw error;
-  }
+    try {
+      return await getPersistentDirectoryShopList(cacheKey);
+    } catch (error) {
+      if (isMissingNextCacheContextError(error)) {
+        return listDirectoryShopsUncached(normalizedFilters);
+      }
+
+      throw error;
+    }
+  });
 }
 
 async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
@@ -865,6 +869,37 @@ export async function listVisibleShopSlugs() {
   }
 }
 const SHOP_DETAIL_WARM_CONCURRENCY = 2;
+const pendingShopDetailWarmSlugs = new Set<string>();
+let activeShopDetailWarmPromise: Promise<void> | null = null;
+
+function startShopDetailWarmQueue() {
+  if (activeShopDetailWarmPromise) {
+    return activeShopDetailWarmPromise;
+  }
+
+  activeShopDetailWarmPromise = (async () => {
+    while (pendingShopDetailWarmSlugs.size > 0) {
+      const slugs = Array.from(pendingShopDetailWarmSlugs);
+      pendingShopDetailWarmSlugs.clear();
+
+      await runWithConcurrencyLimit(
+        slugs.flatMap((slug) => [
+          async () => {
+            await getShopBySlug(slug);
+          },
+          async () => {
+            await getShopMetadataBySlug(slug);
+          },
+        ]),
+        SHOP_DETAIL_WARM_CONCURRENCY,
+      );
+    }
+  })().finally(() => {
+    activeShopDetailWarmPromise = null;
+  });
+
+  return activeShopDetailWarmPromise;
+}
 
 
 export async function warmPublicShopDetailCaches(slugs: string[]) {
@@ -872,17 +907,11 @@ export async function warmPublicShopDetailCaches(slugs: string[]) {
     new Set(slugs.map((slug) => normalizePublicShopSlugCacheKey(slug)).filter(Boolean)),
   );
 
-  await runWithConcurrencyLimit(
-    normalizedSlugs.flatMap((slug) => [
-      async () => {
-        await getShopBySlug(slug);
-      },
-      async () => {
-        await getShopMetadataBySlug(slug);
-      },
-    ]),
-    SHOP_DETAIL_WARM_CONCURRENCY,
-  );
+  for (const slug of normalizedSlugs) {
+    pendingShopDetailWarmSlugs.add(slug);
+  }
+
+  await startShopDetailWarmQueue();
 }
 export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
   const reviews = await withDatabaseRetry(() =>

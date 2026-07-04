@@ -231,7 +231,7 @@ test.describe('회원가입/승인/업소/리뷰 워크플로우', () => {
       const ownerShopId = ownerShopCreatePayload.shop.id;
       cleanup.shopIds.add(ownerShopId);
       expect(ownerShopCreatePayload.shop.ownerId).toBe(ownerUserId);
-      expect(ownerShopCreatePayload.shop.isVisible).toBe(false);
+      expect(ownerShopCreatePayload.shop.isVisible).toBe(true);
       expect(ownerShopCreatePayload.shop.isPremium).toBe(false);
       expect(ownerShopCreatePayload.shop.rating).toBe(0);
 
@@ -260,7 +260,7 @@ test.describe('회원가입/승인/업소/리뷰 워크플로우', () => {
       expect(ownerShopPatchPayload.shop.phone).toBe('010-7777-8888');
       expect(ownerShopPatchPayload.shop.description).toBe('업데이트된 설명');
       expect(ownerShopPatchPayload.shop.ownerId).toBe(ownerUserId);
-      expect(ownerShopPatchPayload.shop.isVisible).toBe(false);
+      expect(ownerShopPatchPayload.shop.isVisible).toBe(true);
       expect(ownerShopPatchPayload.shop.isPremium).toBe(false);
       expect(ownerShopPatchPayload.shop.premiumOrder ?? null).toBe(null);
 

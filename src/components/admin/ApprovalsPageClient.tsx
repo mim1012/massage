@@ -31,7 +31,7 @@ export default function ApprovalsPageClient({ initialData }: { initialData: Appr
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const handleDecision = async (userId: string, decision: "approved" | "rejected") => {
-    if (pendingRef.current.has(userId)) return;
+    if (pendingRef.current.size > 0) return;
     pendingRef.current.add(userId);
     setPendingIds(new Set(pendingRef.current));
     setActionError(null);
@@ -71,6 +71,7 @@ export default function ApprovalsPageClient({ initialData }: { initialData: Appr
       setPendingIds(new Set(pendingRef.current));
     }
   };
+  const hasPendingAction = pendingIds.size > 0;
 
   const displayName = (user: UserType) => user.businessName?.trim() || user.name;
 
@@ -131,14 +132,14 @@ export default function ApprovalsPageClient({ initialData }: { initialData: Appr
                 </div>
                 <div className="flex gap-2">
                   <button
-                    disabled={pendingIds.has(user.id)}
+                    disabled={hasPendingAction}
                     onClick={() => void handleDecision(user.id, "approved")}
                     className="flex items-center gap-1 rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                   >
                     <Check className="h-4 w-4" /> 가입승인
                   </button>
                   <button
-                    disabled={pendingIds.has(user.id)}
+                    disabled={hasPendingAction}
                     onClick={() => void handleDecision(user.id, "rejected")}
                     className="flex items-center gap-1 rounded bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300 disabled:opacity-50"
                   >

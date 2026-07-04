@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Plus, Pin, Edit2, Trash2, Save, X } from 'lucide-react';
 import type { Notice } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
-import clsx from 'clsx';
 
 export default function AdminNoticePage() {
   const [notices, setNotices] = useState<Notice[]>([]);

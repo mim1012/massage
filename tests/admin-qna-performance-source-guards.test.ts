@@ -9,6 +9,7 @@ async function readProjectFile(path: string) {
 test('admin qna uses cached managed data and defers shop options until needed', async () => {
   const adminPageSource = await readProjectFile('src/app/admin/qna/page.tsx');
   const adminRouteSource = await readProjectFile('src/app/api/admin/qna/route.ts');
+  const adminReviewRouteSource = await readProjectFile('src/app/api/admin/reviews/route.ts');
   const adminShopRouteSource = await readProjectFile('src/app/api/admin/shops/route.ts');
   const qnaPageSource = await readProjectFile('src/components/admin/QnaManagementPage.tsx');
   const communityStoreSource = await readProjectFile('src/lib/server/communityStore.ts');
@@ -18,6 +19,10 @@ test('admin qna uses cached managed data and defers shop options until needed', 
   assert.equal(adminPageSource.includes('listManagedShops(user)'), false);
   assert.equal(adminRouteSource.includes("url.searchParams.get('page')"), true);
   assert.equal(adminRouteSource.includes("url.searchParams.get('pageSize')"), true);
+  assert.equal(adminRouteSource.includes("'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL"), true);
+  assert.equal(adminReviewRouteSource.includes("'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL"), true);
+  assert.equal(adminReviewRouteSource.includes('page: Number.isInteger(page) && page > 0 ? page : undefined'), true);
+  assert.equal(adminShopRouteSource.includes("'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL"), true);
   assert.equal(qnaPageSource.includes("fetch('/api/admin/shops?view=options'"), true);
   assert.equal(qnaPageSource.includes('loadShopsOnDemand'), true);
   assert.equal(communityStoreSource.includes("const MANAGED_SHOPS_CACHE_TAG = 'managed-shops';"), true);

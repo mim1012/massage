@@ -4,12 +4,28 @@ import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
 import { createReview, listManagedReviews } from '@/lib/server/communityStore';
 
+const ADMIN_PRIVATE_CACHE_CONTROL = 'private, no-store';
+
 export async function GET(request: Request) {
   try {
     const user = await requireRole('ADMIN', 'OWNER');
     const url = new URL(request.url);
     const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
-    return Response.json({ reviews: await listManagedReviews(user, search?.trim() || undefined) });
+    const page = Number(url.searchParams.get('page') ?? Number.NaN);
+    const pageSize = Number(url.searchParams.get('pageSize') ?? Number.NaN);
+    const reviews = await listManagedReviews(user, search?.trim() || undefined, {
+      page: Number.isInteger(page) && page > 0 ? page : undefined,
+      pageSize: Number.isInteger(pageSize) && pageSize > 0 ? pageSize : undefined,
+    });
+
+    return Response.json(
+      { reviews },
+      {
+        headers: {
+          'Cache-Control': ADMIN_PRIVATE_CACHE_CONTROL,
+        },
+      },
+    );
   } catch (error) {
     return errorResponse(error);
   }

@@ -73,7 +73,7 @@ test.describe('회원가입 UI 디테일', () => {
     const ownerEmail = `ui-owner-${RUN_ID}@example.com`;
 
     await page.goto(`${BASE}/auth/register-owner`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/auth/login');
+    await expect(page.locator('main').getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/auth/login');
 
     const passwordInput = page.locator('input[name="password"]');
     const confirmInput = page.locator('input[name="passwordConfirm"]');
@@ -96,6 +96,7 @@ test.describe('회원가입 UI 디테일', () => {
     await expect(page.getByText('비밀번호가 일치하지 않습니다.').first()).toBeVisible({ timeout: 10000 });
 
     await confirmInput.fill('secret1234');
+    await passwordInput.fill('secret1234');
     const responsePromise = page.waitForResponse((response) => response.url().includes('/api/auth/register/owner') && response.request().method() === 'POST');
     await page.getByRole('button', { name: '입점 신청하기' }).click();
     const response = await responsePromise;

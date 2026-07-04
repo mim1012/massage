@@ -51,7 +51,6 @@ export function getShopBrowseLabel({
   source,
   region,
   subRegion,
-  theme,
   fallbackRegionLabel,
   fallbackThemeLabel,
   subRegionLabel,

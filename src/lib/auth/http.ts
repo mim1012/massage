@@ -1,4 +1,5 @@
 import { AuthError } from '@/lib/auth/guards';
+import { applyNoStoreSessionHeaders } from '@/lib/security/http';
 
 const errorMessageMap: Record<string, string> = {
   SHOP_SLUG_IN_USE: '이미 사용 중인 슬러그입니다. 다른 URL 영문명을 입력해 주세요.',
@@ -12,7 +13,10 @@ const errorMessageMap: Record<string, string> = {
 
 export function errorResponse(error: unknown, fallbackMessage = '예상하지 못한 서버 오류가 발생했습니다.') {
   if (error instanceof AuthError) {
-    return Response.json({ error: errorMessageMap[error.message] ?? error.message }, { status: error.status });
+    return Response.json(
+      { error: errorMessageMap[error.message] ?? error.message },
+      { status: error.status, headers: applyNoStoreSessionHeaders() },
+    );
   }
 
   if (error instanceof Error) {
@@ -32,8 +36,11 @@ export function errorResponse(error: unknown, fallbackMessage = '예상하지 �
               ? 503
               : 400;
 
-    return Response.json({ error: errorMessageMap[normalizedMessage] ?? normalizedMessage }, { status });
+    return Response.json(
+      { error: errorMessageMap[normalizedMessage] ?? normalizedMessage },
+      { status, headers: applyNoStoreSessionHeaders() },
+    );
   }
 
-  return Response.json({ error: fallbackMessage }, { status: 500 });
+  return Response.json({ error: fallbackMessage }, { status: 500, headers: applyNoStoreSessionHeaders() });
 }
