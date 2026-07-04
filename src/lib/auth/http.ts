@@ -11,6 +11,8 @@ const errorMessageMap: Record<string, string> = {
   'Forbidden.': '접근 권한이 없습니다.',
 };
 
+const KOREAN_TEXT_PATTERN = /[가-힣]/;
+
 export function errorResponse(error: unknown, fallbackMessage = '예상하지 못한 서버 오류가 발생했습니다.') {
   if (error instanceof AuthError) {
     return Response.json(
@@ -19,11 +21,27 @@ export function errorResponse(error: unknown, fallbackMessage = '예상하지 �
     );
   }
 
+  if (error instanceof SyntaxError) {
+    return Response.json(
+      { error: '요청 형식이 올바르지 않습니다.' },
+      { status: 400, headers: applyNoStoreSessionHeaders() },
+    );
+  }
+
   if (error instanceof Error) {
     const normalizedMessage =
       error.message.includes('Unique constraint failed') && error.message.includes('slug')
         ? 'SHOP_SLUG_IN_USE'
         : error.message;
+
+    // 매핑된 코드도, 한국어 사용자 메시지도 아니면 내부 정보이므로 응답에 싣지 않는다.
+    if (!(normalizedMessage in errorMessageMap) && !KOREAN_TEXT_PATTERN.test(normalizedMessage)) {
+      console.error('Unhandled server error:', error);
+      return Response.json(
+        { error: fallbackMessage },
+        { status: 500, headers: applyNoStoreSessionHeaders() },
+      );
+    }
 
     const status =
       normalizedMessage === 'EMAIL_IN_USE' || normalizedMessage === 'SHOP_SLUG_IN_USE'

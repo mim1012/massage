@@ -381,7 +381,7 @@ test('handleUserRegisterPost preserves rate-limit headers when the request body 
   assert.equal(response.status, 400);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
-  assert.deepEqual(await response.json(), { error: 'Unexpected end of JSON input' });
+  assert.deepEqual(await response.json(), { error: '요청 형식이 올바르지 않습니다.' });
 });
 
 
@@ -496,5 +496,5 @@ test('handleOwnerRegisterPost preserves rate-limit headers when the request body
   assert.equal(response.status, 400);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(response.headers.get('X-RateLimit-Limit'), '10');
-  assert.deepEqual(await response.json(), { error: 'Unexpected end of JSON input' });
+  assert.deepEqual(await response.json(), { error: '요청 형식이 올바르지 않습니다.' });
 });

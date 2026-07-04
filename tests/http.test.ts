@@ -25,15 +25,30 @@ test('errorResponse maps known auth and registration error codes', async () => {
   });
 });
 
-test('errorResponse falls back for generic and non-error values', async () => {
-  const genericError = errorResponse(new Error('GENERIC_FAILURE'));
+test('errorResponse hides unmapped internal messages and passes Korean user messages through', async () => {
+  const internalError = errorResponse(new Error('GENERIC_FAILURE'));
+  const prismaLikeError = errorResponse(new Error('Invalid `prisma.shop.findMany()` invocation'));
+  const koreanValidationError = errorResponse(new Error('평점은 1점부터 5점 사이여야 합니다.'));
   const unknownValue = errorResponse('unexpected');
 
-  assert.equal(genericError.status, 400);
-  assert.deepEqual(await genericError.json(), { error: 'GENERIC_FAILURE' });
+  assert.equal(internalError.status, 500);
+  assert.deepEqual(await internalError.json(), { error: '예상하지 못한 서버 오류가 발생했습니다.' });
+
+  assert.equal(prismaLikeError.status, 500);
+  assert.deepEqual(await prismaLikeError.json(), { error: '예상하지 못한 서버 오류가 발생했습니다.' });
+
+  assert.equal(koreanValidationError.status, 400);
+  assert.deepEqual(await koreanValidationError.json(), { error: '평점은 1점부터 5점 사이여야 합니다.' });
 
   assert.equal(unknownValue.status, 500);
   assert.deepEqual(await unknownValue.json(), { error: '예상하지 못한 서버 오류가 발생했습니다.' });
+});
+
+test('errorResponse treats malformed JSON bodies as a client error without leaking parser details', async () => {
+  const malformedJsonError = errorResponse(new SyntaxError('Unexpected end of JSON input'));
+
+  assert.equal(malformedJsonError.status, 400);
+  assert.deepEqual(await malformedJsonError.json(), { error: '요청 형식이 올바르지 않습니다.' });
 });
 
 test('assertOwnershipOrAdmin allows admin and matching owner, but blocks other owners', () => {
