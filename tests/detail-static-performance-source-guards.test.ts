@@ -16,8 +16,8 @@ test('shop detail page is prerender-friendly and delegates browse breadcrumbs to
   const breadcrumbSource = await readProjectFile('src/components/public/ShopBrowseBreadcrumbs.tsx');
 
   assert.equal(pageSource.includes('export const revalidate = 120;'), true);
-  assert.equal(pageSource.includes('export async function generateStaticParams()'), true);
-  assert.equal(pageSource.includes('listVisibleShopSlugs'), true);
+  // 상세 페이지는 배포 시 전체 프리렌더 대신 ISR(온디맨드 + revalidate)로 동작한다.
+  assert.equal(pageSource.includes('export function generateStaticParams()'), true);
   assert.equal(pageSource.includes('searchParams?: Promise'), false);
   assert.equal(pageSource.includes('currentSearchParams'), false);
   assert.equal(pageSource.includes("import ShopBrowseBreadcrumbs from '@/components/public/ShopBrowseBreadcrumbs';"), true);

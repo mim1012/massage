@@ -281,7 +281,7 @@ test('shop card thumbnails preserve full scraped images without backdrop artifac
 
   assert.equal(shopCardSource.includes('const showThumbnail = Boolean(thumbnailUrl) && !imageFailed;'), true);
   assert.equal(shopCardSource.includes('scale-110 object-cover opacity-25 blur-sm'), false);
-  assert.equal(shopCardSource.includes('object-contain transition-opacity'), true);
+  assert.equal(shopCardSource.includes('object-fill transition-opacity'), true);
   assert.equal(shopCardSource.includes('fetchPriority="low"'), true);
   assert.equal(shopCardSource.includes('width={320}'), true);
   assert.equal(shopCardSource.includes('height={320}'), true);
@@ -315,13 +315,11 @@ test('shop detail media preserves full scraped images while deferring heavier ga
   assert.equal(mediaSource.includes("transition-opacity duration-200 ${primaryImageLoaded ? 'opacity-100' : 'opacity-0'}"), true);
   assert.equal(mediaSource.includes('loading="eager"'), true);
   assert.equal(mediaSource.includes('fetchPriority="high"'), true);
-  assert.equal(mediaSource.includes('width={960}'), true);
-  assert.equal(mediaSource.includes('height={960}'), true);
+  assert.equal(mediaSource.includes('aspect-[16/9]'), true);
   assert.equal(mediaSource.includes('aria-hidden="true" className="pointer-events-none h-0 overflow-hidden opacity-0"'), false);
   assert.equal(mediaSource.includes('loading="lazy"'), true);
   assert.equal(mediaSource.includes('fetchPriority="low"'), true);
-  assert.equal(mediaSource.includes('width={560}'), true);
-  assert.equal(mediaSource.includes('height={560}'), true);
+  assert.equal(mediaSource.includes('aspect-[4/3]'), true);
   assert.equal(mediaSource.includes('추가 사진 {dedupedGalleryImages.length}장 불러오기'), true);
   assert.equal(mediaSource.includes('사진 {remainingImageCount}장 더 보기'), true);
   assert.equal(bannerRouteSource.includes("searchParams.get('size')"), true);
