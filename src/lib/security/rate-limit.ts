@@ -155,10 +155,38 @@ function resolveAuthRouteLimit(routeKey: string): AuthRouteLimit {
   return { limiter: authRateLimiter, limit: DEFAULT_LIMIT, windowMs: DEFAULT_WINDOW_MS };
 }
 
-function getSharedRateLimitConfig() {
-  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
-  return url && token ? { url, token } : null;
+type SharedRateLimitConfig = { url: string; token: string };
+
+let cachedSharedConfig: SharedRateLimitConfig | null | undefined;
+
+// Vercel 마켓플레이스 연결은 커스텀 접두사(<prefix>_KV_REST_API_URL 등)를 붙일 수 있어
+// 표준 이름이 없으면 접미사로 URL 키를 찾고, 같은 접두사의 토큰 키와 짝지어 사용한다.
+function findPrefixedRestConfig(urlSuffix: string, tokenSuffix: string): SharedRateLimitConfig | null {
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!key.endsWith(urlSuffix) || !value) {
+      continue;
+    }
+
+    const prefix = key.slice(0, key.length - urlSuffix.length);
+    const token = process.env[`${prefix}${tokenSuffix}`];
+    if (token) {
+      return { url: value, token };
+    }
+  }
+
+  return null;
+}
+
+function getSharedRateLimitConfig(): SharedRateLimitConfig | null {
+  if (cachedSharedConfig !== undefined) {
+    return cachedSharedConfig;
+  }
+
+  cachedSharedConfig =
+    findPrefixedRestConfig('UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN') ??
+    findPrefixedRestConfig('KV_REST_API_URL', 'KV_REST_API_TOKEN');
+
+  return cachedSharedConfig;
 }
 
 function buildSharedRateLimitHeaders(limit: number, count: number, resetAt: number) {
