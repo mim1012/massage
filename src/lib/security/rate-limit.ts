@@ -31,16 +31,24 @@ type AuthRateLimitOptions = {
 };
 
 export function getClientIp(request: Pick<Request, 'headers'>) {
+  // 플랫폼(Vercel/프록시)이 설정하는 헤더를 우선한다 — x-forwarded-for 좌측값은 클라이언트가 위조할 수 있다.
+  const platformIp =
+    request.headers.get('x-real-ip') ??
+    request.headers.get('x-vercel-forwarded-for') ??
+    request.headers.get('cf-connecting-ip');
+  if (platformIp?.trim()) {
+    return platformIp.trim();
+  }
+
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
     const [firstIp] = forwardedFor.split(',');
-    if (firstIp) {
+    if (firstIp?.trim()) {
       return firstIp.trim();
     }
   }
 
-  const realIp = request.headers.get('x-real-ip') ?? request.headers.get('cf-connecting-ip');
-  return realIp?.trim() || 'unknown';
+  return 'unknown';
 }
 
 export function createMemoryRateLimiter(options: MemoryRateLimiterOptions = {}) {

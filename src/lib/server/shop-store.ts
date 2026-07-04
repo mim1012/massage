@@ -496,11 +496,6 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
 }
 
 
-function sortByPopularity(left: ShopListItem, right: ShopListItem) {
-  if (right.reviewCount !== left.reviewCount) return right.reviewCount - left.reviewCount;
-  if (right.rating !== left.rating) return right.rating - left.rating;
-  return right.createdAt.localeCompare(left.createdAt);
-}
 function balancePremiumShops(shops: ShopListItem[], region?: string) {
   if (region && region !== 'all') {
     return [...shops].sort((left, right) => (left.premiumOrder ?? 999) - (right.premiumOrder ?? 999));
@@ -723,46 +718,6 @@ export async function listDirectoryShops(filters: DirectoryShopFilters = {}) {
   });
 }
 
-async function listShopsUncached(filters: ShopFilters = {}): Promise<ShopListResponse> {
-  const regularOffset = Math.max(0, filters.regularOffset ?? 0);
-  const regularLimit = filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : undefined;
-  const shops = await withDatabaseRetry(() =>
-    prisma.shop.findMany({
-      where: buildShopWhere(filters),
-      select: shopListSelect,
-      orderBy: [{ isPremium: 'desc' }, { premiumOrder: 'asc' }, { createdAt: 'desc' }],
-    }),
-  );
-
-  const allShops = shops.map((shop) => mapShopList(shop));
-  const sortedShops = [...allShops];
-
-  if (filters.sort === 'popular') {
-    sortedShops.sort(sortByPopularity);
-  } else if (filters.sort === 'new') {
-    sortedShops.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }
-
-  const premiumShops = balancePremiumShops(
-    sortedShops.filter((shop) => shop.isPremium),
-    filters.region,
-  );
-  const allRegularShops = sortedShops.filter((shop) => !shop.isPremium);
-  const regularShops = regularLimit ? allRegularShops.slice(regularOffset, regularOffset + regularLimit) : allRegularShops;
-
-  return {
-    allShops: sortedShops,
-    premiumShops,
-    regularShops,
-    regularTotal: allRegularShops.length,
-    total: sortedShops.length,
-  };
-}
-
-export async function listShops(filters: ShopFilters = {}) {
-  return listShopsUncached(filters);
-}
-
 const getVisibleShopDetailRecord = cache(async (slug: string) => {
   return withDatabaseRetry(() =>
     prisma.shop.findFirst({
@@ -913,6 +868,8 @@ export async function warmPublicShopDetailCaches(slugs: string[]) {
 
   await startShopDetailWarmQueue();
 }
+const SHOP_DETAIL_REVIEWS_LIMIT = 100;
+
 export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
   const reviews = await withDatabaseRetry(() =>
     prisma.review.findMany({
@@ -924,6 +881,7 @@ export async function getShopReviewsBySlug(slug: string): Promise<Review[]> {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: SHOP_DETAIL_REVIEWS_LIMIT,
       select: {
         id: true,
         shopId: true,

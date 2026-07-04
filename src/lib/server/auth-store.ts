@@ -570,6 +570,14 @@ export async function updateOwnerStatus(userId: string, status: 'approved' | 're
             select: authUserSelect,
           });
 
+          // 전이 직후 approvedAt 기록이 실패했던 경우를 재시도/중복 호출 경로에서 자가 복구한다.
+          if (alreadyTransitionedUser && status === 'approved') {
+            await db.ownerProfile.updateMany({
+              where: { userId, approvedAt: null },
+              data: { approvedAt: new Date() },
+            });
+          }
+
           return alreadyTransitionedUser ? sanitizeUser(alreadyTransitionedUser) : null;
         }
 
