@@ -2277,6 +2277,28 @@ export async function updateAdminShop(id: string, input: Shop, access?: { ownerI
   }
 }
 
+export async function deleteAdminShop(id: string, access?: { ownerId?: string }) {
+  try {
+    const deleted = await withDatabaseRetry(() =>
+      prisma.shop.deleteMany({
+        where: access?.ownerId ? { id, ownerId: access.ownerId } : { id },
+      }),
+    );
+
+    if (deleted.count === 0) {
+      return false;
+    }
+
+    invalidatePublicShopCaches();
+    invalidateManagedAdminCaches();
+
+    return true;
+  } catch (error) {
+    console.error('Failed to delete admin shop:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
+
 async function loadBoardSummary() {
   const [notices, qna, reviews] = await withDatabaseRetry(() =>
     Promise.all([

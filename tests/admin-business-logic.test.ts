@@ -3,7 +3,7 @@ import test from 'node:test';
 import { UserRole, UserStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { createSession, getUserBySessionToken, listOwnerApprovals, listUsers, registerOwner, updateOwnerStatus } from '@/lib/server/auth-store';
-import { answerQna, createAdminShop, createQnaComment, deleteManagedReview, listManagedShops, listNotices, setReviewHiddenState, updateAdminShop, updateReview } from '@/lib/server/communityStore';
+import { answerQna, createAdminShop, createQnaComment, deleteAdminShop, deleteManagedReview, listManagedShops, listNotices, setReviewHiddenState, updateAdminShop, updateReview } from '@/lib/server/communityStore';
 import type { Shop } from '@/lib/types';
 import { deleteTheme } from '@/lib/server/theme-store';
 
@@ -933,4 +933,61 @@ test('DATABASE_ERROR maps to service-unavailable admin responses', async () => {
   assert.deepEqual(await response.json(), {
     error: '데이터베이스 연결에 실패했습니다. 관리자에게 문의해 주세요.',
   });
+});
+
+test('deleteAdminShop removes a shop without owner scoping for admins', async () => {
+  await prisma.shop.deleteMany({ where: { slug: 'delete-admin-scope-shop' } });
+
+  const created = await createAdminShop(buildShopInput({ slug: 'delete-admin-scope-shop', name: '삭제 테스트샵' }));
+
+  try {
+    const deleted = await deleteAdminShop(created.id);
+    assert.equal(deleted, true);
+
+    const stored = await prisma.shop.findUnique({ where: { id: created.id } });
+    assert.equal(stored, null);
+  } finally {
+    await cleanup({ shopIds: [created.id] });
+  }
+});
+
+test('deleteAdminShop refuses owner-scoped deletion of another owner shop', async () => {
+  const ownerId = 'test-owner-delete-scope';
+  await cleanup({ userIds: [ownerId] });
+  await prisma.shop.deleteMany({ where: { slug: 'delete-owner-scope-shop' } });
+
+  await prisma.user.create({
+    data: {
+      id: ownerId,
+      email: `${ownerId}@example.com`,
+      passwordHash: 'hash',
+      name: '삭제 스코프 업주',
+      role: UserRole.OWNER,
+      status: UserStatus.APPROVED,
+      ownerProfile: {
+        create: {
+          businessName: '삭제 스코프샵',
+          businessNumber: '111-22-33333',
+        },
+      },
+    },
+  });
+
+  const created = await createAdminShop(buildShopInput({ slug: 'delete-owner-scope-shop', name: '오너 삭제샵', ownerId }));
+
+  try {
+    const blocked = await deleteAdminShop(created.id, { ownerId: 'someone-else' });
+    assert.equal(blocked, false);
+    assert.notEqual(await prisma.shop.findUnique({ where: { id: created.id } }), null);
+
+    const deleted = await deleteAdminShop(created.id, { ownerId });
+    assert.equal(deleted, true);
+    assert.equal(await prisma.shop.findUnique({ where: { id: created.id } }), null);
+  } finally {
+    await cleanup({ shopIds: [created.id], userIds: [ownerId] });
+  }
+});
+
+test('deleteAdminShop returns false for a missing shop id', async () => {
+  assert.equal(await deleteAdminShop('missing-shop-id-for-delete'), false);
 });
