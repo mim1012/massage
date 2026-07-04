@@ -1,3 +1,5 @@
+import { isNonEmptyString } from '@/lib/validation/input';
+
 type OwnerRegistrationBody = {
   name?: string;
   email?: string;
@@ -54,7 +56,7 @@ export function getOwnerRegistrationSuccessState(input: OwnerRegistrationSuccess
 
 export async function registerOwnerRoute(body: OwnerRegistrationBody, deps: RegisterOwnerDeps) {
   const requiredFields = [body.name, body.email, body.password, body.businessName, body.businessNumber, body.phone];
-  if (requiredFields.some((value) => !value?.trim())) {
+  if (!requiredFields.every(isNonEmptyString)) {
     return Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 });
   }
 

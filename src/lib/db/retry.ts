@@ -60,6 +60,15 @@ export function isTransientDatabaseError(error: unknown) {
   return TRANSIENT_DATABASE_ERROR_PATTERNS.some((pattern) => haystack.includes(pattern));
 }
 
+// Prisma P2025 = "레코드 없음". 이건 정상적인 not-found 결과이므로 인프라 에러와 구분해야 한다.
+export function isRecordNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2025'
+  );
+}
+
 export function summarizeDatabaseError(error: unknown) {
   const fragments = collectErrorFragments(error)
     .map((fragment) => fragment.trim())

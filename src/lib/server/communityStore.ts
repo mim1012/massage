@@ -23,7 +23,7 @@ import type {
 } from '@/lib/types';
 import type { AdminDashboardData, AdminShopListItem, AdminShopOption, AdminStatsData, PremiumBoardData } from '@/lib/communityTypes';
 import { prisma } from '@/lib/db/prisma';
-import { withDatabaseRetry } from '@/lib/db/retry';
+import { withDatabaseRetry, isRecordNotFoundError } from '@/lib/db/retry';
 import { clampPage, getTotalPages } from '@/lib/pagination';
 import {
   normalizeHomeSeo,
@@ -1922,8 +1922,12 @@ export async function updateQna(
     );
     invalidatePublicBoardCaches();
     return mapQna(entry, viewer);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return null;
+    }
+    console.error('Failed to update qna:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -1964,8 +1968,12 @@ export async function updatePublicQna(
 
     invalidatePublicBoardCaches();
     return entry ? mapQna(entry, viewer) : null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return null;
+    }
+    console.error('Failed to update public qna:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -1974,8 +1982,12 @@ export async function deleteQna(id: string) {
     await withDatabaseRetry(() => prisma.qnA.delete({ where: { id } }));
     invalidatePublicBoardCaches();
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return false;
+    }
+    console.error('Failed to delete qna:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -1998,8 +2010,12 @@ export async function deletePublicQna(id: string, userId: string) {
 
     invalidatePublicBoardCaches();
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return false;
+    }
+    console.error('Failed to delete public qna:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -2377,8 +2393,12 @@ export async function updatePartnershipInquiryStatus(
     );
 
     return mapPartnershipInquiry(entry);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return null;
+    }
+    console.error('Failed to update partnership inquiry status:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 

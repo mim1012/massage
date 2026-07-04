@@ -3,19 +3,31 @@ import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
 import { createReview, listReviews } from '@/lib/server/communityStore';
+import { INPUT_LIMITS, isNonEmptyString, isWithinLength } from '@/lib/validation/input';
+
+const MAX_PUBLIC_REVIEW_LIMIT = 50;
+
+function parseReviewLimit(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return Math.min(parsed, MAX_PUBLIC_REVIEW_LIMIT);
+}
 
 export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const url = new URL(request.url);
-    const limitParam = url.searchParams.get('limit');
     const shopId = url.searchParams.get('shopId') ?? undefined;
     const search = url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined;
-    const limit = limitParam ? Number(limitParam) : undefined;
 
     return Response.json({
       reviews: await listReviews({
-        limit: Number.isFinite(limit) ? limit : undefined,
+        limit: parseReviewLimit(url.searchParams.get('limit')),
         shopId: shopId?.trim() || undefined,
         search: search?.trim() || undefined,
         viewer: { id: user.id, role: user.role },
@@ -36,12 +48,16 @@ export async function POST(request: Request) {
       content?: string;
     };
 
-    if (!body.shopId?.trim() || !body.content?.trim() || typeof body.rating !== 'number') {
+    if (!isNonEmptyString(body.shopId) || !isNonEmptyString(body.content) || typeof body.rating !== 'number') {
       return Response.json({ error: '업소, 평점, 리뷰 내용은 필수입니다.' }, { status: 400 });
     }
 
     if (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
       return Response.json({ error: '평점은 1점부터 5점 사이여야 합니다.' }, { status: 400 });
+    }
+
+    if (!isWithinLength(body.content, INPUT_LIMITS.reviewContent)) {
+      return Response.json({ error: `리뷰 내용은 ${INPUT_LIMITS.reviewContent}자 이내로 입력해 주세요.` }, { status: 400 });
     }
 
     const shopId = body.shopId.trim();

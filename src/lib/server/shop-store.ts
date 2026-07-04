@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import type { Review, Shop, ShopListItem } from '@/lib/types';
 import { REGION_MAP } from '@/lib/catalog';
 import { prisma } from '@/lib/db/prisma';
-import { withDatabaseRetry } from '@/lib/db/retry';
+import { withDatabaseRetry, isRecordNotFoundError } from '@/lib/db/retry';
 import { runWithConcurrencyLimit } from '@/lib/async/run-with-concurrency-limit';
 import { getSharedInFlight } from '@/lib/server/in-flight';
 
@@ -157,12 +157,21 @@ function normalizePublicShopSlugCacheKey(slug: string) {
   return slug.trim();
 }
 
+const MAX_SEARCH_QUERY_LENGTH = 100;
+
+// 검색어는 인덱스를 못 타는 ILIKE와 캐시 키에 그대로 쓰이므로, 대용량 문자열로 인한
+// 쿼리 비용/캐시 증폭을 막기 위해 길이를 제한한다.
+function capSearchQuery(query?: string) {
+  const trimmed = query?.trim() ?? '';
+  return trimmed.length > MAX_SEARCH_QUERY_LENGTH ? trimmed.slice(0, MAX_SEARCH_QUERY_LENGTH) : trimmed;
+}
+
 function normalizeDirectoryShopListFilters(filters: DirectoryShopFilters) {
   return {
     region: filters.region ?? '',
     subRegion: filters.subRegion ?? '',
     theme: filters.theme ?? '',
-    query: filters.query?.trim() ?? '',
+    query: capSearchQuery(filters.query),
     sort: filters.sort ?? '',
     regularOffset: Math.max(0, filters.regularOffset ?? 0),
     regularLimit: filters.regularLimit && filters.regularLimit > 0 ? filters.regularLimit : null,
@@ -179,7 +188,7 @@ function normalizeTopShopListFilters(filters: ShopFilters, limit: number) {
     region: filters.region ?? '',
     subRegion: filters.subRegion ?? '',
     theme: filters.theme ?? '',
-    query: filters.query?.trim() ?? '',
+    query: capSearchQuery(filters.query),
     limit: Math.max(1, limit),
   };
 }
@@ -489,7 +498,7 @@ function buildShopWhere(filters: ShopFilters): Prisma.ShopWhereInput {
     ...(filters.theme && filters.theme !== 'all' ? { theme: filters.theme } : {}),
     ...(filters.query
       ? {
-          OR: [{ searchText: { contains: filters.query, mode: 'insensitive' } }],
+          OR: [{ searchText: { contains: capSearchQuery(filters.query), mode: 'insensitive' } }],
         }
       : {}),
   };
@@ -920,8 +929,12 @@ export async function updateShopVisibility(shopId: string, isVisible: boolean) {
     );
     invalidatePublicShopCaches();
     return mapShop(shop);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return null;
+    }
+    console.error('Failed to update shop visibility:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }
 
@@ -939,7 +952,11 @@ export async function updateShopPremium(shopId: string, isPremium: boolean, prem
     );
     invalidatePublicShopCaches();
     return mapShop(shop);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isRecordNotFoundError(error)) {
+      return null;
+    }
+    console.error('Failed to update shop premium:', error);
+    throw new Error('DATABASE_ERROR');
   }
 }

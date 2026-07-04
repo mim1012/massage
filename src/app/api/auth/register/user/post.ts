@@ -1,6 +1,7 @@
 import { errorResponse } from '@/lib/auth/http';
 import { applyRateLimitHeaders, checkAuthRateLimit, type AuthRateLimitChecker } from '@/lib/security/rate-limit';
 import { registerUser } from '@/lib/server/auth-store';
+import { isNonEmptyString } from '@/lib/validation/input';
 
 type RegisterUserBody = {
   name?: string;
@@ -27,7 +28,7 @@ export async function handleUserRegisterPost(request: Request, deps: UserRegiste
   try {
     const body = (await request.json()) as RegisterUserBody;
 
-    if (!body.name?.trim() || !body.email?.trim() || !body.password?.trim()) {
+    if (!isNonEmptyString(body.name) || !isNonEmptyString(body.email) || !isNonEmptyString(body.password)) {
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitResult.headers);
     }
 

@@ -3,6 +3,7 @@ import { errorResponse } from '@/lib/auth/http';
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry } from '@/lib/db/retry';
 import { createQna, listQna } from '@/lib/server/communityStore';
+import { INPUT_LIMITS, isNonEmptyString, isWithinLength } from '@/lib/validation/input';
 
 export async function GET(request: Request) {
   try {
@@ -32,10 +33,13 @@ export async function POST(request: Request) {
       shopId?: string | null;
     };
 
-    if (!body.question?.trim()) {
+    if (!isNonEmptyString(body.question)) {
       return Response.json({ error: '질문 내용은 필수입니다.' }, { status: 400 });
     }
-    const shopId = body.shopId?.trim();
+    if (!isWithinLength(body.question, INPUT_LIMITS.qnaQuestion)) {
+      return Response.json({ error: `질문 내용은 ${INPUT_LIMITS.qnaQuestion}자 이내로 입력해 주세요.` }, { status: 400 });
+    }
+    const shopId = typeof body.shopId === 'string' ? body.shopId.trim() : undefined;
     if (shopId) {
       const shop = await withDatabaseRetry(() =>
         prisma.shop.findFirst({

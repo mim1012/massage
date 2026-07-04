@@ -2,6 +2,7 @@ import { errorResponse } from '@/lib/auth/http';
 import { setSessionCookie } from '@/lib/auth/session';
 import { applyRateLimitHeaders, checkAuthRateLimit, type AuthRateLimitChecker } from '@/lib/security/rate-limit';
 import { login } from '@/lib/server/auth-store';
+import { isNonEmptyString } from '@/lib/validation/input';
 
 type LoginBody = {
   email?: string;
@@ -34,7 +35,7 @@ export async function handleLoginPost(request: Request, deps: LoginPostDeps = {}
   try {
     const body = (await request.json()) as LoginBody;
 
-    if (!body.email || !body.password) {
+    if (!isNonEmptyString(body.email) || !isNonEmptyString(body.password)) {
       return applyRateLimitHeaders(Response.json({ error: '필수 입력값이 누락되었습니다.' }, { status: 400 }), rateLimitHeaders);
     }
 
