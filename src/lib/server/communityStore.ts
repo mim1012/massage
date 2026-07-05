@@ -25,6 +25,7 @@ import type { AdminDashboardData, AdminShopListItem, AdminShopOption, AdminStats
 import { prisma } from '@/lib/db/prisma';
 import { withDatabaseRetry, isRecordNotFoundError } from '@/lib/db/retry';
 import { clampPage, getTotalPages } from '@/lib/pagination';
+import { getRegionVariants } from '@/lib/region-compat';
 import {
   normalizeHomeSeo,
   normalizeSiteSettings,
@@ -611,6 +612,15 @@ function buildShopSearchText(input: Pick<Shop, 'name' | 'regionLabel' | 'subRegi
     .join(' ');
 }
 
+function pushRegionFilter(and: Prisma.ShopWhereInput[], region?: string) {
+  const regionVariants = getRegionVariants(region);
+  if (regionVariants.length === 1) {
+    and.push({ region: regionVariants[0] });
+  } else if (regionVariants.length > 1) {
+    and.push({ region: { in: regionVariants } });
+  }
+}
+
 function buildShopPayload(input: Shop, slug = input.slug) {
   return {
     name: input.name.trim(),
@@ -656,9 +666,7 @@ async function loadManagedShops(
     and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
   }
 
-  if (filters.region && filters.region !== 'all') {
-    and.push({ region: filters.region });
-  }
+  pushRegionFilter(and, filters.region);
 
   if (filters.q) {
     and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });
@@ -700,9 +708,7 @@ export async function listManagedShopsPage(
     if (user.role === 'OWNER') {
       and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
     }
-    if (region && region !== 'all') {
-      and.push({ region });
-    }
+    pushRegionFilter(and, region);
     if (q) {
       and.push({ OR: [{ name: buildContainsFilter(q) }, { phone: buildContainsFilter(q) }] });
     }
@@ -761,9 +767,7 @@ async function loadManagedShopOptions(
     and.push({ OR: [{ ownerId: user.id }, ...(user.managedShopId ? [{ id: user.managedShopId }] : [])] });
   }
 
-  if (filters.region && filters.region !== 'all') {
-    and.push({ region: filters.region });
-  }
+  pushRegionFilter(and, filters.region);
 
   if (filters.q) {
     and.push({ OR: [{ name: buildContainsFilter(filters.q) }, { phone: buildContainsFilter(filters.q) }] });

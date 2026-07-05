@@ -171,6 +171,77 @@ async function renderHarness(options?: {
   };
 }
 
+test('premium region filter includes current and legacy region codes together', async () => {
+  const harness = await renderHarness({
+    fetchImpl: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+
+      if (url === '/api/admin/premium' && method === 'GET') {
+        return Response.json({
+          premiumShops: [
+            {
+              id: 'busan-current',
+              name: '부산 현재코드 배너',
+              region: 'busan',
+              regionLabel: '부산',
+              subRegionLabel: '해운대구',
+              themeLabel: '스웨디시',
+              isVisible: true,
+              isPremium: true,
+              premiumOrder: 1,
+            },
+            {
+              id: 'busan-legacy',
+              name: '부산 레거시 배너',
+              region: 'gyeongsang',
+              regionLabel: '부산',
+              subRegionLabel: '해운대구',
+              themeLabel: '아로마',
+              isVisible: true,
+              isPremium: true,
+              premiumOrder: 2,
+            },
+          ],
+          availableShops: [
+            {
+              id: 'busan-addable',
+              name: '부산 추가 가능 업소',
+              region: 'gyeongsang',
+              regionLabel: '부산',
+              subRegionLabel: '해운대구',
+              themeLabel: '타이',
+              isVisible: true,
+              isPremium: false,
+              premiumOrder: undefined,
+            },
+          ],
+        }, { status: 200 });
+      }
+
+      throw new Error(`unexpected fetch ${method} ${url}`);
+    },
+  });
+
+  try {
+    const busanButton = harness.getRegionButton('부산');
+    assert.ok(busanButton);
+
+    await act(async () => {
+      busanButton.dispatchEvent(new harness.dom.window.MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const bodyText = harness.dom.window.document.body.textContent ?? '';
+    assert.equal(busanButton.textContent?.includes('2/4'), true);
+    assert.match(bodyText, /부산 현재코드 배너/);
+    assert.match(bodyText, /부산 레거시 배너/);
+    assert.match(bodyText, /부산 추가 가능 업소/);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 test('region fetch failures do not surface as unhandled rejections', async () => {
   const unhandledRejections: string[] = [];
   const rejectionHandler = (reason: unknown) => {

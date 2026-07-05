@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Crown, Save, Info, GripVertical, X, Plus } from 'lucide-react';
-import type { AdminShopListItem } from '@/lib/communityTypes';
-import type { PremiumBoardData } from '@/lib/communityTypes';
+import type { AdminShopListItem, PremiumBoardData } from '@/lib/communityTypes';
 import { REGIONS } from '@/lib/types';
+import { matchesRegion } from '@/lib/region-compat';
 import clsx from 'clsx';
 import AdBannerManager from '@/components/admin/AdBannerManager';
 
@@ -37,7 +37,7 @@ export default function AdminPremiumPage() {
 
   // 지역별 카운트
   const countByRegion = (region: string) =>
-    premiumShops.filter((shop) => shop.region === region && shop.isVisible).length;
+    premiumShops.filter((shop) => matchesRegion(shop.region, region) && shop.isVisible).length;
 
   const canAdd = (region: string) => countByRegion(region) < MAX_PER_REGION;
 
@@ -122,12 +122,12 @@ export default function AdminPremiumPage() {
 
   const displayPremium = filterRegion === 'all'
     ? premiumShops
-    : premiumShops.filter(s => s.region === filterRegion);
+    : premiumShops.filter(s => matchesRegion(s.region, filterRegion));
   const displayVisibleCount = countVisiblePremium(displayPremium);
 
   const availableToAdd = allShops.filter(s =>
     !premiumShops.find(p => p.id === s.id) &&
-    (filterRegion === 'all' || s.region === filterRegion)
+    matchesRegion(s.region, filterRegion)
   );
 
   return (

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit2, Crown, Store, RefreshCw } from 'lucide-react';
 import type { AdminShopListItem, AdminShopPageResult } from '@/lib/communityTypes';
-import { REGIONS, REGION_MAP } from '@/lib/types';
+import { REGIONS } from '@/lib/types';
 
 import PaginationControls from '@/components/public/PaginationControls';
 import clsx from 'clsx';
@@ -52,7 +52,7 @@ function getActionErrorMessage(result: unknown, fallback: string) {
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(SHOPS_PAGE_SIZE) });
       if (debouncedSearch) params.set('q', debouncedSearch);
-      if (regionFilter !== 'all') params.set('region', REGION_MAP[regionFilter] ?? regionFilter);
+      if (regionFilter !== 'all') params.set('region', regionFilter);
 
       const res = await fetch(`/api/admin/shops?${params.toString()}`, { cache: 'no-store', credentials: 'same-origin' });
       const payload = (await res.json()) as AdminShopPageResult & { error?: string };

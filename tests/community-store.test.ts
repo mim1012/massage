@@ -497,6 +497,42 @@ dbTest('managed shops page paginates, clamps page size, and scopes to the owner'
   assert.equal(clampedBig.pageSize, 100);
 });
 
+dbTest('managed shop filters include current and legacy region codes', async (t) => {
+  const suffix = uniqueSuffix();
+  const busanShop = await createTempShop({
+    name: `Busan Managed ${suffix}`,
+    region: 'busan',
+    regionLabel: '부산',
+  });
+  const legacyGyeongsangShop = await createTempShop({
+    name: `Legacy Gyeongsang Managed ${suffix}`,
+    region: 'gyeongsang',
+    regionLabel: '부산',
+  });
+  const seoulShop = await createTempShop({
+    name: `Seoul Managed ${suffix}`,
+    region: 'seoul',
+    regionLabel: '서울',
+  });
+
+  t.after(async () => {
+    await prisma.shop.deleteMany({
+      where: { id: { in: [busanShop.id, legacyGyeongsangShop.id, seoulShop.id] } },
+    });
+  });
+
+  const pageResult = await listManagedShopsPage(
+    { id: 'admin', role: 'ADMIN' },
+    { region: 'busan', q: suffix, page: 1, pageSize: 20 },
+  );
+  const listResult = await listManagedShops({ id: 'admin', role: 'ADMIN' }, { region: 'busan', q: suffix });
+  const optionResult = await listManagedShopOptions({ id: 'admin', role: 'ADMIN' }, { region: 'busan', q: suffix });
+
+  assert.deepEqual(new Set(pageResult.shops.map((shop) => shop.id)), new Set([busanShop.id, legacyGyeongsangShop.id]));
+  assert.deepEqual(new Set(listResult.map((shop) => shop.id)), new Set([busanShop.id, legacyGyeongsangShop.id]));
+  assert.deepEqual(new Set(optionResult.map((shop) => shop.id)), new Set([busanShop.id, legacyGyeongsangShop.id]));
+});
+
 dbTest('public site content reads normalize legacy values without writing during requests', async () => {
   const seeded = await prisma.siteSettings.findUnique({
     where: { id: 'default' },
